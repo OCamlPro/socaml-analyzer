@@ -78,7 +78,10 @@ let union_simple a b = match a, b with
   | Top, _ | _, Top -> Top
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
-let union a b =
+let register_id (_:data) (_:data) = ()
+let get_id (_:id) = bottom
+
+let rec union a b =
   {
     top = a.top || b.top;
     int = union_simple a.int b.int;
@@ -89,9 +92,40 @@ let union a b =
     i64 = union_simple a.i64 b.i64;
     inat = union_simple a.inat b.inat;
     cp = Ints.union a.cp b.cp;
-    blocks = a.blocks; (* This is WRONG ! Just wrong. To be changed. Kids might read it god damnit ! *)
-    f = a.f;
+    blocks =
+      Tagm.merge
+	begin
+	  fun _ a b ->
+	    match a, b with
+	  | a, None | None, a -> a
+	  | Some is1, Some is2 ->
+	    Intm.merge
+	      (fun _ a b ->
+		match a, b with
+		| a, None | None, a -> a
+		| Some s1, Some s2 ->
+		  Some (Array.mapi (fun i i1 -> union_id i1 s2.(i)))
+	      )
+	end
+	a.merge b.merge;
+
+    
+    f = Fm.merge
+      begin
+	fun _ a b ->
+	  match a, b with
+	  | a, None | None, a -> a
+	  | Some i1, Some i2 -> Some ( union_id i1 i2)
+      end
+      a.f b.f;
+
   }
+
+and union_id i1 i2 =
+  let i3 = create () in
+  register_id i3 (union (get_id i1) (get_id i2));
+  i3
+  
 
 let intersection_simple a b = match a, b with
   | Top, a | a, Top -> a
