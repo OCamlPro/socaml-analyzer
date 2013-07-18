@@ -38,8 +38,8 @@ type data =
     i64 : simple;
     inat : simple;
     cp : Ints.t;
-    blocks : id array Intm.t Tagm.t; (* referenced by tag, then by size *)
-    f : id Fm.t;
+    blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
+    f : Ids.t array Fm.t;
   }
 
 let simple_bottom = Constants Constants.empty
@@ -78,8 +78,9 @@ let union_simple a b = match a, b with
   | Top, _ | _, Top -> Top
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
-let register_id (_:id) (_:data) = ()
+let register_id (_:data) = Id.create ()
 let get_id (_:id) = bottom
+
 
 let rec union a b =
   {
@@ -104,7 +105,7 @@ let rec union a b =
 		(fun _ a b ->
 		  match a, b with
 		  | a, None | None, a -> a
-		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> union_id i1 s2.(i)) s1)
+		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> Ids.union i1 s2.(i)) s1)
 		)
 		is1 is2
 	    )
@@ -117,22 +118,22 @@ let rec union a b =
 	fun _ a b ->
 	  match a, b with
 	  | a, None | None, a -> a
-	  | Some i1, Some i2 -> Some ( union_id i1 i2)
+	  | Some i1, Some i2 -> Some ( Array.mapi (fun i i1i -> Ids.union i1i i2.(i)) i1 )
       end
       a.f b.f;
 
   }
 
 and union_id i1 i2 =
-  let i3 = Id.create () in
-  register_id i3 (union (get_id i1) (get_id i2));
-  i3
+  register_id (union (get_id i1) (get_id i2))
   
 
 let intersection_simple a b = match a, b with
   | Top, a | a, Top -> a
   | Constants s, Constants s' ->
     Constants ( Constants.inter s s')
+
+let union_ids ids = ( Ids.fold (fun a b -> union (get_id a) b) ids bottom)
 
 let rec intersection a b =
   if a.top then b
@@ -159,7 +160,16 @@ let rec intersection a b =
 		(fun _ a b ->
 		  match a, b with
 		  | _, None | None, _ -> None
-		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> intersection_id i1 s2.(i)) s1)
+		  | Some s1, Some s2 ->
+		    Some
+		      (
+			Array.mapi
+			  (fun i i1 ->
+			    let inter = intersection ( union_ids i1) ( union_ids s2.(i)) in
+			    Ids.singleton ( register_id inter)
+			  )
+			  s1
+		      )
 		)
 		is1 is2
 	    )
@@ -172,15 +182,22 @@ let rec intersection a b =
 	fun _ a b ->
 	  match a, b with
 	  | _, None | None, _ -> None
-	  | Some i1, Some i2 -> Some ( intersection_id i1 i2)
+	  | Some i1, Some i2 ->
+	    Some (
+	      Array.mapi (fun i i1i ->
+		
+		let inter = intersection
+		  ( union_ids i1i)
+		  ( union_ids i2.(i))
+		in Ids.singleton ( register_id inter)
+	      ) i1
+	    )
       end
       a.f b.f;
 
   }
 and intersection_id i1 i2 =
-  let i3 = Id.create () in
-  register_id i3 (intersection (get_id i1) (get_id i2));
-  i3
+  register_id ( intersection (get_id i1) (get_id i2))
 
 
 type environment =
