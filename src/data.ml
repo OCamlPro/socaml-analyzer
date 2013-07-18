@@ -38,7 +38,7 @@ type data =
     i64 : simple;
     inat : simple;
     cp : Ints.t;
-    blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
+    blocks : id array Intm.t Tagm.t; (* referenced by tag, then by size *)
     f : id Fm.t;
   }
 
@@ -78,7 +78,7 @@ let union_simple a b = match a, b with
   | Top, _ | _, Top -> Top
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
-let register_id (_:data) (_:data) = ()
+let register_id (_:id) (_:data) = ()
 let get_id (_:id) = bottom
 
 let rec union a b =
@@ -99,15 +99,17 @@ let rec union a b =
 	    match a, b with
 	  | a, None | None, a -> a
 	  | Some is1, Some is2 ->
-	    Intm.merge
-	      (fun _ a b ->
-		match a, b with
-		| a, None | None, a -> a
-		| Some s1, Some s2 ->
-		  Some (Array.mapi (fun i i1 -> union_id i1 s2.(i)))
-	      )
+	    Some (
+	      Intm.merge
+		(fun _ a b ->
+		  match a, b with
+		  | a, None | None, a -> a
+		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> union_id i1 s2.(i)) s1)
+		)
+		is1 is2
+	    )
 	end
-	a.merge b.merge;
+	a.blocks b.blocks;
 
     
     f = Fm.merge
@@ -122,7 +124,7 @@ let rec union a b =
   }
 
 and union_id i1 i2 =
-  let i3 = create () in
+  let i3 = Id.create () in
   register_id i3 (union (get_id i1) (get_id i2));
   i3
   
