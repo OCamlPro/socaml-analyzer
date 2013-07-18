@@ -1,3 +1,5 @@
+(* The atomic types *)
+
 open Utils
 
 (* use generative applications to have a new type each time *)
@@ -62,7 +64,7 @@ let bottom =
   }
 
 
-(* environment management *)
+(* Environment management *)
 
 type environment =
   | Bottom
@@ -99,7 +101,7 @@ let int_singleton const =
   { bottom with int = Constants (Constants.singleton const) }
 
 
-(* bottom test *)
+(* Bottom test *)
 
 let is_bottom_simple = function
   | Top -> false
@@ -113,10 +115,7 @@ let is_bottom env { top; int; float; string; floata; i32;
   is_bottom_simple inat &&
   Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
 
-(* union *)
-
-(* let register_id (_:data) = Id.create () *)
-(* let get_id (_:id) = bottom *)
+(* Union *)
 
 let union_simple a b = match a, b with
   | Top, _ | _, Top -> Top
@@ -170,15 +169,10 @@ and union_id env i1 i2 =
   let ( env, u) = union env (get_env i1 env) (get_env i2 env) in
   reg_env u env
   
-
-(* intersection *)
-
-let intersection_simple a b = match a, b with
-  | Top, a | a, Top -> a
-  | Constants s, Constants s' ->
-    Constants ( Constants.inter s s')
-
 let union_ids env ids = Ids.fold (fun a ( env, b) -> union env (get_env a env) b) ids ( env, bottom)
+
+
+(* Inclusion test *)
 
 let included_simple a b = match a, b with
   | Top, _ | _, Top -> true
@@ -232,8 +226,17 @@ let rec included env i1 i2 =
 		a
 	    ) a b
 	with Not_found -> false) a.f
-      
-      
+
+
+
+(* Intersection *)
+
+let intersection_simple a b = match a, b with
+  | Top, a | a, Top -> a
+  | Constants s, Constants s' ->
+    Constants ( Constants.inter s s')
+
+
 let intersect_noncommut env a b =
   (* keeps the ids in a that are possibly compatible with b *)
   if a.top then (env, b)
