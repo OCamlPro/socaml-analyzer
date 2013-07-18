@@ -46,13 +46,17 @@ module Env = struct
 
   let any_int = { bottom with int = Top }
 
+  let set_constraint id constr env =
+    let env, value = intersect_noncommut env (get_env id env) constr in
+    set_env id value env
+
   let set_int env dst cst =
     set_env dst (int_singleton cst) env
 
   let add_int env ~src1 ~src2 ~dst =
     env
-    |> set_env src1 (intersection (get_env src1 env) any_int)
-    |> set_env src2 (intersection (get_env src2 env) any_int)
+    |> set_constraint src1 any_int
+    |> set_constraint src2 any_int
     |> set_env dst any_int
 
   let bottom = bottom_env
