@@ -1,5 +1,6 @@
 open Format
 open Data
+open Utils
 
 module Vertex = struct
   type t = string
