@@ -1,6 +1,13 @@
-type id = Ident.t
+open Utils
 
-type constant = int
+(* use generative applications to have a new type each time *)
+module Id = MakeId(struct end)
+module Constant = MakeId(struct end)
+module F = MakeId(struct end)
+
+type id = Id.t
+
+type constant = Constant.t
 
 module Constants = Set.Make (struct type t = constant let compare = compare end)
 
@@ -8,7 +15,7 @@ type simple = Bottom | Top | Constants of Constants.t
 
 type tag = int
 
-type f = int
+type f = F.t
 
 module Ints = Set.Make (struct type t = int let compare = compare end)
 module Intm = Map.Make (struct type t = int let compare = compare end)
@@ -50,10 +57,10 @@ let bottom =
     f = Fm.empty;
   }
 
-let union_simple a b =
-| Bottom, a | a, Bottom -> a
-| Top, _ | _, Top -> Top
-| Constants s | Constants s' -> Constants ( Constants.union s s')
+let union_simple a b = match a, b with
+  | Bottom, a | a, Bottom -> a
+  | Top, _ | _, Top -> Top
+  | Constants s, Constants s' -> Constants ( Constants.union s s')
 
 let union a b =
   {
@@ -70,4 +77,4 @@ let union a b =
     f = a.f;
   }
 
-    
+
