@@ -135,10 +135,8 @@ let intersection_simple a b = match a, b with
     Constants ( Constants.inter s s')
 
 let rec intersection a b =
-  if a.top || b.top
-  then union a b
-    (* not completely sure this is the right thing to do for escape
-       analysis, but this is correct for value analysis *)
+  if a.top then b
+  else if b.top then a
   else
     { top = false;
     int = intersection_simple a.int b.int;
