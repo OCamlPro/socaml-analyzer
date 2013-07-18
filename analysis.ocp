@@ -1,0 +1,24 @@
+begin library "data"
+ dirname = "src"
+ files = [ "utils.ml" "data.ml" ]
+end
+
+begin library "hgraph"
+ dirname = "src"
+ files = [ "hgraph.ml" ]
+end
+
+begin test "test_graph"
+ files = [ "test/test_graph.ml" ]
+ requires = [ "hgraph" ]
+end
+
+begin test "test_int"
+ files = [ "test/test_int.ml" ]
+ requires = [ "hgraph" ]
+end
+
+begin test "test_data"
+ files = [ "test/test_data.ml" ]
+ requires = [ "hgraph" "data" ]
+end
