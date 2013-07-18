@@ -134,7 +134,7 @@ let intersection_simple a b = match a, b with
   | Constants s, Constants s' ->
     Constants ( Constants.inter s s')
 
-let intersection a b =
+let rec intersection a b =
   if a.top || b.top
   then union a b
     (* not completely sure this is the right thing to do for escape
@@ -149,9 +149,41 @@ let intersection a b =
     i64 = intersection_simple a.i64 b.i64;
     inat = intersection_simple a.inat b.inat;
     cp = Ints.inter a.cp b.cp;
-    blocks = a.blocks; (* This is WRONG ! Just wrong. To be changed. Kids might read it god damnit ! *)
-    f = a.f;
+    blocks =
+      Tagm.merge
+	begin
+	  fun _ a b ->
+	    match a, b with
+	  | _, None | None, _ -> None
+	  | Some is1, Some is2 ->
+	    Some (
+	      Intm.merge
+		(fun _ a b ->
+		  match a, b with
+		  | _, None | None, _ -> None
+		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> intersection_id i1 s2.(i)) s1)
+		)
+		is1 is2
+	    )
+	end
+	a.blocks b.blocks;
+
+    
+    f = Fm.merge
+      begin
+	fun _ a b ->
+	  match a, b with
+	  | _, None | None, _ -> None
+	  | Some i1, Some i2 -> Some ( intersection_id i1 i2)
+      end
+      a.f b.f;
+
   }
+and intersection_id i1 i2 =
+  let i3 = Id.create () in
+  register_id i3 (intersection (get_id i1) (get_id i2));
+  i3
+
 
 type environment =
   | Bottom
