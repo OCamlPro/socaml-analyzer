@@ -11,7 +11,7 @@ type constant = Constant.t
 
 module Constants = Set.Make (struct type t = constant let compare = compare end)
 
-type simple = Bottom | Top | Constants of Constants.t
+type simple = Top | Constants of Constants.t
 
 type tag = int
 
@@ -42,23 +42,39 @@ type data =
     f : id Fm.t;
   }
 
+let simple_bottom = Constants Constants.empty
+
 let bottom =
   {
     top = false;
-    int = Bottom;
-    float = Bottom;
-    string = Bottom;
-    floata = Bottom;
-    i32 = Bottom;
-    i64 = Bottom;
-    inat = Bottom;
+    int = simple_bottom;
+    float = simple_bottom;
+    string = simple_bottom;
+    floata = simple_bottom;
+    i32 = simple_bottom;
+    i64 = simple_bottom;
+    inat = simple_bottom;
     cp = Ints.empty;
     blocks = Tagm.empty;
     f = Fm.empty;
   }
 
+let int_singleton const =
+  { bottom with int = Constants (Constants.singleton const) }
+
+let is_bottom_simple = function
+  | Top -> false
+  | Constants c -> Constants.is_empty c
+
+let is_bottom { top; int; float; string; floata; i32;
+                i64; inat; cp; blocks; f } =
+  top = false && is_bottom_simple int && is_bottom_simple float &&
+  is_bottom_simple string && is_bottom_simple floata &&
+  is_bottom_simple i32 && is_bottom_simple i64 &&
+  is_bottom_simple inat &&
+  Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
+
 let union_simple a b = match a, b with
-  | Bottom, a | a, Bottom -> a
   | Top, _ | _, Top -> Top
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
@@ -77,4 +93,50 @@ let union a b =
     f = a.f;
   }
 
+let intersection_simple a b = match a, b with
+  | Top, a | a, Top -> a
+  | Constants s, Constants s' ->
+    Constants ( Constants.inter s s')
 
+let intersection a b =
+  if a.top || b.top
+  then union a b
+    (* not completely sure this is the right thing to do for escape
+       analysis, but this is correct for value analysis *)
+  else
+    { top = false;
+    int = intersection_simple a.int b.int;
+    float = intersection_simple a.float b.float;
+    string = intersection_simple a.string b.string;
+    floata = intersection_simple a.floata b.floata;
+    i32 = intersection_simple a.i32 b.i32;
+    i64 = intersection_simple a.i64 b.i64;
+    inat = intersection_simple a.inat b.inat;
+    cp = Ints.inter a.cp b.cp;
+    blocks = a.blocks; (* This is WRONG ! Just wrong. To be changed. Kids might read it god damnit ! *)
+    f = a.f;
+  }
+
+type environment =
+  | Bottom
+  | Env of data Idm.t
+
+let is_bottom_env = function
+  | Bottom -> true
+  | _ -> false
+
+let bottom_env = Bottom
+let empty_env = Env Idm.empty
+
+let set_env id data = function
+  | Bottom ->
+    (* not sure this should really forbidden, but this may help avoid
+       some bugs *)
+    failwith "bottom should never be assigned"
+  | Env env -> Env (Idm.add id data env)
+
+let get_env id = function
+  | Bottom -> bottom
+  | Env env ->
+    try Idm.find id env
+    with Not_found -> bottom

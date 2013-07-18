@@ -1,3 +1,6 @@
+
+let (|>) x f = f x
+
 module type Empty = sig end
 
 module type BaseId = sig
