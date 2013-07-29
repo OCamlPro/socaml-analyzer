@@ -1,3 +1,4 @@
 *.cm?
 ocp-build.root*
 _obuild/
+*~
