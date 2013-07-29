@@ -122,7 +122,7 @@ let union_simple a b = match a, b with
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
 
-let rec union env a b =
+let rec union (* env *) a b =
   let blocks =
     Tagm.merge
       begin
@@ -150,7 +150,7 @@ let rec union env a b =
     end
     a.f b.f;
   in
-  env,
+  (* env, *)
   {
     top = a.top || b.top;
     int = union_simple a.int b.int;
@@ -166,10 +166,10 @@ let rec union env a b =
   }
 
 and union_id env i1 i2 =
-  let ( env, u) = union env (get_env i1 env) (get_env i2 env) in
+  let ( (* env, *) u) = union (* env *) (get_env i1 env) (get_env i2 env) in
   reg_env u env
   
-let union_ids env ids = Ids.fold (fun a ( env, b) -> union env (get_env a env) b) ids ( env, bottom)
+let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_env a env) b) ids ( (* env, *) bottom)
 
 
 (* Inclusion test *)
@@ -227,7 +227,45 @@ let rec included env i1 i2 =
 	    ) a b
 	with Not_found -> false) a.f
 
+(* Leq test *)
 
+let leq_simple a b =
+  match a, b with
+  | _, Top -> true
+  | Top, _ -> false
+  | Constants a, Constants b -> Constants.subset a b
+
+let is_leq a b =
+  b.top
+  || begin
+    not a.top
+    && leq_simple a.int b.int
+    && leq_simple a.float b.float
+    && leq_simple a.string b.string
+    && leq_simple a.floata b.floata
+    && leq_simple a.i32 b.i32
+    && leq_simple a.i64 b.i64
+    && leq_simple a.inat b.inat
+    && Ints.subset a.cp b.cp
+    && Tagm.for_all
+      (fun k a ->
+	try
+	  let b = Tagm.find k b.blocks in
+	  Intm.for_all
+	    (fun k a ->
+	      let b = Intm.find k b in
+	      array2_forall Ids.subset a b
+	    ) a
+	with Not_found -> false
+      ) a.blocks
+    && Fm.for_all
+      (fun k a ->
+	try
+	  let b = Fm.find k b.f in
+	  array2_forall Ids.subset a b
+	with Not_found -> false
+      ) a.f
+  end
 
 (* Intersection *)
 
@@ -302,6 +340,30 @@ let intersect_noncommut env a b =
       f;
     }
   
+(* Environment joining *)
+
+let join_env e1 e2 =
+  match e1, e2 with
+  | Bottom, e | e, Bottom -> e
+  | Env i1, Env i2 ->
+    Env
+      ( Idm.merge
+	    ( fun _ v1 v2 ->
+	      match v1, v2 with
+	      | None, v | v, None -> v
+	      | Some v1, Some v2 ->
+		Some (union v1 v2)
+	    ) i1 i2
+      )
+
+(* Environment comparison *)
+
+let is_leq_env e1 e2 =
+  match e1, e2 with
+  | Bottom, _ -> true
+  | _, Bottom -> false
+  | Env e1, Env e2 ->
+    Idm.for_all (fun id d -> try is_leq d ( Idm.find id e2) with Not_found -> false ) e1
 
 
 (* let rec intersection env a b = *)

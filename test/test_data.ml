@@ -96,8 +96,10 @@ module Manager = struct
 
   let bottom _ = bottom_env
   let is_bottom _ = is_bottom_env
-  let join_list _ l = failwith "TODO"
-  let is_leq _ x y = failwith "TODO"
+  let join_list _ l =
+    List.fold_left join_env bottom_env l
+    
+  let is_leq _ = is_leq_env
 
 end
 
