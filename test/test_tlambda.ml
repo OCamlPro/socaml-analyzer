@@ -3,46 +3,37 @@ open Asttypes
 open Ident
 open Tlambda
 
+let tlet te_id te_lam te_in =
+  Tlet { te_id; te_lam; te_in; te_kind = Alias }
+
+
+
 let last_id = ref (-1)
 let mk_id s =
   incr last_id;
   { stamp = !last_id; name = s; flags = 0 }
 
 let ret_id = mk_id "return"
+
+let tend = Tend ret_id
+
+let tconst_int i = Tconst ( Const_base ( Const_int i))
+let tadd a b = Tprim ( Paddint, [a;b])
+
+
 let t1 =
-  Tlet
-    {
-      te_id = ret_id;
-      te_lam = Tconst ( Const_base ( Const_int 42));
-      te_kind = Alias;
-      te_in = Tend ret_id;
-    }
+  tlet ret_id ( tconst_int 42) tend
 
 let a = mk_id "a"
 let b = mk_id "b"
 
 let t2 =
-  Tlet
-    {
-      te_id = a;
-      te_lam = Tconst ( Const_base ( Const_int 1605));
-      te_kind = Alias;
-      te_in =
-	Tlet
-	  {
-	    te_id = b;
-	    te_lam = Tconst ( Const_base ( Const_int 1666));
-	    te_kind = Alias;
-	    te_in =
-	      Tlet
-		{
-		  te_id = ret_id;
-		  te_lam = Tprim ( Paddint, [a;b]);
-		  te_kind = Alias;
-		  te_in = Tend ret_id;
-		};
-	  };
-    }
+  tlet a ( tconst_int 1605)
+    ( tlet b ( tconst_int 1666)
+	( tlet ret_id ( tadd a b) tend )
+    )
+
+
     
 open Tlambda_interpret
 
