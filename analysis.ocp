@@ -3,6 +3,12 @@ begin library "data"
  files = [ "utils.ml" "data.ml" ]
 end
 
+begin library "tlambda"
+ dirname = "src"
+ files = [ "tlambda.mli" "tlambda_interpret.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" ]
+end
+
 begin library "hgraph"
  dirname = "src"
  files = [ "hgraph.ml" ]
@@ -21,4 +27,9 @@ end
 begin test "test_data"
  files = [ "test/test_data.ml" ]
  requires = [ "hgraph" "data" ]
+end
+
+begin test "test_tlambda"
+ files = [ "test/test_tlambda.ml" ]
+ requires = [ "tlambda" ]
 end
