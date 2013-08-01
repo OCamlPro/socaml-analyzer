@@ -40,10 +40,15 @@ let val_to_bool v = match !v with
   | _ -> assert false
 
 let val_to_int i = match !i with
-  | Int i -> i
+  | Int i
+  | Cp i -> i
   | _ -> assert false
 
+let of_bool b = ref ( Cp ( if b then 1 else 0))
+let of_int i = ref ( Int i)
+
 let val_unit = ref ( Cp 0)
+let match_failure = Exn val_unit (* This is indeed false *) (* TODO *)
 
 let rec tlambda (funs:fun_table) (env:env) = function
   | Tend i -> get_env env i
@@ -62,7 +67,7 @@ and structured_constant sc =
       | Const_int i -> Int i
       | Const_char c -> Int (Char.code c)
       | Const_string s -> String s
-      | Const_float f -> (* Float f *) failwith "TODO: float conversion"
+      | Const_float f -> Float ( float_of_string f)
       | Const_int32 i -> Int32 i
       | Const_int64 i -> Int64 i
       | Const_nativeint i -> Intn i
@@ -78,7 +83,23 @@ and tcontrol funs env = function
   | Tconst sc -> structured_constant sc
   | Tapply ( f, x, _) -> call_fun funs (get_env env f) (get_env env x)
   | Tprim ( p, l) -> call_prim funs p (List.map (get_env env) l)
-  | Tswitch ( i, s) -> failwith "TODO: switch"
+  | Tswitch ( i, s) ->
+    let switch_handle i l =
+      let b =
+	try List.assoc i l with
+	  Not_found ->
+	    ( match s.t_failaction with
+	    | Some b -> b
+	    | None -> raise match_failure)
+      in
+      tlambda funs env b
+    in
+    begin
+      match !(get_env env i) with
+      | Int i | Cp i -> switch_handle i s.t_consts
+      | Block (i,l) -> switch_handle i s.t_blocks
+      | _ -> assert false
+    end
   | Tstaticraise ( i, l) -> raise ( Staticraise ( i, List.map (get_env env) l))
   | Tstaticcatch ( lam, (i,l), lam2) ->
     begin
@@ -136,9 +157,11 @@ and call_fun funs f x =
 
 and call_prim funs p l =
   match p, l with
+  (* Utilities *)
   | Pidentity, [x] -> x
   | Pignore, _::[] -> val_unit
   | Prevapply _, [x;f] | Pdirapply _, [f;x] -> call_fun funs f x
+  (* Blocks *)
   | Pmakeblock (i,_), l -> ref ( Block ( i, l))
   | Pfield i, [{ contents = Block ( _, l)}]
   | Pfloatfield i, [{ contents = Block ( _, l)}] ->
@@ -147,9 +170,41 @@ and call_prim funs p l =
   | Psetfloatfield i, [{ contents = Block (_,l)};v] ->
     (List.nth l i) := !v; val_unit
   | Pduprecord _, [r] -> ref !r
+  (* Lazyness *)
   | Plazyforce,  _ -> failwith "TODO: lazy" (* not that I'm being lazy *)
+  (* Externals *)
   | Pccall _, _ -> failwith "TODO: ccall"
+  (* Booleans *)
+  | Pnot, [b] -> of_bool ( not (val_to_bool b))
+  (* Ints *)
+  | Pnegint, [x] -> of_int ( ~- (val_to_int x))
+  | Paddint, [ x; y] -> of_int ( ( val_to_int x) + ( val_to_int y))
+  | Psubint, [ x; y] -> of_int ( ( val_to_int x) - ( val_to_int y))
+  | Pmulint, [ x; y] -> of_int ( ( val_to_int x) * ( val_to_int y))
+  | Pdivint, [ x; y] -> of_int ( ( val_to_int x) / ( val_to_int y))
+  | Pmodint, [ x; y] -> of_int ( ( val_to_int x) mod ( val_to_int y))
+  | Pandint, [ x; y] -> of_int ( ( val_to_int x) land ( val_to_int y))
+  | Porint, [ x; y] -> of_int ( ( val_to_int x) lor ( val_to_int y))
+  | Pxorint, [ x; y] -> of_int ( ( val_to_int x) lxor ( val_to_int y))
+  | Plslint, [ x; y] -> of_int ( ( val_to_int x) lsl ( val_to_int y))
+  | Plsrint, [ x; y] -> of_int ( ( val_to_int x) lsr ( val_to_int y))
+  | Pasrint, [ x; y] -> of_int ( ( val_to_int x) asr ( val_to_int y))
+  | Pintcomp c, [ x; y] -> of_bool ( comparison c ( val_to_int x)  ( val_to_int y))
+  | Poffsetint _, _ -> failwith "TODO: ask Pierre"
+  | Poffsetref _, _ -> failwith "TODO: ask Pierre"
+  (* Floats *)
+  
+ 
 
-  | Paddint, [{ contents = Int x}; { contents = Int y}] -> ref ( Int ( x + y))
+  | _, _ -> failwith "TODO: primitives"
 
-  | _ -> failwith "TODO: primitives"
+and comparison = function
+  | Ceq -> (=)
+  | Cneq -> (<>)
+  | Clt -> (<)
+  | Cgt -> (>)
+  | Cle -> (<=)
+  | Cge -> (>=)
+
+
+
