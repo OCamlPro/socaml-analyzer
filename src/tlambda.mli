@@ -138,7 +138,7 @@ and tcontrol =
 | Tifthenelse of id * tlambda * tlambda
 | Twhile of tlambda * tlambda
 | Tfor of id * id * id * direction_flag * tlambda
-| Tassign of id * id
+(* | Tassign of id * id *)
 
 and tswitch =
 {
