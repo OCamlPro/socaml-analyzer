@@ -16,6 +16,7 @@ and v =
 | String of string
 | Cp of int
 | Block of int * value list
+| Rec_set
 
 type env = value Idm.t
 type fun_table = tlambda array
