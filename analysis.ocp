@@ -14,6 +14,12 @@ begin library "hgraph"
  files = [ "hgraph.ml" ]
 end
 
+begin library "lambda-analysis"
+ dirname = "src"
+ files = [ "tlambda_to_hgraph.ml" ]
+ requires = [ "tlambda" "hgraph" ]
+end
+
 begin test "test_graph"
  files = [ "test/test_graph.ml" ]
  requires = [ "hgraph" ]
