@@ -39,11 +39,7 @@ type hinfo =
 | Var of id
 | Const of Lambda.structured_constant
 | Apply of id * id
-(* | Function (\* probably useless *\) *)
-(* | Let of id *)
-(* | Letrec of id list *)
 | Prim of Tlambda.primitive * id list
-| Switch of switch_info
 | Sraise of id list
 | Scatch of id list
 | Raise of id (* Well, I prefer it here *)
@@ -51,17 +47,6 @@ type hinfo =
 | If of id
 | Constraint of constr
 | For of id
-| Assign of id
-(* | Send *)
-and switch_info =
-  {
-    si_id : id;
-    si_numconsts : int;
-    si_consts : ( int * int ) list;
-    si_numblocks : int;
-    si_blocks : ( int * int ) list;
-    si_fail : bool; (* if there is a failaction, it's index 0 *)
-  }
 and constr = Ccp of int | Ctag of int
 
 let ctrue = Constraint (Ccp 1)
@@ -77,7 +62,7 @@ let mk_graph ~last_id ~funs main =
   let stampr = ref last_id in
   let mk_id s =
     incr stampr;
-    Ident.({ stamp = !stampr; name = ("#t#"^s); flags = 0; })
+    Ident.({ stamp = !stampr; name = s; flags = 0; })
   in
   let open G in
   let g = create () in
@@ -94,7 +79,7 @@ let mk_graph ~last_id ~funs main =
   and statics : ( int, Vertex.t) Hashtbl.t = Hashtbl.create 32 in
 
   let dummy = nv () in
-  let one_id = mk_id "1" in
+  let one_id = mk_id "$1" in
 
   let rec tlambda ~outv ~ret_id entry exnv code =
     match code with
@@ -156,36 +141,6 @@ let mk_graph ~last_id ~funs main =
 	  Is.iter (fun tag -> add_hedge g si_id (Constraint (Ctag tag)) ~pred:[|inv|] ~succ:[|inf|]) bs;
 	  tlambda ~outv ~ret_id inf exnv lam
       end
-      (* (\* let hswitch l = List.map ( fun ( _,lam) -> tlambda ~outv inv exnv lam) l *\) *)
-      (* let outcs = hswitch s.t_consts *)
-      (* and outbs = hswitch s.t_blocks *)
-      (* and fail = match s.t_failaction with None -> [| |] | Some lam -> [|tlambda inv lam|] *)
-      (* in *)
-      (* let pred = *)
-      (* 	Array.concat *)
-      (* 	  [ *)
-      (* 	    fail; *)
-      (* 	    Array.of_list outcs; *)
-      (* 	    Array.of_list outbs *)
-      (* 	  ] *)
-      (* in *)
-      (* let idx = ref -1 in *)
-      (* let si_fail = fail <> [| |] in *)
-      (* ( if si_fail then incr idx else () ); *)
-      (* let si_consts = List.map (fun (i,_) -> incr idx; (i,!idx)) s.t_consts in *)
-      (* let si_blocks = List.map (fun (i,_) -> incr idx; (i,!idx)) s.t_blocks in *)
-      (* let info = *)
-      (* 	{ *)
-      (* 	  si_id; *)
-      (* 	  si_numconsts = s.t_numconsts; *)
-      (* 	  si_consts; *)
-      (* 	  si_numblocks = s.t_numblocks; *)
-      (* 	  si_blocks; *)
-      (* 	  si_fail; *)
-      (* 	} *)
-      (* in *)
-      (* add_hedge g id ( Switch info) ~pred ~succ:[|outv|]; *)
-      (* outv *)
 
     | Tstaticraise ( i, args) ->
       add_hedge g id (Sraise args) ~pred:[|inv|] ~succ:[|Hashtbl.find statics i|]
@@ -225,7 +180,7 @@ let mk_graph ~last_id ~funs main =
       tlambda ~outv:inv ~ret_id inb exnv lbody
 
     | Tfor ( i, start, stop, dir, lbody) ->
-      let test_id = mk_id "test" in
+      let test_id = mk_id "$test" in
       let initv = nv () in
       let testv = nv () in
       let inb = nv () in
