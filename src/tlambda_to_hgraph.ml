@@ -103,32 +103,29 @@ let mk_graph funs main entry =
 
   and tlet entry outv exnv ret_id d =
     (* add_vertex g d.te_id (); *)
-    let next = tcontrol entry outv exnv d.te_id ret_id d.te_lam in
-    tlambda next exnv d.te_in
+    let in_out = nv () in
+    tcontrol entry in_out exnv d.te_id ret_id d.te_lam;
+    tlambda ~outv in_out exnv d.te_in
 
   and trec entry outv exnv ret_id d = failwith "TODO: rec"
 
   and tcontrol inv outv exnv id ret_id c =
     match c with
     | Tvar i ->
-      add_hedge g id ( Var i) ~pred:[|inv|] ~succ:[|outv|];
-      outv
+      add_hedge g id ( Var i) ~pred:[|inv|] ~succ:[|outv|]
 
     | Tconst c ->
-      add_hedge g id ( Const c) ~pred:[|inv|] ~succ:[|outv|];
-      outv
+      add_hedge g id ( Const c) ~pred:[|inv|] ~succ:[|outv|]
 
     | Tapply ( f, x, _) ->
       add_hedge g fun_id ( Apply ( f, x)) ~pred:[|inv|] ~succ:fun_in; (* is that a good idea ? *)
       add_hedge g id ( Raise exn_id) ~pred:fun_exn ~succ:[|exnv|];
-      add_hedge g id ( Var ret_id) ~pred:fun_out ~succ:[|outv|];
-      outv
+      add_hedge g id ( Var ret_id) ~pred:fun_out ~succ:[|outv|]
 
     | Tprim ( p, args) ->
-      add_hedge g id ( Prim ( p, args)) ~pred:[|inv|] ~succ:[|outv|];
-      outv
+      add_hedge g id ( Prim ( p, args)) ~pred:[|inv|] ~succ:[|outv|]
 
-    | Tswitch ( si_id, s) -> (* to redo *)
+    | Tswitch ( si_id, s) ->
       let switch_handle is_cp (i,lam) =
 	let inc = nv () in
 	add_hedge g si_id ( Constraint ( if is_cp then Ccp i else Ctag i)) ~pred:[|inv|] ~succ:[|inc|];
@@ -191,54 +188,51 @@ let mk_graph funs main entry =
       (* outv *)
 
     | Tstaticcraise ( i, args) ->
-      add_hedge g id (Sraise args) ~pred:[|inv|] ~succ:[|Hashtbl.find statics i|];
-      outv
+      add_hedge g id (Sraise args) ~pred:[|inv|] ~succ:[|Hashtbl.find statics i|]
 
     | Tstaticcatch ( ltry, ( i, args), lwith) ->
       let catchv = nv () in
+      let outt = nv () and outw = nv () in
       Hashtbl.add statics i catchv;
-      let outt = tlambda inv exnv ltry in
-      let outw = tlambda catchv exnv lwith in
       add_hedge g id (Scatch args) ~pred:[|outt;outw|] ~succ:[|outv|];
-      outv
+      tlambda ~outv:outt inv exnv ltry;
+      tlambda ~outv:outw catchv exnv lwith
       
     | Traise i ->
-      add_hedge g id (Raise i) ~pred:[|inv|] ~succ:[|exnv|];
-      outv
+      add_hedge g id (Raise i) ~pred:[|inv|] ~succ:[|exnv|]
 
     | Ttrywith ( ltry, exni, lwith)  ->
       let exnv2 = nv () in
-      let outt = tlambda inv exnv2 ltry in
-      let outw = tlambda exnv2 lwith exnv in
+      let outt = nv () and outw = nv () in
       add_hedge g id ( Try exni) ~pred:[|outt;outw|] ~succ:[|outv|];
-      outv
+      tlambda ~outv:outt inv exnv2 ltry;
+      tlambda ~outv:outw exnv2 lwith exnv
 
     | Tifthenelse ( i, t, e) ->
       let int = nv ()
       and ine = nv () in
       add_hedge g i ctrue ~pred:[|inv|] ~succ:[|int|];
       add_hedge g i cfalse ~pred:[|inv|] ~succ:[|ine|];
-      let _ = tlambda int outv exnv t in
-      let _ = tlambda ine outv exnv e in
-      outv
+      tlambda int outv exnv t;
+      tlambda ine outv exnv e
 
     | Twhile ( lcond, lbody) ->
-      let outc = tlambda inv exnv lcond in
-      add_hedge g ret_id cfalse ~pred:[|outc|] ~succ:[|outv|];
+      let outc = nv () in
       let inb = nv () in
+      add_hedge g ret_id cfalse ~pred:[|outc|] ~succ:[|outv|];
       add_hedge g ret_id ctrue ~pred:[|outc|] ~succ:[|inb|];
-      let _ = tlambda ~outv:inv inb exnv lbody in
-      outv
+      tlambda ~outv:outc inv exnv lcond;
+      tlambda ~outv:inv inb exnv lbody
 
     | Tfor ( i, start, stop, dir, lbody) ->
-      let initv = nv () in
-      add_hedge g i ( Var start) ~pred:[|inv|] ~succ:[|initv|];
-      let testv = nv () in
       let test_id = mk_id "test" in
-      add_hedge g test_id ( Prim ( Pint_comp Cle, [i;stop])) ~pred:[|initv|] ~succ:[|testv|];
+      let initv = nv () in
+      let testv = nv () in
       let inb = nv () in
+      let outb = nv () in
+      add_hedge g i ( Var start) ~pred:[|inv|] ~succ:[|initv|];
+      add_hedge g test_id ( Prim ( Pint_comp Cle, [i;stop])) ~pred:[|initv|] ~succ:[|testv|];
       add_hedge g test_id ctrue ~pred:[|testv|] ~succ:[|inb|];
-      let outb = tlambda inb exnv lbody in
       add_hedge g i ( Prim ( Paddint, [x;one_id])) ~pred:[|outb|] ~succ:[|initv|];
       add_hedge g test_id cfalse ~pred:[|testv|] ~succ:[|outv|];
-      outv
+      tlambda ~outv:outb inb exnv lbody
