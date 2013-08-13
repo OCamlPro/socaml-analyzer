@@ -72,8 +72,10 @@ let const_unit = Lambda.Const_pointer 0
 module Is = Set.Make ( struct type t = int let compare (a:int) b = compare a b end )
 
 open Tlambda
-
-let mk_id _ = failwith "TODO: mk_id"
+let stampr = ref 5000
+let mk_id s =
+  incr stampr;
+  Ident.({ stamp = !stampr; name = ("#t#"^s); flags = 0; })
 
 let mk_graph funs main entry =
   let open G in
@@ -93,7 +95,7 @@ let mk_graph funs main entry =
   let dummy = nv () in
   let one_id = mk_id "1" in
 
-  let rec tlambda ?(outv = nv ()) ~ret_id entry exnv code =
+  let rec tlambda ~outv ~ret_id entry exnv code =
     match code with
     | Tlet d -> tlet entry outv exnv ret_id d
     | Trec d -> trec entry outv exnv ret_id d
