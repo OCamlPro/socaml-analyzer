@@ -16,7 +16,7 @@ struct
   let equal (x:int) y = x = y
   let hash (x:int) = Hashtbl.hash x
 
-  let c = ref 0
+  let c = ref (-1)
   let mk () = incr c; !c
 end
 
@@ -27,7 +27,7 @@ struct
   let equal (x:int) y = x = y
   let hash (x:int) = Hashtbl.hash x
 
-  let c = ref 0
+  let c = ref (-1)
   let mk () = incr c; !c
 end
 
@@ -104,7 +104,10 @@ let mk_graph ~last_id ~funs main =
     tcontrol inv in_out exnv d.te_id ret_id exn_id d.te_lam;
     tlambda ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.te_in
 
-  and trec entry outv exnv ret_id exn_id d = failwith "TODO: rec"
+  and trec entry outv exnv ret_id exn_id d =
+    let in_out = nv () in
+    
+    failwith "TODO: rec"
 
   and tcontrol inv outv exnv id ret_id exn_id c =
     match c with
