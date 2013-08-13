@@ -38,15 +38,8 @@ module G = Hgraph.Make (Desc)
 type hinfo =
 | Var of id
 | Const of Lambda.structured_constant
-| Apply of id * id
 | Prim of Tlambda.primitive * id list
-| Sraise of id list
-| Scatch of id list
-| Raise of id (* Well, I prefer it here *)
-| Trywith of id
-| If of id
 | Constraint of constr
-| For of id
 and constr = Ccp of int | Ctag of int
 
 let ctrue = Constraint (Ccp 1)
@@ -71,51 +64,51 @@ let mk_graph ~last_id ~funs main =
     add_vertex g v (); v in
   let nf = Array.length funs in
   let fun_id = mk_id "$f" in
-  let exn_id = mk_id "$exn" in
-  let ret_id = mk_id "$ret" in
+  let f_arg_id = mk_id "$x" in
+  let f_ret_id = mk_id "$ans" in
+  let f_exn_id = mk_id "$exn" in
   let fun_in = Array.init nf (fun _ -> nv ())
   and fun_out = Array.init nf (fun _ -> nv ())
   and fun_exn = Array.init nf (fun _ -> nv ())
-  and statics : ( int, Vertex.t) Hashtbl.t = Hashtbl.create 32 in
+  and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in
 
   let dummy = nv () in
   let one_id = mk_id "$1" in
 
-  let rec tlambda ~outv ~ret_id entry exnv code =
+  let rec tlambda ~outv ~ret_id ~exn_id ~inv ~exnv code =
     match code with
-    | Tlet d -> tlet entry outv exnv ret_id d
-    | Trec d -> trec entry outv exnv ret_id d
-    | Tend id -> add_hedge g ret_id ( Var id) ~pred:[|entry|] ~succ:[|outv|]
+    | Tlet d -> tlet inv outv exnv ret_id exn_id d
+    | Trec d -> trec inv outv exnv ret_id exn_id d
+    | Tend id -> add_hedge g ret_id ( Var id) ~pred:[|inv|] ~succ:[|outv|]
 
-  and tlet entry outv exnv ret_id d =
+  and tlet inv outv exnv ret_id exn_id d =
     (* add_vertex g d.te_id (); *)
     let in_out = nv () in
-    tcontrol entry in_out exnv d.te_id ret_id d.te_lam;
-    tlambda ~outv ~ret_id in_out exnv d.te_in
+    tcontrol inv in_out exnv d.te_id ret_id exn_id d.te_lam;
+    tlambda ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.te_in
 
-  and trec entry outv exnv ret_id d = failwith "TODO: rec"
+  and trec entry outv exnv ret_id exn_id d = failwith "TODO: rec"
 
-  and tcontrol inv outv exnv id ret_id c =
+  and tcontrol inv outv exnv id ret_id exn_id c =
     match c with
-    | Tvar i ->
-      add_hedge g id ( Var i) ~pred:[|inv|] ~succ:[|outv|]
+    | Tvar i -> add_hedge g id ( Var i) ~pred:[|inv|] ~succ:[|outv|]
 
-    | Tconst c ->
-      add_hedge g id ( Const c) ~pred:[|inv|] ~succ:[|outv|]
+    | Tconst c -> add_hedge g id ( Const c) ~pred:[|inv|] ~succ:[|outv|]
 
     | Tapply ( f, x, _) ->
-      add_hedge g fun_id ( Apply ( f, x)) ~pred:[|inv|] ~succ:fun_in; (* is that a good idea ? *)
-      add_hedge g id ( Raise exn_id) ~pred:fun_exn ~succ:[|exnv|];
-      add_hedge g id ( Var ret_id) ~pred:fun_out ~succ:[|outv|]
+      let fv = nv () in
+      add_hedge g fun_id ( Var f) ~pred:[|inv|] ~succ:[|fv|];
+      add_hedge g f_arg_id ( Var x) ~pred:[|fv|] ~succ:fun_in;
+      add_hedge g exn_id ( Var f_exn_id) ~pred:fun_exn ~succ:[|exnv|];
+      add_hedge g id ( Var f_ret_id) ~pred:fun_out ~succ:[|outv|]
 
-    | Tprim ( p, args) ->
-      add_hedge g id ( Prim ( p, args)) ~pred:[|inv|] ~succ:[|outv|]
+    | Tprim ( p, args) -> add_hedge g id ( Prim ( p, args)) ~pred:[|inv|] ~succ:[|outv|]
 
     | Tswitch ( si_id, s) ->
       let switch_handle is_cp (i,lam) =
 	let inc = nv () in
 	add_hedge g si_id ( Constraint ( if is_cp then Ccp i else Ctag i)) ~pred:[|inv|] ~succ:[|inc|];
-	tlambda ~outv ~ret_id inc exnv lam
+	tlambda ~outv ~ret_id ~inv:inc ~exnv ~exn_id lam
       in
       let () = List.iter ( switch_handle true) s.t_consts
       and () = List.iter ( switch_handle false) s.t_blocks
@@ -139,45 +132,49 @@ let mk_graph ~last_id ~funs main =
 	  let inf = nv () in
 	  Is.iter (fun cp -> add_hedge g si_id (Constraint (Ccp cp)) ~pred:[|inv|] ~succ:[|inf|]) cps;
 	  Is.iter (fun tag -> add_hedge g si_id (Constraint (Ctag tag)) ~pred:[|inv|] ~succ:[|inf|]) bs;
-	  tlambda ~outv ~ret_id inf exnv lam
+	  tlambda ~outv ~ret_id ~inv:inf ~exnv ~exn_id lam
       end
 
     | Tstaticraise ( i, args) ->
-      add_hedge g id (Sraise args) ~pred:[|inv|] ~succ:[|Hashtbl.find statics i|]
+      let ( catchv, cargs) = Hashtbl.find statics i in
+      let endv =
+	List.fold_left2 
+	  (fun v carg arg ->
+	    let v2 = nv () in
+	    add_hedge g carg ( Var arg) ~pred:[|v2|] ~succ:[|v|];
+	    v2)
+	  inv ( List.tl cargs) ( List.tl args)
+      in
+      add_hedge g ( List.hd cargs) (Var ( List.hd args)) ~pred:[|endv|] ~succ:[|catchv|]
 
     | Tstaticcatch ( ltry, ( i, args), lwith) ->
       let catchv = nv () in
-      let outt = nv () and outw = nv () in
-      Hashtbl.add statics i catchv;
-      add_hedge g id (Scatch args) ~pred:[|outt;outw|] ~succ:[|outv|];
-      tlambda ~outv:outt ~ret_id inv exnv ltry;
-      tlambda ~outv:outw ~ret_id catchv exnv lwith
+      Hashtbl.add statics i (catchv,args);
+      tlambda ~outv ~ret_id ~inv ~exnv ~exn_id ltry;
+      tlambda ~outv ~ret_id ~inv:catchv ~exnv ~exn_id lwith
       
-    | Traise i ->
-      add_hedge g id (Raise i) ~pred:[|inv|] ~succ:[|exnv|]
+    | Traise i -> add_hedge g exn_id (Var i) ~pred:[|inv|] ~succ:[|exnv|]
 
     | Ttrywith ( ltry, exni, lwith)  ->
       let exnv2 = nv () in
-      let outt = nv () and outw = nv () in
-      add_hedge g id ( Trywith exni) ~pred:[|outt;outw|] ~succ:[|outv|];
-      tlambda ~outv:outt ~ret_id inv exnv2 ltry;
-      tlambda ~outv:outw ~ret_id exnv2 exnv lwith
+      tlambda ~outv ~ret_id ~exn_id ~inv ~exnv:exnv2 ltry;
+      tlambda ~outv ~ret_id ~exn_id ~inv:exnv2 ~exnv lwith
 
     | Tifthenelse ( i, t, e) ->
       let int = nv ()
       and ine = nv () in
       add_hedge g i ctrue ~pred:[|inv|] ~succ:[|int|];
       add_hedge g i cfalse ~pred:[|inv|] ~succ:[|ine|];
-      tlambda ~ret_id int ~outv exnv t;
-      tlambda ~ret_id ine ~outv exnv e
+      tlambda ~ret_id ~exn_id ~inv:int ~outv ~exnv t;
+      tlambda ~ret_id ~exn_id ~inv:ine ~outv ~exnv e
 
     | Twhile ( lcond, lbody) ->
       let outc = nv () in
       let inb = nv () in
       add_hedge g ret_id cfalse ~pred:[|outc|] ~succ:[|outv|];
       add_hedge g ret_id ctrue ~pred:[|outc|] ~succ:[|inb|];
-      tlambda ~outv:outc ~ret_id inv exnv lcond;
-      tlambda ~outv:inv ~ret_id inb exnv lbody
+      tlambda ~outv:outc ~ret_id ~exn_id ~inv ~exnv lcond;
+      tlambda ~outv:inv ~ret_id ~exn_id ~inv:inb ~exnv lbody
 
     | Tfor ( i, start, stop, dir, lbody) ->
       let test_id = mk_id "$test" in
@@ -190,8 +187,10 @@ let mk_graph ~last_id ~funs main =
       add_hedge g test_id ctrue ~pred:[|testv|] ~succ:[|inb|];
       add_hedge g i ( Prim ( Paddint, [i;one_id])) ~pred:[|outb|] ~succ:[|initv|];
       add_hedge g test_id cfalse ~pred:[|testv|] ~succ:[|outv|];
-      tlambda ~outv:outb ~ret_id inb exnv lbody
+      tlambda ~outv:outb ~ret_id ~exn_id ~inv:inb ~exnv lbody
   in
-  let start = nv () and finish = nv () and error = nv () in
-  tlambda ~outv:finish ~ret_id start error main;
-  (g,start)
+  let inv = nv () and outv = nv () and exnv = nv () in
+  let exn_id = mk_id "$exn" in
+  let ret_id = mk_id "$ret" in
+  tlambda ~inv ~outv ~exnv ~ret_id ~exn_id main;
+  (g,inv,outv,exnv)
