@@ -72,12 +72,13 @@ let const_unit = Lambda.Const_pointer 0
 module Is = Set.Make ( struct type t = int let compare (a:int) b = compare a b end )
 
 open Tlambda
-let stampr = ref 5000
-let mk_id s =
-  incr stampr;
-  Ident.({ stamp = !stampr; name = ("#t#"^s); flags = 0; })
 
-let mk_graph funs main entry =
+let mk_graph ~last_id ~funs main =
+  let stampr = ref last_id in
+  let mk_id s =
+    incr stampr;
+    Ident.({ stamp = !stampr; name = ("#t#"^s); flags = 0; })
+  in
   let open G in
   let g = create () in
   let nv () =
