@@ -138,9 +138,9 @@ and tcontrol funs env = function
       else for i =  start downto stop do f i done
     end;
     val_unit
-  | Tassign ( id, x) ->
-    ( get_env env id) := !( get_env env x);
-    val_unit
+  (* | Tassign ( id, x) -> *)
+  (*   ( get_env env id) := !( get_env env x); *)
+  (*   val_unit *)
     
 and call_fun funs f x =
   match !f with
