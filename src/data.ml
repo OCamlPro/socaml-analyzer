@@ -100,6 +100,17 @@ let reg_env data env =
 let int_singleton const =
   { bottom with int = Constants (Constants.singleton const) }
 
+let cp_singleton i =
+  { bottom with cp = Ints.singleton i }
+
+let block_singleton tag contents =
+  { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length contents) contents) }
+
+let restrict_cp _ = cp_singleton
+
+let restrict_block d t =
+  { bottom with blocks = Tagm.singleton ( Tagm.find t d) }
+
 
 (* Bottom test *)
 
@@ -171,6 +182,15 @@ and union_id env i1 i2 =
   
 let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_env a env) b) ids ( (* env, *) bottom)
 
+(* simple access *)
+
+let get_field f b env =
+  Tagm.fold (fun _ b res ->
+    Intm.fold (fun i b res ->
+      if i > res
+      then union_id env (union_ids env b.(f)) res
+      else res) b res
+  ) b.blocks bottom
 
 (* Inclusion test *)
 
