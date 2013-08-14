@@ -24,11 +24,13 @@ module T = struct
 
   type vertex = Vertex.t
   type hedge = Hedge.t
+  module Vertex = Vertex
+  module Hedge = Hedge
 
-  module VertexSet = Set.Make(Vertex)
-  module HedgeSet = Set.Make(Hedge)
-  module VertexTbl = Hashtbl.Make(Vertex)
-  module HedgeTbl = Hashtbl.Make(Hedge)
+  (* module VertexSet = Set.Make(Vertex) *)
+  (* module HedgeSet = Set.Make(Hedge) *)
+  (* module VertexTbl = Hashtbl.Make(Vertex) *)
+  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
 
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print

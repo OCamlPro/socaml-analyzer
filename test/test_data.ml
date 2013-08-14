@@ -27,11 +27,13 @@ module T = struct
 
   type vertex = Vertex.t
   type hedge = Hedge.t
+  module Vertex = Vertex
+  module Hedge = Hedge
 
-  module VertexSet = Set.Make(Vertex)
-  module HedgeSet = Set.Make(Hedge)
-  module VertexTbl = Hashtbl.Make(Vertex)
-  module HedgeTbl = Hashtbl.Make(Hedge)
+  (* module VertexSet = Set.Make(Vertex) *)
+  (* module HedgeSet = Set.Make(Hedge) *)
+  (* module VertexTbl = Hashtbl.Make(Vertex) *)
+  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
 
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print
@@ -65,8 +67,7 @@ module Env = struct
 end
 
 module Manager = struct
-  type vertex = T.vertex
-  type hedge = T.hedge
+  module H = H
   type abstract = Data.environment
 
   type hedge_attribute = unit
@@ -87,7 +88,7 @@ module Manager = struct
       | 23 -> Env.add_int abs a_id b_id c_id (* c <- a + b *)
       | _ -> failwith ""
     in
-    nabs, []
+    [|nabs|], []
 
   let abstract_init i =
     if i = "v0"
@@ -98,12 +99,15 @@ module Manager = struct
   let is_bottom _ = is_bottom_env
   let join_list _ l =
     List.fold_left join_env bottom_env l
-    
+
   let is_leq _ = is_leq_env
+
+  type function_id
+  let find_function _ _ = assert false
 
 end
 
-module FP = Hgraph.Fixpoint(H)(Manager)
+module FP = Hgraph.Fixpoint(Manager)
 
 let g = H.create ()
 
@@ -120,4 +124,16 @@ let () =
   H.add_hedge g 12 () ~pred:[|v1|] ~succ:[|v2|];
   H.add_hedge g 23 () ~pred:[|v2|] ~succ:[|v3|]
 
-let r = FP.kleene_fixpoint g (H.VertexSet.singleton v0)
+let r = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
+
+(* let print_attrvertex ppf vertex attr = *)
+(*   () *)
+
+(* let print_attrhedge ppf hedge attr = *)
+(*   Format.pp_print_int ppf hedge *)
+
+let () =
+  H.print_dot
+    (* ~print_attrvertex *)
+    (* ~print_attrhedge *)
+    Format.std_formatter r
