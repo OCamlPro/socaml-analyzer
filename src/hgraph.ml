@@ -22,12 +22,19 @@ module type Hgraph = sig
 
   module VertexSet : (Set.S with type t = Set.Make(T.Vertex).t and type elt = T.vertex)
   (** Set module for vertices *)
-  module HedgeSet : (Set.S with type t = Set.Make(T.Hedge).t and type elt=T.hedge)
+  module HedgeSet : (Set.S with type t = Set.Make(T.Hedge).t and type elt = T.hedge)
+  (** Set module for hyperedges *)
+  module VertexMap : (Map.S with type 'a t = 'a Map.Make(T.Vertex).t and type key = T.vertex)
+  (** Set module for vertices *)
+  module HedgeMap : (Map.S with type 'a t = 'a Map.Make(T.Hedge).t and type key = T.hedge)
   (** Set module for hyperedges *)
   module VertexTbl : (Hashtbl.S with type 'a t = 'a Hashtbl.Make(T.Vertex).t and type key=T.vertex)
   (** Hash module with vertices as keys *)
   module HedgeTbl : (Hashtbl.S with type 'a t = 'a Hashtbl.Make(T.Hedge).t and type key=T.hedge)
   (** Hash module with hyperedges as keys *)
+
+  module HedgeInt : Set.OrderedType with type t = int * T.hedge
+  module HedgeIntSet : (Set.S with type t = Set.Make(HedgeInt).t and type elt = int * T.hedge)
 
   type ('vattr, 'hattr, 'e) graph
   val create : ?size:int -> 'e -> ('vattr, 'hattr, 'e) graph
@@ -42,6 +49,9 @@ module type Hgraph = sig
 
   val hedge_succ : (_, _, _) graph -> T.hedge -> VertexSet.t
   val hedge_pred : (_, _, _) graph -> T.hedge -> VertexSet.t
+
+  val vertex_succ' : (_, _, _) graph -> T.vertex -> HedgeIntSet.t
+  val vertex_pred' : (_, _, _) graph -> T.vertex -> HedgeIntSet.t
 
   val hedge_succ' : (_, _, _) graph -> T.hedge -> T.vertex array
   val hedge_pred' : (_, _, _) graph -> T.hedge -> T.vertex array
@@ -100,13 +110,28 @@ module Make(T:T) : Hgraph with module T = T = struct
   open T
   module VertexSet = Set.Make(T.Vertex)
   module HedgeSet = Set.Make(T.Hedge)
+  module VertexMap = Map.Make(T.Vertex)
+  module HedgeMap = Map.Make(T.Hedge)
   module VertexTbl = Hashtbl.Make(T.Vertex)
   module HedgeTbl = Hashtbl.Make(T.Hedge)
+
+  module HedgeInt = struct
+    type t = int * hedge
+    let compare ((i1:int),h1) (i2,h2) =
+      let c = compare i1 i2 in
+      if c <> 0
+      then c
+      else Hedge.compare h1 h2
+  end
+
+  module HedgeIntSet = Set.Make(HedgeInt)
 
   module VSet = VertexSet
   module VTbl = VertexTbl
   module HSet = HedgeSet
   module HTbl = HedgeTbl
+
+  module HISet = HedgeIntSet
 
   let vset_of_array a = Array.fold_right VSet.add a VSet.empty
   let hset_of_array a = Array.fold_right HSet.add a HSet.empty
@@ -115,8 +140,8 @@ module Make(T:T) : Hgraph with module T = T = struct
 
   type 'vattr vertex_n = {
     v_attr : 'vattr;
-    mutable v_pred : HSet.t;
-    mutable v_succ : HSet.t;
+    mutable v_pred : HISet.t;
+    mutable v_succ : HISet.t;
   }
 
   type 'hattr hedge_n = {
@@ -154,21 +179,21 @@ module Make(T:T) : Hgraph with module T = T = struct
     HTbl.add g.hedge h n
 
   let add_vertex g v v_attr =
-    add_vertex_node g v { v_attr; v_pred = HSet.empty; v_succ = HSet.empty }
+    add_vertex_node g v { v_attr; v_pred = HISet.empty; v_succ = HISet.empty }
 
   let add_hedge g h h_attr ~pred ~succ =
     if contains_hedge g h
     then failwith "add_hedge: the hedge is already in the graph";
     begin try
-      Array.iter
-        (fun v ->
+      Array.iteri
+        (fun i v ->
           let vertex_n =  vertex_n g v in
-          vertex_n.v_succ <- HSet.add h vertex_n.v_succ)
+          vertex_n.v_succ <- HISet.add (i,h) vertex_n.v_succ)
         pred;
-      Array.iter
-        (fun v ->
+      Array.iteri
+        (fun i v ->
           let vertex_n =  vertex_n g v in
-          vertex_n.v_pred <- HSet.add h vertex_n.v_pred)
+          vertex_n.v_pred <- HISet.add (i,h) vertex_n.v_pred)
         succ;
     with Not_found ->
       failwith "add_hedge: origin or destination vertex does not exists"
@@ -176,8 +201,12 @@ module Make(T:T) : Hgraph with module T = T = struct
     HTbl.add g.hedge h
       { h_attr; h_pred = pred; h_succ = succ }
 
-  let vertex_succ g v = (vertex_n g v).v_succ
-  let vertex_pred g v = (vertex_n g v).v_pred
+  let hset_of_hiset s = HISet.fold (fun (_,v) set -> HSet.add v set) s HSet.empty
+
+  let vertex_succ' g v = (vertex_n g v).v_succ
+  let vertex_pred' g v = (vertex_n g v).v_pred
+  let vertex_succ g v = hset_of_hiset (vertex_succ' g v)
+  let vertex_pred g v = hset_of_hiset (vertex_pred' g v)
   let hedge_succ' g h = (hedge_n g h).h_succ
   let hedge_pred' g h = (hedge_n g h).h_pred
 
@@ -239,7 +268,7 @@ module Make(T:T) : Hgraph with module T = T = struct
     Array.iteri (fun i sg_in  -> VTbl.add vertex_mapping sg_in  input.(i))  subgraph.sg_input;
     Array.iteri (fun i sg_out -> VTbl.add vertex_mapping sg_out output.(i)) subgraph.sg_output;
 
-    let add_matching_hedge h set = HSet.add (HTbl.find hedge_mapping h) set in
+    let add_matching_hedge (i,h) set = HISet.add (i,HTbl.find hedge_mapping h) set in
     let matching_vertex v = VTbl.find vertex_mapping v in
 
     (* create a copy of hedges from g_in and associate the copy to the
@@ -256,13 +285,13 @@ module Make(T:T) : Hgraph with module T = T = struct
         let new_vertex = clone_vertex v in
         VTbl.add vertex_mapping v new_vertex;
         let v_node = vertex_n in_graph v in
-        if not (HSet.subset v_node.v_pred subgraph.sg_hedge) &&
-           not (HSet.subset v_node.v_succ subgraph.sg_hedge)
+        if not (HSet.subset (hset_of_hiset v_node.v_pred) subgraph.sg_hedge) &&
+           not (HSet.subset (hset_of_hiset v_node.v_succ) subgraph.sg_hedge)
         then raise (Invalid_argument "clone_subgraph: not independent subgraph");
         let new_node =
           { v_attr = import_vattr v_node.v_attr;
-            v_pred = HSet.fold add_matching_hedge v_node.v_pred HSet.empty;
-            v_succ = HSet.fold add_matching_hedge v_node.v_succ HSet.empty } in
+            v_pred = HISet.fold add_matching_hedge v_node.v_pred HISet.empty;
+            v_succ = HISet.fold add_matching_hedge v_node.v_succ HISet.empty } in
         add_vertex_node out_graph new_vertex new_node;
         VSet.add new_vertex set) subgraph.sg_vertex VSet.empty in
 
@@ -467,11 +496,9 @@ module Fixpoint(Manager:Manager) = struct
     let hedge_result : abstract array HTbl.t = HTbl.create 10 in
     let vertex_result = VTbl.create 10 in
 
-    let hedge_abstract v =
+    let hedge_abstract (i,h) =
       try
-        let a = HTbl.find hedge_result v in
-        if Array.length a > 1 then failwith "TODO multiple output";
-        Some a.(0)
+        Some (HTbl.find hedge_result h).(i)
       with
       | Not_found -> None
     in
@@ -482,7 +509,7 @@ module Fixpoint(Manager:Manager) = struct
     in
 
     let update_vertex v =
-      let pred = HSet.elements (vertex_pred g v) in
+      let pred = HedgeIntSet.elements (vertex_pred' g v) in
       let abstract = match pred with
         | [] -> M.abstract_init v
         | _ ->
