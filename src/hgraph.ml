@@ -78,8 +78,8 @@ module type Hgraph = sig
   val clone_subgraph :
     in_graph:('a, 'b, 'c) graph ->
     out_graph:('d, 'e, 'f) graph ->
-    import_vattr:('a -> 'd) ->
-    import_hattr:('b -> 'e) ->
+    import_vattr:(new_vertex:T.vertex -> old_attr:'a -> 'd) ->
+    import_hattr:(new_hedge:T.hedge -> old_attr:'b -> 'e) ->
     clone_vertex:(T.vertex -> T.vertex) ->
     clone_hedge:(T.hedge -> T.hedge) ->
     input:T.vertex array ->
@@ -103,6 +103,9 @@ module type Hgraph = sig
     ?print_attrvertex:(Format.formatter -> T.vertex -> 'a -> unit) ->
     ?print_attrhedge:(Format.formatter -> T.hedge -> 'b -> unit) ->
     Format.formatter -> ('a, 'b, 'c) graph -> unit
+
+  val correct : ('a, 'b, 'c) graph -> bool
+
 end
 
 module Make(T:T) : Hgraph with module T = T = struct
@@ -289,7 +292,7 @@ module Make(T:T) : Hgraph with module T = T = struct
            not (HSet.subset (hset_of_hiset v_node.v_succ) subgraph.sg_hedge)
         then raise (Invalid_argument "clone_subgraph: not independent subgraph");
         let new_node =
-          { v_attr = import_vattr v_node.v_attr;
+          { v_attr = import_vattr ~new_vertex ~old_attr:v_node.v_attr;
             v_pred = HISet.fold add_matching_hedge v_node.v_pred HISet.empty;
             v_succ = HISet.fold add_matching_hedge v_node.v_succ HISet.empty } in
         add_vertex_node out_graph new_vertex new_node;
@@ -305,15 +308,50 @@ module Make(T:T) : Hgraph with module T = T = struct
           Array.iter check h_node.h_succ
         end;
         let new_node =
-          { h_attr = import_hattr h_node.h_attr;
+          { h_attr = import_hattr ~new_hedge:new_h ~old_attr:h_node.h_attr;
             h_pred = Array.map matching_vertex h_node.h_pred;
             h_succ = Array.map matching_vertex h_node.h_succ } in
         add_hedge_node out_graph new_h new_node) assoc_hedge_list;
 
-    { sg_input  = Array.map matching_vertex subgraph.sg_input;
-      sg_output = Array.map matching_vertex subgraph.sg_output;
+    (* import links for input and output vertices *)
+    let recover_link vert =
+      let new_vert = matching_vertex vert in
+      let vert_node = vertex_n in_graph vert in
+      let new_vert_node = vertex_n out_graph new_vert in
+      new_vert_node.v_pred <-
+        HISet.fold add_matching_hedge vert_node.v_pred
+          new_vert_node.v_pred;
+      new_vert_node.v_succ <-
+        HISet.fold add_matching_hedge vert_node.v_succ
+          new_vert_node.v_succ;
+      new_vert
+    in
+
+    { sg_input  = Array.map recover_link subgraph.sg_input;
+      sg_output = Array.map recover_link subgraph.sg_output;
       sg_vertex = imported_vertex;
       sg_hedge  = imported_hedge }
+
+  let correct g =
+    let check b = if b then () else raise Exit in
+    let correct_vertex v _ =
+      HISet.iter (fun (i,h) -> check (Vertex.equal (hedge_succ' g h).(i) v))
+        (vertex_pred' g v);
+      HISet.iter (fun (i,h) -> check (Vertex.equal (hedge_pred' g h).(i) v))
+        (vertex_succ' g v)
+    in
+    let correct_hedge h _ =
+      Array.iteri (fun i v -> check (HISet.mem (i,h) (vertex_succ' g v)))
+        (hedge_pred' g h);
+      Array.iteri (fun i v -> check (HISet.mem (i,h) (vertex_pred' g v)))
+        (hedge_succ' g h)
+    in
+    HTbl.iter correct_hedge g.hedge;
+    VTbl.iter correct_vertex g.vertex
+
+  let correct g =
+    try correct g; true
+    with _ -> false
 
   let print_dot
       ?(style:string="")
@@ -400,8 +438,6 @@ module type Manager = sig
   open H
 
   type abstract
-  type hedge_attribute
-  type function_id
 
   val bottom : T.vertex -> abstract
   val is_bottom : T.vertex -> abstract -> bool
@@ -411,14 +447,34 @@ module type Manager = sig
   (* val widening : vertex -> abstract -> abstract -> abstract *)
   val abstract_init : T.vertex -> abstract
 
-  val find_function : ('a,'b,'c) graph -> function_id -> ('a,'b,'c) graph * subgraph
+  type vertex_attribute
+  type hedge_attribute
+  type graph_attribute
+  type function_id
+
+  val find_function : function_id ->
+    (vertex_attribute, hedge_attribute, graph_attribute) graph * subgraph
+
+  val clone_vertex : T.vertex -> T.vertex
+  val clone_hedge : T.hedge -> T.hedge
 
   val apply : T.hedge -> hedge_attribute -> abstract array ->
     abstract array * function_id list
 
 end
 
-module Fixpoint(Manager:Manager) = struct
+module Fixpoint(Manager:Manager) : sig
+
+  type input_graph = (Manager.vertex_attribute,
+                      Manager.hedge_attribute,
+                      Manager.graph_attribute)
+      Manager.H.graph
+
+  val kleene_fixpoint :
+    input_graph -> Manager.H.VertexSet.t ->
+    (Manager.abstract, unit, unit) Manager.H.graph
+
+end = struct
   open Manager
   open H
   module VSet = VertexSet
@@ -427,6 +483,8 @@ module Fixpoint(Manager:Manager) = struct
   module HTbl = HedgeTbl
   module M = Manager
   type abstract = M.abstract
+
+  type input_graph = (vertex_attribute, hedge_attribute, graph_attribute) graph
 
   type output = (abstract,unit,unit) graph
 

@@ -201,7 +201,9 @@ module Manager = struct
   include A2
   type abstract = A2.t
 
+  type vertex_attribute = unit
   type hedge_attribute = unit
+  type graph_attribute = unit
 
   (* let apply hedge tabs = *)
   (*   let abs = tabs.(0) in *)
@@ -253,6 +255,8 @@ module Manager = struct
 
   type function_id
   let find_function _ = assert false
+  let clone_vertex _ = assert false
+  let clone_hedge _ = assert false
 
 end
 

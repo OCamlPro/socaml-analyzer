@@ -70,7 +70,9 @@ module Manager = struct
   module H = H
   type abstract = Data.environment
 
+  type vertex_attribute = unit
   type hedge_attribute = unit
+  type graph_attribute = unit
 
   let a_id = Id.create ~name:"a" ()
   let b_id = Id.create ~name:"b" ()
@@ -103,7 +105,9 @@ module Manager = struct
   let is_leq _ = is_leq_env
 
   type function_id
-  let find_function _ _ = assert false
+  let find_function _ = assert false
+  let clone_vertex _ = assert false
+  let clone_hedge _ = assert false
 
 end
 
