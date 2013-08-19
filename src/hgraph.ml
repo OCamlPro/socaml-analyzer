@@ -84,13 +84,16 @@ module type Hgraph = sig
     clone_hedge:(T.hedge -> T.hedge) ->
     input:T.vertex array ->
     output:T.vertex array ->
-    subgraph -> subgraph
+    subgraph -> subgraph * HedgeIntSet.t array * HedgeIntSet.t array
   (** [clone_subgraph] returns a copy of the subgraph by copying the
       vertices and edges in out_graph. The vertex sg_input and
       sg_output are not copied, but are replaced by the provided input
       and output. There should be no link outside of the subgraph
       except in sg_input and sg_output. There must be no vertex from
-      sg_input or sg_output in sg_vertex *)
+      sg_input or sg_output in sg_vertex.
+
+      The return value is : (subgraph, in_hedges, out_hedges)
+  *)
 
   val print_dot :
     ?style:string ->
@@ -254,6 +257,12 @@ module Make(T:T) : Hgraph with module T = T = struct
     if Array.length output <> Array.length subgraph.sg_output
     then raise (Invalid_argument "clone_subgraph: output and sg_output of different length");
 
+    let check_member v =
+      if not (VTbl.mem in_graph.vertex v)
+      then raise (Invalid_argument "clone_subgraph: vertex of sg_input and sg_output are not in in_graph") in
+    Array.iter check_member subgraph.sg_input;
+    Array.iter check_member subgraph.sg_output;
+
     let sg_input = Array.fold_right VSet.add subgraph.sg_input VSet.empty in
     let sg_output = Array.fold_right VSet.add subgraph.sg_output VSet.empty in
     let extended_vertex = VSet.union (VSet.union sg_input sg_output) subgraph.sg_vertex in
@@ -327,10 +336,19 @@ module Make(T:T) : Hgraph with module T = T = struct
       new_vert
     in
 
+    let in_hedges = Array.map (fun vert ->
+        let vert_node = vertex_n in_graph vert in
+        HISet.fold add_matching_hedge vert_node.v_succ HISet.empty)
+        subgraph.sg_input in
+    let out_hedges = Array.map (fun vert ->
+        let vert_node = vertex_n in_graph vert in
+        HISet.fold add_matching_hedge vert_node.v_pred HISet.empty)
+        subgraph.sg_output in
+
     { sg_input  = Array.map recover_link subgraph.sg_input;
       sg_output = Array.map recover_link subgraph.sg_output;
       sg_vertex = imported_vertex;
-      sg_hedge  = imported_hedge }
+      sg_hedge  = imported_hedge }, in_hedges, out_hedges
 
   let correct g =
     let check b = if b then () else raise Exit in
@@ -540,8 +558,13 @@ end = struct
     import_subgraph g g' all_vertex all_hedge import_vertex import_hedge;
     g'
 
+  let import_hedge_attr tbl g =
+    List.iter (fun h -> HTbl.add tbl h (hedge_attrib g h)) (list_hedge g)
+
   let kleene_fixpoint orig_g sinit =
     let g = initialise orig_g in
+    let h_attrib = HTbl.create 10 in
+    import_hedge_attr h_attrib orig_g;
 
     (* vertex working queue *)
     let vwq = Vwq.create () in
@@ -586,6 +609,31 @@ end = struct
       VTbl.replace vertex_result v abstract
     in
 
+    let import_function h f =
+      let (in_graph,subgraph) = Manager.find_function f in
+      let input = hedge_pred' g h in
+      let output = hedge_succ' g h in
+      let import_hedge hedge =
+        let new_hedge = Manager.clone_hedge hedge in
+        HTbl.add h_attrib new_hedge (hedge_attrib in_graph hedge);
+        new_hedge
+      in
+      let subgraph, input_hedges, output_hedges = clone_subgraph
+        ~in_graph
+        ~out_graph:g
+        ~import_vattr:(fun ~new_vertex ~old_attr -> ())
+        ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
+        ~clone_vertex:Manager.clone_vertex
+        ~clone_hedge:import_hedge
+        ~input
+        ~output
+        subgraph
+      in
+      Array.fold_left (fun hset hiset ->
+          HedgeIntSet.fold (fun (_,v) set -> HedgeSet.add v set) hiset hset)
+        HedgeSet.empty input_hedges
+    in
+
     let update_hedge h =
       let pred = hedge_pred' g h in
       let f v =
@@ -598,15 +646,12 @@ end = struct
       match lift_option_array pred' with
       | None -> ()
       | Some abstract ->
-        let attrib = hedge_attrib orig_g h in
+        let attrib = HTbl.find h_attrib h in
         let results,functions = M.apply h attrib abstract in
         Vwq.push_set vwq (hedge_succ g h);
-
-        (* List.iter (fun (entry,_) -> *)
-        (*   Hwq.push_set hwq (HedgeSet.singleton entry)) links; *)
-
-        if functions <> [] then failwith "TODO functions";
-
+        List.iter (fun fid -> Hwq.push_set hwq (import_function h fid)) functions;
+        (* TODO import only new functions for that call site *)
+        (* TODO avoid recursive call infinite expansion *)
         HTbl.replace hedge_result h results
     in
 

@@ -1,3 +1,5 @@
+comp += [ "-g" ]
+
 begin library "data"
  dirname = "src"
  files = [ "utils.ml" "data.ml" ]
