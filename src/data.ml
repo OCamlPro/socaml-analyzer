@@ -34,7 +34,7 @@ module Fm = Map.Make (struct type t = f let compare = compare end)
 type data =
   {
     top : bool;
-    int : simple;
+    int : Int_interv.t;
     float : simple;
     string : simple;
     floata : simple;
@@ -51,7 +51,7 @@ let simple_bottom = Constants Constants.empty
 let bottom =
   {
     top = false;
-    int = simple_bottom;
+    int = Int_interv.bottom;
     float = simple_bottom;
     string = simple_bottom;
     floata = simple_bottom;
@@ -73,7 +73,7 @@ type environment =
 let is_bottom_env = function
   | Bottom -> true
   | _ -> false
-
+ 
 let bottom_env = Bottom
 let empty_env = Env Idm.empty
 
@@ -97,8 +97,27 @@ let reg_env data env =
 
 (* simple functions and values *)
 
+(* ints *)
+
 let int_singleton const =
-  { bottom with int = Constants (Constants.singleton const) }
+  { bottom with int = Int_interv.cst const }
+let any_int = { bottom with int = Int_interv.top }
+
+let int_add x y =
+  { bottom with int = Int_interv.add x.int y.int }
+
+let int_op1 ( f : Int_interv.t -> Int_interv.t) x =
+  { bottom with int = f x.int }
+
+let int_op2 ( f : Int_interv.t -> Int_interv.t -> Int_interv.t) x y =
+  { bottom with int = f x.int y.int }
+
+
+let cp_any i =
+  let rec aux res = function
+    | 0 -> res
+    | n	-> let n = pred n in aux (Ints.add n res) n
+  in { bottom with cp = aux i }
 
 let cp_singleton i =
   { bottom with cp = Ints.singleton i }
@@ -106,11 +125,52 @@ let cp_singleton i =
 let block_singleton tag contents =
   { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length contents) contents) }
 
-let restrict_cp _ = cp_singleton
+let restrict_cp d ?v =
+  match v with
+    Some v -> cp_singleton v
+  | None -> { bottom with cp = d.cp }
 
-let restrict_block d t =
-  { bottom with blocks = Tagm.singleton ( Tagm.find t d) }
+let restrict_block ?tag ?has_field ?size d =
+  let restrict_tag_size im =
+    match has_field with
+    | None -> im
+    | Some f -> Intm.filter (fun k _ -> k > f) im
+  in
+  let restrict_tag im =
+    match size with
+    | None -> restrict_tag_size im
+    | Some s -> Intm.singleton s ( Intm.find s im)
+  in
+  { bottom with blocks =
+      match tag with
+      | None -> Tagm.map restrict_tag d.blocks
+      | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d))
+  }
 
+let set_a i v a =
+  let a = Array.copy a in
+  a.(i) <- v;
+  a
+
+let set_field i v b =
+  let b = restrict_block ~has_field:i b in
+  { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
+
+
+(* booleans *)
+let booleans = cp_any 2
+
+let restrict_bool x =
+  { bottom with cp = Ints.inter x.cp booleans }
+
+let not_bool x =
+  { bottom with cp =
+      Ints.fold
+	(fun res i ->
+	  match i with
+	  | 0 -> Ints.add 1 res
+	  | 1 -> Ints.add 0 res
+	  | _ -> res ) Ints.empty x.cp }
 
 (* Bottom test *)
 

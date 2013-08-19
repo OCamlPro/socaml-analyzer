@@ -3,11 +3,28 @@ open Tlambda
 open Tlambda_to_hgraph
 
 open Data
+open Int_interv
 
 type v = Vertex.t
 type h = Hedge.t
 type e = environment
 type ha = ( id * hinfo ) list
+
+let intop2_of_prim o =
+  let open Int_interv in
+  match o with
+  | Paddint -> add
+  | Psubint -> sub
+  | Pmulint -> mul
+  | Pdivint -> div
+  | Pmodint -> modulo
+  | Pandint -> band
+  | Porint -> bor
+  | Pxorint -> bxor
+  | Plslint -> blsl
+  | Plsrint -> blsr
+  | Pasrint -> basr
+  | _ -> assert false
 
 module type Entry =
 sig
@@ -31,34 +48,53 @@ struct
 
   let apply _ l envs =
     let in_apply ( id, action) env =
+      let set x = set_env id x env
+      and get x = get_env x env
+      and vunit = cp_singleton 0
+      and vtrue = cp_singleton 1
+      and vfalse = cp_singleton 0
+      and vbool_any = cp_any 2
+      in
       match action with
-      | Var i -> set_env id (get_env i env) env
-      | Const c -> set_env id (constant c) env
+      | Var i -> set ( get i)
+      | Const c -> set ( constant c)
       | Prim ( p, l) ->
-	set_env id
 	begin
 	  match p, l with
-	  | Pidentity, [i] -> get_env i env
-	  | Pignore, _ -> cp_singleton 0
+	  | Pidentity, [i] -> set ( get i)
+	  | Pignore, _ -> set vunit
 	  (* Operations on heap blocks *)
-	  | Pmakeblock ( tag, _), _ -> block_singleton tag ( Array.of_list l)
-	  | Pfield i, [b] -> get_field i ( get_env b env) env
+	  | Pmakeblock ( tag, _), _ -> set ( block_singleton tag ( Array.of_list l))
+	  | Pfield i, [b] ->
+	    let env = set_env b ( restrict_block ~has_field:i ( get b)) env in
+	    set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *)
 	  | Psetfield ( i, _), [b;v] ->
-	  | Pfloatfield of int
-	  | Psetfloatfield of int
-	  | Pduprecord of Types.record_representation * int
+	    let env = set_env b ( set_field i v ( get b)) env in
+	    set_env id vunit env
+	  | Pfloatfield i, [b] -> failwith "TODO: floatfield"
+	  | Psetfloatfield i, [b,v] -> failwith "TODO: setfloatfield"
+	  | Pduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
 	  (* Force lazy values *)
-	  | Plazyforce
+	  | Plazyforce -> failwith "TODO: Force lazy"
 	  (* External call *)
-	  | Pccall of Primitive.description
+	  | Pccall prim, _ -> failwith "TODO: C-call"
 	  (* Boolean operations *)
-	  | Pnot
+	  | Pnot, [x] -> set ( not_bool ( get i))
 	  (* Integer operations *)
-	  | Pnegint | Paddint | Psubint | Pmulint | Pdivint | Pmodint
-	  | Pandint | Porint | Pxorint
-	  | Plslint | Plsrint | Pasrint
-	  | Pintcomp of comparison
-	  | Poffsetint of int
+	  | Pnegint, [i] -> set ( int_op1 uminus ( get i))
+	  | Paddint as op, [x;y]
+	  | Psubint as op, [x;y]
+	  | Pmulint as op, [x;y]
+	  | Pdivint as op, [x;y]
+	  | Pmodint as op, [x;y]
+	  | Pandint as op, [x;y]
+	  | Porint as op, [x;y]
+	  | Pxorint as op, [x;y]
+	  | Plslint as op, [x;y]
+	  | Plsrint as op, [x;y]
+	  | Pasrint as op, [x;y] -> set ( int_op2 ( intop2_of_prim op) (get x) (get y))
+	  | Pintcomp c, [x;y] -> set ( comp c ( get x) ( get y))
+(*	  | Poffsetint of int
 	  | Poffsetref of int
 	  (* Float operations *)
 	  | Pintoffloat | Pfloatofint
@@ -124,14 +160,14 @@ struct
 	  | Pbbswap of boxed_integer
 	  (* method call *)
 	  | Method_send of Lambda.meth_kind * Location.t (* moved from lambda to primitive *)
-	      
+*)	      
 	  | _ -> failwith "TODO: primitives !"
 	end env
       | Constraint c ->
 	begin
 	  match c with
-	  | Ccp i  -> set_env id ( restrict_cp (get_env id env) i) env
-	  | Ctag t -> set_env id ( restrict_block ( get_env id env) t) env
+	  | Ccp i  -> set ( restrict_cp (get_env id env) i)
+	  | Ctag t -> set ( restrict_block ( get_env id env) t)
 	end
 	
     let env = Array.fold_left join_env bottom_env envs in

@@ -80,7 +80,70 @@ let uminus x =
       (if b = maximum then minimum else ~-b),
       (if a = minimum then maximum else ~-a))
     
+let add x y =
+  match x, y with
+  | None, _ | _, None -> None
+  | Some ( xl, xg), Some ( yl, yg) -> Some ( xl + yl, yl + yg)
 
+let sub x y = add x (uminus y)
+let mul x y = match x, y with
+  | None, _ | _, None -> None
+  | Some ( xl, xg), Some ( yl, yg) ->
+    let xlyl = xl * yl
+    and xlyg = xl * yg
+    and xgyl = xg * yl
+    and xgyg = xg * yg in
+    Some ( min ( min xlyl xlxg) ( min xgyl xgyg), max ( max xlyl xlyg) ( max xgyl xgyg))
+let div x y = top
+let modulo x y = top
+let band x y = top
+let bor x y = top
+let bxor x y = top
+let blsl x y = top
+let blsr x y = top
+let basr x y = top
+
+type compres = bool option
+
+let comp c x y =
+  let open Lambda in
+  let test_eq xl xg yl yg =
+    if xl = xg && yl = yg
+    then Some ( xl = yl)
+    else if xg < yl || yg < xl
+    then Some false
+    else None
+  in
+  let test_lt xl xg yl yg =
+    if xg < yl
+    then Some true
+    else if xl >= yg
+    then Some false
+    else None
+  in
+  let test_le xl xg yl yg =
+    if xg <= yl
+    then Some true
+    else if xl > yg
+    then Some false
+    else None
+  in
+  match x, y with
+  | None, _ | _, None -> None
+  | Some ( xl, xg), Some ( yl, yg) ->
+    begin
+      match c with
+      | Ceq -> test_eq xl xg yl yg
+      | Cneq ->
+	(match test_eq xl xg yl yg with
+	| None -> None
+	| Some b -> Some (not b))
+      | Clt -> test_lt xl xg yl yg
+      | Cgt -> test_lt yl yg xl yg
+      | Cle -> test_le xl xg yl yg
+      | Cge -> test_le yl yg xl yg
+    end
+      
 
 let leqcst x c = meet x ( Some ( minimum, c))
 let geqcst x c = meet x ( Some ( c, maximum))
