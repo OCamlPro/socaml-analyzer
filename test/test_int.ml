@@ -254,6 +254,13 @@ module Manager = struct
     else A2.bottom ()
 
   type function_id
+  module Function_id = struct
+    type t = function_id
+    let compare _ _ = assert false
+    let equal _ _ = assert false
+    let hash _ = assert false
+  end
+
   let find_function _ = assert false
   let clone_vertex _ = assert false
   let clone_hedge _ = assert false

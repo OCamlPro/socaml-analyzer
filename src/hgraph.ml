@@ -470,6 +470,8 @@ module type Manager = sig
   type graph_attribute
   type function_id
 
+  module Function_id : OrderedHashedType with type t = function_id
+
   val find_function : function_id ->
     (vertex_attribute, hedge_attribute, graph_attribute) graph * subgraph
 
@@ -538,6 +540,19 @@ end = struct
   module Vwq = WorkQueue(VertexSet)
   module Hwq = WorkQueue(HedgeSet)
 
+  module HedgeFid = struct
+    type t = T.hedge * function_id
+    let hash (h,f) =
+      Hashtbl.hash (T.Hedge.hash h, Function_id.hash f)
+    let compare (h1,f1) (h2,f2) =
+      let c = T.Hedge.compare h1 h2 in
+      if c <> 0 then c
+      else Function_id.compare f1 f2
+    let equal (h1,f1) (h2,f2) =
+      T.Hedge.equal h1 h2 && Function_id.equal f1 f2
+  end
+  module HedgeFidSet = Set.Make(HedgeFid)
+
   let initialise g =
     let import_vertex _ = () in
     let import_hedge v = hedge_attrib g v in
@@ -563,6 +578,9 @@ end = struct
 
   let kleene_fixpoint orig_g sinit =
     let g = initialise orig_g in
+
+    (* hedge attribute table: contains also attributes
+       from imported subgraphs *)
     let h_attrib = HTbl.create 10 in
     import_hedge_attr h_attrib orig_g;
 
@@ -576,6 +594,8 @@ end = struct
 
     let hedge_result : abstract array HTbl.t = HTbl.create 10 in
     let vertex_result = VTbl.create 10 in
+
+    let imported_functions = ref HedgeFidSet.empty in
 
     let hedge_abstract (i,h) =
       try
@@ -633,6 +653,14 @@ end = struct
           HedgeIntSet.fold (fun (_,v) set -> HedgeSet.add v set) hiset hset)
         HedgeSet.empty input_hedges
     in
+    let import_function h f =
+      if not (HedgeFidSet.mem (h,f) !imported_functions)
+      then begin
+        imported_functions := HedgeFidSet.add (h,f) !imported_functions;
+        import_function h f
+      end
+      else HedgeSet.empty
+    in
 
     let update_hedge h =
       let pred = hedge_pred' g h in
@@ -650,7 +678,6 @@ end = struct
         let results,functions = M.apply h attrib abstract in
         Vwq.push_set vwq (hedge_succ g h);
         List.iter (fun fid -> Hwq.push_set hwq (import_function h fid)) functions;
-        (* TODO import only new functions for that call site *)
         (* TODO avoid recursive call infinite expansion *)
         HTbl.replace hedge_result h results
     in

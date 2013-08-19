@@ -217,6 +217,12 @@ module Manager = struct
   let is_leq _ = Env.is_leq
 
   type function_id = Data.f
+  module Function_id = struct
+    type t = function_id
+    let compare = Data.F.compare
+    let equal = Data.F.equal
+    let hash = Data.F.hash
+  end
 
   let find_function id =
     assert(F.equal id func);
