@@ -500,6 +500,7 @@ end = struct
   module VSet = VertexSet
   module VTbl = VertexTbl
   module HSet = HedgeSet
+  module HISet = HedgeIntSet
   module HTbl = HedgeTbl
   module M = Manager
   type abstract = M.abstract
@@ -541,6 +542,7 @@ end = struct
   module Hwq = WorkQueue(HedgeSet)
 
   module FidSet = Set.Make(Function_id)
+  module FidMap = Map.Make(Function_id)
 
   module HedgeFid = struct
     type t = T.hedge * function_id
@@ -555,6 +557,16 @@ end = struct
   end
   module HedgeFidSet = Set.Make(HedgeFid)
   module HedgeFidTbl = Hashtbl.Make(HedgeFid)
+
+  type call_info = {
+    input : (T.vertex * HISet.t) array;
+    output : (T.vertex * HISet.t) array;
+  }
+
+  type 'a hedge_info = {
+    orig_attrib : 'a;
+    call_stack : call_info FidMap.t;
+  }
 
   let initialise g =
     let import_vertex _ = () in
@@ -576,17 +588,70 @@ end = struct
     import_subgraph g g' all_vertex all_hedge import_vertex import_hedge;
     g'
 
+
+  (* (\* copy the [copied_hedge], taking predecessors from [copy_pred] and *)
+  (*    successors from [copy_succ] *\) *)
+  (* let copy_input_hedge g copied_hedge ~copy_pred ~copy_succ = *)
+  (*   let new_hedge = clone_hedge copied_hedge in *)
+  (*   let pred = hedge_pred' g copy_pred in *)
+  (*   let succ = hedge_succ' g copy_succ in *)
+  (*   add_hedge g new_hedge ~pred ~succ *)
+
+  let copy_relink_function g call_hedge previous_call_info =
+    let input_vert = hedge_pred' g call_hedge in
+    let output_vert = hedge_succ' g call_hedge in
+    let new_hedges = HedgeTbl.create 3 in
+    let get_hedge h =
+      try HedgeTbl.find new_hedges h with
+      | Not_found ->
+        let new_hedge = clone_hedge h in
+        let v = hedge_pred' g h, hedge_succ' g h, new_hedge in
+        HedgeTbl.add new_hedges h v;
+        v
+    in
+    let copy_pred pos (_,hi_pred) =
+      let vert = input_vert.(pos) in
+      let replace_pred (i,h) =
+        let pred, _, _ = get_hedge h in
+        pred.(i) <- vert
+      in
+      HISet.iter replace_pred hi_pred
+    in
+    let copy_succ pos (_,hi_succ) =
+      let vert = output_vert.(pos) in
+      let replace_succ (i,h) =
+        let _, succ, _ = get_hedge h in
+        succ.(i) <- vert
+      in
+      HISet.iter replace_succ hi_succ
+    in
+    Array.iteri copy_pred previous_call_info.input;
+    Array.iteri copy_succ previous_call_info.output;
+
+    let final_import hedge (pred, succ, new_hedge) : unit =
+      let attrib = hedge_attrib g hedge in
+      add_hedge g new_hedge attrib ~pred ~succ
+    in
+    HedgeTbl.iter final_import new_hedges;
+
+    let add_copied_hedge (i,h) set =
+      try let (_,_,r) = HedgeTbl.find new_hedges h in
+        HISet.add (i,r) set
+      with Not_found -> assert false in
+    let corresponding a i (_,hi) =
+      a.(i), HISet.fold add_copied_hedge HISet.empty hi
+    in
+    { input = Array.mapi (corresponding input_vert) previous_call_info.input;
+      output = Array.mapi (corresponding output_vert) previous_call_info.output }
+
   let kleene_fixpoint orig_g sinit =
     let g = initialise orig_g in
 
-    (* hedge attribute table: contains also attributes
-       from imported subgraphs *)
-    let h_attrib = HTbl.create 10 in
-    List.iter (fun h -> HTbl.add h_attrib h (hedge_attrib orig_g h)) (list_hedge g);
-
-    (* sets of functions potentially in the call stack *)
-    let h_call_stack = HTbl.create 10 in
-    List.iter (fun h -> HTbl.add h_call_stack h FidSet.empty) (list_hedge g);
+    let h_info : 'a hedge_info HTbl.t = HTbl.create 10 in
+    List.iter (fun h -> HTbl.add h_info h
+                  { call_stack = FidMap.empty;
+                    orig_attrib = (hedge_attrib orig_g h) })
+      (list_hedge g);
 
     (* vertex working queue *)
     let vwq = Vwq.create () in
@@ -599,7 +664,7 @@ end = struct
     let hedge_result : abstract array HTbl.t = HTbl.create 10 in
     let vertex_result = VTbl.create 10 in
 
-    let imported_functions = HedgeFidTbl.create 10 in
+    let imported_functions : call_info HedgeFidTbl.t = HedgeFidTbl.create 10 in
 
     let hedge_abstract (i,h) =
       try
@@ -633,15 +698,18 @@ end = struct
       VTbl.replace vertex_result v abstract
     in
 
+    let recursive_call h f call_info =
+      copy_relink_function g h call_info
+    in
+
     let import_function h f call_stack =
       let (in_graph,subgraph) = Manager.find_function f in
       let input = hedge_pred' g h in
       let output = hedge_succ' g h in
-      let call_stack = FidSet.add f call_stack in
+      let imported_hedge = ref [] in
       let import_hedge hedge =
         let new_hedge = Manager.clone_hedge hedge in
-        HTbl.add h_attrib new_hedge (hedge_attrib in_graph hedge);
-        HTbl.add h_call_stack new_hedge call_stack;
+        imported_hedge := (new_hedge,hedge) :: !imported_hedge;
         new_hedge
       in
       let subgraph, input_hedges, output_hedges = clone_subgraph
@@ -655,7 +723,16 @@ end = struct
         ~output
         subgraph
       in
-      input_hedges, output_hedges
+      let input = Array.mapi (fun i hi -> (input.(i),hi)) input_hedges in
+      let output = Array.mapi (fun i hi -> (output.(i),hi)) output_hedges in
+      let call_stack = FidMap.add f {input; output} call_stack in
+      let add_info (new_hedge,hedge) =
+        HTbl.add h_info new_hedge
+          { call_stack;
+            orig_attrib = hedge_attrib in_graph hedge }
+      in
+      List.iter add_info !imported_hedge;
+      { input; output }
     in
     (* import a function in the graph and returns the set of hedges to
        update after that *)
@@ -665,19 +742,20 @@ end = struct
         HedgeSet.empty
       with
       | Not_found ->
-        let call_stack = HTbl.find h_call_stack h in
-        let input_hedges, output_hedges =
-          if FidSet.mem f call_stack
-          then begin
-            (* avoid recursive calls *)
-            failwith "TODO: recursion"
-          end
-          else import_function h f call_stack in
-        HedgeFidTbl.add imported_functions (h,f) (input_hedges, output_hedges);
+        let call_stack = (HTbl.find h_info h).call_stack in
+        let call_info =
+          try
+            let call_info = FidMap.find f call_stack in
+            (* recursive call *)
+            recursive_call h f call_info
+          with Not_found ->
+            (* not recursive call *)
+            import_function h f call_stack in
+        HedgeFidTbl.add imported_functions (h,f) call_info;
 
-        Array.fold_left (fun hset hiset ->
+        Array.fold_left (fun hset (_,hiset) ->
             HedgeIntSet.fold (fun (_,v) set -> HedgeSet.add v set) hiset hset)
-          HedgeSet.empty input_hedges
+          HedgeSet.empty call_info.input
     in
 
     let update_hedge h =
@@ -692,11 +770,10 @@ end = struct
       match lift_option_array pred' with
       | None -> ()
       | Some abstract ->
-        let attrib = HTbl.find h_attrib h in
+        let attrib = (HTbl.find h_info h).orig_attrib in
         let results,functions = M.apply h attrib abstract in
         Vwq.push_set vwq (hedge_succ g h);
         List.iter (fun fid -> Hwq.push_set hwq (import_function h fid)) functions;
-        (* TODO avoid recursive call infinite expansion *)
         HTbl.replace hedge_result h results
     in
 
