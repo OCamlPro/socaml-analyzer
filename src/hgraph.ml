@@ -3,6 +3,7 @@ module type OrderedHashedType = sig
   val compare : t -> t -> int
   val equal : t -> t -> bool
   val hash : t -> int
+  val print : Format.formatter -> t -> unit
 end
 
 module type T = sig
@@ -176,12 +177,14 @@ module Make(T:T) : Hgraph with module T = T = struct
 
   let add_vertex_node g v n =
     if contains_vertex g v
-    then failwith "add_vertex: the vertex is already in the graph";
+    then failwith (Format.asprintf "add_vertex: the vertex %a is already \
+                                    in the graph" Vertex.print v);
     VTbl.add g.vertex v n
 
   let add_hedge_node g h n =
     if contains_hedge g h
-    then failwith "add_hedge: the hedge is already in the graph";
+    then failwith (Format.asprintf "add_hedge: the hedge %a is already in \
+                                    the graph" Hedge.print h);
     HTbl.add g.hedge h n
 
   let add_vertex g v v_attr =
@@ -189,7 +192,8 @@ module Make(T:T) : Hgraph with module T = T = struct
 
   let add_hedge g h h_attr ~pred ~succ =
     if contains_hedge g h
-    then failwith "add_hedge: the hedge is already in the graph";
+    then failwith (Format.asprintf "add_hedge: the hedge %a is already in \
+                                    the graph" Hedge.print h);
     begin try
       Array.iteri
         (fun i v ->
@@ -213,8 +217,8 @@ module Make(T:T) : Hgraph with module T = T = struct
   let vertex_pred' g v = (vertex_n g v).v_pred
   let vertex_succ g v = hset_of_hiset (vertex_succ' g v)
   let vertex_pred g v = hset_of_hiset (vertex_pred' g v)
-  let hedge_succ' g h = (hedge_n g h).h_succ
-  let hedge_pred' g h = (hedge_n g h).h_pred
+  let hedge_succ' g h = Array.copy (hedge_n g h).h_succ
+  let hedge_pred' g h = Array.copy (hedge_n g h).h_pred
 
   let hedge_succ g h = vset_of_array (hedge_succ' g h)
   let hedge_pred g h = vset_of_array (hedge_pred' g h)
@@ -491,6 +495,7 @@ module Fixpoint(Manager:Manager) : sig
       Manager.H.graph
 
   val kleene_fixpoint :
+    (* ?err_graph:(unit, Manager.hedge_attribute, unit) Manager.H.graph option ref -> *)
     input_graph -> Manager.H.VertexSet.t ->
     (Manager.abstract, unit, unit) Manager.H.graph
 
@@ -634,6 +639,10 @@ end = struct
     in
     HedgeTbl.iter final_import new_hedges;
 
+    let hedge_mapping = HedgeTbl.fold (fun old_hedge (_,_,new_hedge) acc ->
+        HedgeMap.add new_hedge old_hedge acc)
+        new_hedges HedgeMap.empty in
+
     let add_copied_hedge (i,h) set =
       try let (_,_,r) = HedgeTbl.find new_hedges h in
         HISet.add (i,r) set
@@ -641,11 +650,16 @@ end = struct
     let corresponding a i (_,hi) =
       a.(i), HISet.fold add_copied_hedge HISet.empty hi
     in
+    hedge_mapping,
     { input = Array.mapi (corresponding input_vert) previous_call_info.input;
       output = Array.mapi (corresponding output_vert) previous_call_info.output }
 
-  let kleene_fixpoint orig_g sinit =
+  let kleene_fixpoint (* ?err_graph *) orig_g sinit =
     let g = initialise orig_g in
+
+    (* (match err_graph with *)
+    (*  | None -> () *)
+    (*  | Some r -> r := Some g); *)
 
     let h_info : 'a hedge_info HTbl.t = HTbl.create 10 in
     List.iter (fun h -> HTbl.add h_info h
@@ -699,7 +713,11 @@ end = struct
     in
 
     let recursive_call h f call_info =
-      copy_relink_function g h call_info
+      let hedge_mapping, new_call_info = copy_relink_function g h call_info in
+      let add_info new_hedge old_hedge =
+        HTbl.add h_info new_hedge (HTbl.find h_info old_hedge) in
+      HedgeMap.iter add_info hedge_mapping;
+      new_call_info
     in
 
     let import_function h f call_stack =
@@ -747,8 +765,10 @@ end = struct
           try
             let call_info = FidMap.find f call_stack in
             (* recursive call *)
+            (* Printf.eprintf "rec call\n%!"; *)
             recursive_call h f call_info
           with Not_found ->
+            (* Printf.eprintf "normal call\n%!"; *)
             (* not recursive call *)
             import_function h f call_stack in
         HedgeFidTbl.add imported_functions (h,f) call_info;
@@ -770,7 +790,12 @@ end = struct
       match lift_option_array pred' with
       | None -> ()
       | Some abstract ->
-        let attrib = (HTbl.find h_info h).orig_attrib in
+        let attrib =
+          try (HTbl.find h_info h).orig_attrib
+          with Not_found ->
+            Format.eprintf "%a@." T.Hedge.print h;
+            raise Not_found
+        in
         let results,functions = M.apply h attrib abstract in
         Vwq.push_set vwq (hedge_succ g h);
         List.iter (fun fid -> Hwq.push_set hwq (import_function h fid)) functions;

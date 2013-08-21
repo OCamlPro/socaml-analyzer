@@ -259,6 +259,7 @@ module Manager = struct
     let compare _ _ = assert false
     let equal _ _ = assert false
     let hash _ = assert false
+    let print _ _ = assert false
   end
 
   let find_function _ = assert false

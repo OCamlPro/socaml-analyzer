@@ -7,6 +7,7 @@ sig
   val equal : t -> t -> bool
   val hash : t -> int
   val mk : unit -> t
+  val print : Format.formatter -> t -> unit
 end
 
 module Vertex : E =
@@ -15,6 +16,8 @@ struct
   let compare (x:int) y = compare x y
   let equal (x:int) y = x = y
   let hash (x:int) = Hashtbl.hash x
+
+  let print = Format.pp_print_int
 
   let c = ref 0
   let mk () = incr c; !c
@@ -26,6 +29,8 @@ struct
   let compare (x:int) y = compare x y
   let equal (x:int) y = x = y
   let hash (x:int) = Hashtbl.hash x
+
+  let print = Format.pp_print_int
 
   let c = ref 0
   let mk () = incr c; !c
