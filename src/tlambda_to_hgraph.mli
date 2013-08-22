@@ -13,3 +13,4 @@ type hinfo =
 and constr = Ccp of int | Ctag of int
 
 val mk_graph : last_id:int -> funs:Tlambda.tlambda array -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t
+(* the graph, the in, out and exn vectors *)
