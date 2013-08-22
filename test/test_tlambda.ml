@@ -18,7 +18,7 @@ let ret_id = mk_id "return"
 let tend = Tend ret_id
 
 let tconst_int i = Tconst ( Const_base ( Const_int i))
-let tadd a b = Tprim ( Paddint, [a;b])
+let tadd a b = Tprim ( TPaddint, [a;b])
 
 (* simple test *)
 let t1 =
