@@ -183,26 +183,27 @@ module T = struct
 
   type vertex = Vertex.t
   type hedge = Hedge.t
+  module Vertex = Vertex
+  module Hedge = Hedge
 
-  module VertexSet = Set.Make(Vertex)
-  module HedgeSet = Set.Make(Hedge)
-  module VertexTbl = Hashtbl.Make(Vertex)
-  module HedgeTbl = Hashtbl.Make(Hedge)
+  (* module VertexSet = Set.Make(Vertex) *)
+  (* module HedgeSet = Set.Make(Hedge) *)
+  (* module VertexTbl = Hashtbl.Make(Vertex) *)
+  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
 
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print
 
 end
 
-module H = Hgraph.Make(T)
-
 module Manager = struct
+  module H = Hgraph.Make(T)
   include A2
-  type vertex = T.vertex
-  type hedge = T.hedge
   type abstract = A2.t
 
+  type vertex_attribute = unit
   type hedge_attribute = unit
+  type graph_attribute = unit
 
   (* let apply hedge tabs = *)
   (*   let abs = tabs.(0) in *)
@@ -235,7 +236,7 @@ module Manager = struct
       | 52 -> abs
       | _ -> failwith ""
     in
-    nabs, []
+    [|nabs|], []
 
 (* Creation of the following equation graph:
    X0: x=0;
@@ -252,9 +253,23 @@ module Manager = struct
     then A2.top ()
     else A2.bottom ()
 
+  type function_id
+  module Function_id = struct
+    type t = function_id
+    let compare _ _ = assert false
+    let equal _ _ = assert false
+    let hash _ = assert false
+    let print _ _ = assert false
+  end
+
+  let find_function _ = assert false
+  let clone_vertex _ = assert false
+  let clone_hedge _ = assert false
+
 end
 
-module FP = Hgraph.Fixpoint(H)(Manager)
+module FP = Hgraph.Fixpoint(Manager)
+module H = Manager.H
 
 let g = H.create ()
 
@@ -293,7 +308,7 @@ let () =
   (* H.add_hedge g 79 () ~pred:[|v7|] ~succ:[|v9|]; *)
   (* H.add_hedge g 92 () ~pred:[|v9|] ~succ:[|v2|] *)
 
-let r = FP.kleene_fixpoint g (H.VertexSet.singleton v0)
+let r = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
 
 let print_attrvertex ppf vertex attr =
   A2.print () ppf attr

@@ -7,6 +7,7 @@ sig
   val equal : t -> t -> bool
   val hash : t -> int
   val mk : unit -> t
+  val print : Format.formatter -> t -> unit
 end
 
 module Vertex : E =
@@ -17,6 +18,8 @@ struct
   let hash (x:int) = Hashtbl.hash x
 
   let c = ref (-1)
+
+  let print = Format.pp_print_int
   let mk () = incr c; !c
 end
 
@@ -28,6 +31,8 @@ struct
   let hash (x:int) = Hashtbl.hash x
 
   let c = ref (-1)
+
+  let print = Format.pp_print_int
   let mk () = incr c; !c
 end
 
@@ -35,11 +40,13 @@ module Desc =
 struct
   type vertex = Vertex.t
   type hedge = Hedge.t
+  module Vertex = Vertex
+  module Hedge = Hedge
 
-  module VertexSet = Set.Make (Vertex)
-  module HedgeSet = Set.Make (Hedge)
-  module VertexTbl = Hashtbl.Make (Vertex)
-  module HedgeTbl = Hashtbl.Make (Hedge)
+  (* module VertexSet = Set.Make (Vertex) *)
+  (* module HedgeSet = Set.Make (Hedge) *)
+  (* module VertexTbl = Hashtbl.Make (Vertex) *)
+  (* module HedgeTbl = Hashtbl.Make (Hedge) *)
 
   let print_vertex _ _ = () 		(* TODO *)
   let print_hedge _ _ = ()

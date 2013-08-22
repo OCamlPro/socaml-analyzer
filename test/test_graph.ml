@@ -24,11 +24,13 @@ module T = struct
 
   type vertex = Vertex.t
   type hedge = Hedge.t
+  module Vertex = Vertex
+  module Hedge = Hedge
 
-  module VertexSet = Set.Make(Vertex)
-  module HedgeSet = Set.Make(Hedge)
-  module VertexTbl = Hashtbl.Make(Vertex)
-  module HedgeTbl = Hashtbl.Make(Hedge)
+  (* module VertexSet = Set.Make(Vertex) *)
+  (* module HedgeSet = Set.Make(Hedge) *)
+  (* module VertexTbl = Hashtbl.Make(Vertex) *)
+  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
 
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print
@@ -56,6 +58,49 @@ let () =
   H.add_hedge g h0 () [|v1|] [|v2|];
   H.add_hedge g h1 () [|v2;v3|] [|v4|];
   H.add_hedge g h2 () [|v4|] [|v3|]
+
+let () = assert(H.correct g)
+
+let g2 = H.create ()
+
+let v1' = "v1_"
+let v4' = "v4_"
+let v5 = "v5"
+
+let h3 = Hedge.new_hedge ()
+let h4 = Hedge.new_hedge ()
+
+let () =
+  H.add_vertex g2 v1' ();
+  H.add_vertex g2 v4' ();
+  H.add_vertex g2 v5 ();
+  H.add_hedge g2 h3 () [|v1'|] [|v5|];
+  H.add_hedge g2 h4 () [|v5|] [|v4'|]
+
+let () = assert(H.correct g2)
+
+let vset l = List.fold_right H.VertexSet.add l H.VertexSet.empty
+let hset l = List.fold_right H.HedgeSet.add l H.HedgeSet.empty
+
+let subgraph =
+  { H.sg_input = [|v1'|];
+    sg_output = [|v4'|];
+    sg_vertex = vset [v5];
+    sg_hedge = hset [h3;h4] }
+
+let subgraph = H.clone_subgraph
+    ~in_graph:g2
+    ~out_graph:g
+    ~import_vattr:(fun ~new_vertex ~old_attr -> old_attr)
+    ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
+    ~clone_vertex:(fun i -> i)
+    ~clone_hedge:(fun i -> i)
+    ~input:[|v1|]
+    ~output:[|v4|]
+    subgraph
+
+let () = assert(H.correct g)
+let () = assert(H.correct g2)
 
 let print_attrvertex ppf vertex attr =
   Format.pp_print_string ppf vertex
