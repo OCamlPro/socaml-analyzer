@@ -12,7 +12,7 @@ module Vertex = struct
 end
 
 type hedge_attr =
-  | Set_int of Id.t * Constant.t
+  | Set_int of Id.t * int
   | Set_closure of Id.t * F.t * Id.t array
   | Prepare_call of Id.t * Id.t
   | Call
@@ -73,7 +73,7 @@ module Env = struct
     Ids.fold (fun id v -> union (get_env id env) v) ids bottom
 
   let any_int =
-    { bottom with int = Top }
+    { bottom with int = Int_interv.top }
 
   let func_val func_id closure =
     { bottom with f = Fm.singleton func_id
@@ -176,8 +176,11 @@ let c_id = Id.create ~name:"c" ()
 let f_id = Id.create ~name:"f" ()
 let closure_id = Id.create ~name:"f" ()
 
-let n_cst = Constant.create ~name:"n" ()
-let m_cst = Constant.create ~name:"m" ()
+(* let n_cst = Constant.create ~name:"n" () *)
+(* let m_cst = Constant.create ~name:"m" () *)
+
+let n_cst = 1
+let m_cst = 42
 
 let func = F.create ~name:"func" ()
 
