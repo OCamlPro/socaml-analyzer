@@ -117,7 +117,7 @@ let cp_any i =
   let rec aux res = function
     | 0 -> res
     | n	-> let n = pred n in aux (Ints.add n res) n
-  in { bottom with cp = aux i }
+  in { bottom with cp = aux Ints.empty i }
 
 let cp_singleton i =
   { bottom with cp = Ints.singleton i }
@@ -125,7 +125,7 @@ let cp_singleton i =
 let block_singleton tag contents =
   { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length contents) contents) }
 
-let restrict_cp d ?v =
+let restrict_cp ?v d =
   match v with
     Some v -> cp_singleton v
   | None -> { bottom with cp = d.cp }
@@ -144,7 +144,7 @@ let restrict_block ?tag ?has_field ?size d =
   { bottom with blocks =
       match tag with
       | None -> Tagm.map restrict_tag d.blocks
-      | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d))
+      | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d.blocks))
   }
 
 let set_a i v a =
@@ -161,16 +161,16 @@ let set_field i v b =
 let booleans = cp_any 2
 
 let restrict_bool x =
-  { bottom with cp = Ints.inter x.cp booleans }
+  { bottom with cp = Ints.inter x.cp booleans.cp }
 
 let not_bool x =
   { bottom with cp =
       Ints.fold
-	(fun res i ->
+	(fun i res ->
 	  match i with
 	  | 0 -> Ints.add 1 res
 	  | 1 -> Ints.add 0 res
-	  | _ -> res ) Ints.empty x.cp }
+	  | _ -> res ) x.cp Ints.empty }
 
 (* Bottom test *)
 
@@ -180,7 +180,7 @@ let is_bottom_simple = function
 
 let is_bottom env { top; int; float; string; floata; i32;
                 i64; inat; cp; blocks; f } =
-  top = false && is_bottom_simple int && is_bottom_simple float &&
+  top = false && Int_interv.is_bottom int && is_bottom_simple float &&
   is_bottom_simple string && is_bottom_simple floata &&
   is_bottom_simple i32 && is_bottom_simple i64 &&
   is_bottom_simple inat &&
@@ -224,7 +224,7 @@ let rec union (* env *) a b =
   (* env, *)
   {
     top = a.top || b.top;
-    int = union_simple a.int b.int;
+    int = Int_interv.join a.int b.int;
     float = union_simple a.float b.float;
     string = union_simple a.string b.string;
     floata = union_simple a.floata b.floata;
@@ -244,13 +244,13 @@ let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_
 
 (* simple access *)
 
-let get_field f b env =
-  Tagm.fold (fun _ b res ->
-    Intm.fold (fun i b res ->
-      if i > res
-      then union_id env (union_ids env b.(f)) res
-      else res) b res
-  ) b.blocks bottom
+(* let get_field f b env = *)
+(*   Tagm.fold (fun _ sizes res -> *)
+(*     Intm.fold (fun i vals res -> *)
+(*       if i > f *)
+(*       then union_id env (union_ids env vals.(f)) res *)
+(*       else res) sizes res *)
+(*   ) b.blocks bottom *)
 
 (* Inclusion test *)
 
@@ -271,7 +271,7 @@ let rec included env i1 i2 =
   else 
     b.top
     || a.top
-    || included_simple a.int b.int
+    || Int_interv.is_leq a.int b.int
     || included_simple a.float b.float
     || included_simple a.string b.string
     || included_simple a.floata b.floata
@@ -319,7 +319,7 @@ let is_leq a b =
   b.top
   || begin
     not a.top
-    && leq_simple a.int b.int
+    && Int_interv.is_leq a.int b.int
     && leq_simple a.float b.float
     && leq_simple a.string b.string
     && leq_simple a.floata b.floata
@@ -408,7 +408,7 @@ let intersect_noncommut env a b =
     in
     env,
     { top = false;
-      int = intersection_simple a.int b.int;
+      int = Int_interv.meet a.int b.int;
       float = intersection_simple a.float b.float;
       string = intersection_simple a.string b.string;
       floata = intersection_simple a.floata b.floata;

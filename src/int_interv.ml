@@ -8,21 +8,21 @@ let minimum = min_int
 (* let maximum = big_int_of_int max_int *)
 (* let minimum = big_int_of_int min_int *)
 
-let bottom = None
-let top = Some ( minimum, maximum)
+let bottom : t= None
+let top : t = Some ( minimum, maximum)
 
-let is_bottom x = x = None
-let is_top x = match x with
+let is_bottom x = x = bottom
+let is_top x = match (x : t) with
     None -> false
   | Some (a,b) -> a <= min_int && b >= max_int
 
 let is_leq x y =
-  match x, y with
+  match (x : t), (y : t) with
   | None, _ -> true
   | _, None -> false
   | Some ( a1, b1), Some ( a2, b2) -> a1 >= a2 && b1 <= b2
 
-let join x y =
+let join (x:t) (y:t) =
   match x, y with
   | None, a | a, None -> a
   | Some ( a1, b1), Some ( a2, b2) -> Some (min a1 a2, max b1 b2)
@@ -39,6 +39,7 @@ let widening x y =
       ( if b2 > b1 then max_int else b2))
 
 let print fmt x =
+  let open Format in
   match x with
     | Some(a,b) ->
 	if is_top x then pp_print_string fmt "top"
@@ -93,7 +94,7 @@ let mul x y = match x, y with
     and xlyg = xl * yg
     and xgyl = xg * yl
     and xgyg = xg * yg in
-    Some ( min ( min xlyl xlxg) ( min xgyl xgyg), max ( max xlyl xlyg) ( max xgyl xgyg))
+    Some ( min ( min xlyl xlyg) ( min xgyl xgyg), max ( max xlyl xlyg) ( max xgyl xgyg))
 let div x y = top
 let modulo x y = top
 let band x y = top
@@ -147,4 +148,3 @@ let comp c x y =
 
 let leqcst x c = meet x ( Some ( minimum, c))
 let geqcst x c = meet x ( Some ( c, maximum))
-

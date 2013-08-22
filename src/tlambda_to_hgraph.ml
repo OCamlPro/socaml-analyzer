@@ -89,7 +89,7 @@ let mk_graph ~last_id ~funs main =
   and fun_exn = Array.init nf (fun _ -> nv ())
   and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in
 
-  let dummy = nv () in
+  (* let dummy = nv () in *)
   let one_id = mk_id "$1" in
 
   let rec tlambda ~outv ~ret_id ~exn_id ~inv ~exnv code =
@@ -105,7 +105,7 @@ let mk_graph ~last_id ~funs main =
     tlambda ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.te_in
 
   and trec entry outv exnv ret_id exn_id d =
-    let in_out = nv () in
+    (* let in_out = nv () in *)
     
     failwith "TODO: rec"
 
@@ -115,7 +115,7 @@ let mk_graph ~last_id ~funs main =
 
     | Tconst c -> simpleh id ( Const c) ~inv ~outv
 
-    | Tapply ( f, x, _) ->
+    | Tapply ( f, x) ->
       add_hedge g ( Hedge.mk ()) [f_arg_id, ( Var x); fun_id, ( Var f)] ~pred:[|inv|] ~succ:fun_in;
       add_hedge g ( Hedge.mk ()) [exn_id, ( Var f_exn_id)] ~pred:fun_exn ~succ:[|exnv|];
       add_hedge g ( Hedge.mk ()) [id, ( Var f_ret_id)] ~pred:fun_out ~succ:[|outv|]
@@ -194,9 +194,9 @@ let mk_graph ~last_id ~funs main =
       let inb = nv () in
       let outb = nv () in
       simpleh i ( Var start) ~inv ~outv:initv;
-      simpleh test_id ( Prim ( Pintcomp Lambda.Cle, [i;stop])) ~inv:initv ~outv:testv;
+      simpleh test_id ( Prim ( TPintcomp Lambda.Cle, [i;stop])) ~inv:initv ~outv:testv;
       simpleh test_id ctrue ~inv:testv ~outv:inb;
-      simpleh i ( Prim ( Paddint, [i;one_id])) ~inv:outb ~outv:initv;
+      simpleh i ( Prim ( TPaddint, [i;one_id])) ~inv:outb ~outv:initv;
       simpleh test_id cfalse ~inv:testv ~outv;
       tlambda ~outv:outb ~ret_id ~exn_id ~inv:inb ~exnv lbody
   in

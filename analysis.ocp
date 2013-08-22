@@ -1,6 +1,7 @@
 begin library "data"
  dirname = "src"
- files = [ "utils.ml" "data.ml" ]
+ files = [ "utils.ml" "int_interv.ml" "data.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" ]
 end
 
 begin library "tlambda"

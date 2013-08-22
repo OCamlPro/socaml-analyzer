@@ -96,8 +96,9 @@ type primitive =
 | TPbbswap of boxed_integer
 (* method call *)
 | TPmethod_send of Lambda.meth_kind (* moved from lambda to primitive *)
-(* function creation *)
+(* function operations *)
 | TPfun of int
+| TPfunfield of int
 
 
 

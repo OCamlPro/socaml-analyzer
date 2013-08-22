@@ -82,7 +82,7 @@ and structured_constant sc =
 and tcontrol funs env = function
   | Tvar i -> get_env env i
   | Tconst sc -> structured_constant sc
-  | Tapply ( f, x, _) -> call_fun funs (get_env env f) (get_env env x)
+  | Tapply ( f, x) -> call_fun funs (get_env env f) (get_env env x)
   | Tprim ( p, l) -> call_prim funs p (List.map (get_env env) l)
   | Tswitch ( i, s) ->
     let switch_handle i l =
@@ -159,40 +159,40 @@ and call_fun funs f x =
 and call_prim funs p l =
   match p, l with
   (* Utilities *)
-  | Pidentity, [x] -> x
-  | Pignore, _::[] -> val_unit
-  | Prevapply _, [x;f] | Pdirapply _, [f;x] -> call_fun funs f x
+  | TPidentity, [x] -> x
+  | TPignore, _::[] -> val_unit
+  | TPrevapply, [x;f] | TPdirapply, [f;x] -> call_fun funs f x
   (* Blocks *)
-  | Pmakeblock (i,_), l -> ref ( Block ( i, l))
-  | Pfield i, [{ contents = Block ( _, l)}]
-  | Pfloatfield i, [{ contents = Block ( _, l)}] ->
+  | TPmakeblock (i,_), l -> ref ( Block ( i, l))
+  | TPfield i, [{ contents = Block ( _, l)}]
+  | TPfloatfield i, [{ contents = Block ( _, l)}] ->
     List.nth l i
-  | Psetfield ( i, _), [{ contents = Block (_,l)};v]
-  | Psetfloatfield i, [{ contents = Block (_,l)};v] ->
+  | TPsetfield ( i, _), [{ contents = Block (_,l)};v]
+  | TPsetfloatfield i, [{ contents = Block (_,l)};v] ->
     (List.nth l i) := !v; val_unit
-  | Pduprecord _, [r] -> ref !r
+  | TPduprecord _, [r] -> ref !r
   (* Lazyness *)
-  | Plazyforce,  _ -> failwith "TODO: lazy" (* not that I'm being lazy *)
+  | TPlazyforce,  _ -> failwith "TODO: lazy" (* not that I'm being lazy *)
   (* Externals *)
-  | Pccall _, _ -> failwith "TODO: ccall"
+  | TPccall _, _ -> failwith "TODO: ccall"
   (* Booleans *)
-  | Pnot, [b] -> of_bool ( not (val_to_bool b))
+  | TPnot, [b] -> of_bool ( not (val_to_bool b))
   (* Ints *)
-  | Pnegint, [x] -> of_int ( ~- (val_to_int x))
-  | Paddint, [ x; y] -> of_int ( ( val_to_int x) + ( val_to_int y))
-  | Psubint, [ x; y] -> of_int ( ( val_to_int x) - ( val_to_int y))
-  | Pmulint, [ x; y] -> of_int ( ( val_to_int x) * ( val_to_int y))
-  | Pdivint, [ x; y] -> of_int ( ( val_to_int x) / ( val_to_int y))
-  | Pmodint, [ x; y] -> of_int ( ( val_to_int x) mod ( val_to_int y))
-  | Pandint, [ x; y] -> of_int ( ( val_to_int x) land ( val_to_int y))
-  | Porint, [ x; y] -> of_int ( ( val_to_int x) lor ( val_to_int y))
-  | Pxorint, [ x; y] -> of_int ( ( val_to_int x) lxor ( val_to_int y))
-  | Plslint, [ x; y] -> of_int ( ( val_to_int x) lsl ( val_to_int y))
-  | Plsrint, [ x; y] -> of_int ( ( val_to_int x) lsr ( val_to_int y))
-  | Pasrint, [ x; y] -> of_int ( ( val_to_int x) asr ( val_to_int y))
-  | Pintcomp c, [ x; y] -> of_bool ( comparison c ( val_to_int x)  ( val_to_int y))
-  | Poffsetint _, _ -> failwith "TODO: ask Pierre"
-  | Poffsetref _, _ -> failwith "TODO: ask Pierre"
+  | TPnegint, [x] -> of_int ( ~- (val_to_int x))
+  | TPaddint, [ x; y] -> of_int ( ( val_to_int x) + ( val_to_int y))
+  | TPsubint, [ x; y] -> of_int ( ( val_to_int x) - ( val_to_int y))
+  | TPmulint, [ x; y] -> of_int ( ( val_to_int x) * ( val_to_int y))
+  | TPdivint, [ x; y] -> of_int ( ( val_to_int x) / ( val_to_int y))
+  | TPmodint, [ x; y] -> of_int ( ( val_to_int x) mod ( val_to_int y))
+  | TPandint, [ x; y] -> of_int ( ( val_to_int x) land ( val_to_int y))
+  | TPorint, [ x; y] -> of_int ( ( val_to_int x) lor ( val_to_int y))
+  | TPxorint, [ x; y] -> of_int ( ( val_to_int x) lxor ( val_to_int y))
+  | TPlslint, [ x; y] -> of_int ( ( val_to_int x) lsl ( val_to_int y))
+  | TPlsrint, [ x; y] -> of_int ( ( val_to_int x) lsr ( val_to_int y))
+  | TPasrint, [ x; y] -> of_int ( ( val_to_int x) asr ( val_to_int y))
+  | TPintcomp c, [ x; y] -> of_bool ( comparison c ( val_to_int x)  ( val_to_int y))
+  | TPoffsetint _, _ -> failwith "TODO: ask Pierre"
+  | TPoffsetref _, _ -> failwith "TODO: ask Pierre"
   (* Floats *)
   
  
