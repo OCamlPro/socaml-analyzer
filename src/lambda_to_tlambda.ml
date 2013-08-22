@@ -456,4 +456,5 @@ let lambda_to_tlambda last_id code =
     | _ -> assert false
   in
 
-  tlambda ( normalize code )
+  let code = tlambda ( normalize code ) in
+  funs, code
