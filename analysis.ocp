@@ -6,7 +6,7 @@ end
 
 begin library "tlambda"
  dirname = "src"
- files = [ "tlambda.mli" "tlambda_interpret.ml" ]
+ files = [ "tlambda.mli" "tlambda_interpret.ml" "lambda_to_tlambda.ml" ]
  requires = [ "compiler-libs" "compiler-libs.common" ]
 end
 
