@@ -149,7 +149,7 @@ let lambda_to_tlambda last_id code =
       Tlet { l with te_lam; te_in; }
     | Trec r ->
       let tr_decls = List.rev_map
-  	(fun (i,c) -> ( i, map_idents_control f c))
+  	(fun (i,p,ids) -> ( i, p, List.map f ids))
   	r.tr_decls in
       let tr_in = map_idents f r.tr_in in
       Trec { tr_decls; tr_in; }
@@ -203,10 +203,10 @@ let lambda_to_tlambda last_id code =
 	aux fv (Iset.add te_id nfv) te_in
       | Trec { tr_decls; tr_in } ->
 	let fv, nfv = List.fold_left
-	  (fun (fv, nfv) (v,c) ->
+	  (fun (fv, nfv) (v,p,l) ->
 	    let fv = Iset.remove v fv
 	    and nfv = Iset.add v nfv in
-	    ( auxc nfv fv c, nfv)
+	    ( List.fold_left (check nfv) fv l, nfv)
 	  ) (fv, nfv) tr_decls in
 	aux nfv fv tr_in
       | Tend i -> check nfv fv i
@@ -401,7 +401,14 @@ let lambda_to_tlambda last_id code =
     | Llet ( k, i, e, cont ) ->
       Tlet { te_kind = k; te_id = i; te_lam = tcontrol e; te_in = tlambda cont; }
     | Lletrec ( decls, cont ) ->
-      Trec { tr_decls = List.rev_map (fun (id, lam) -> ( id, tcontrol lam ) ) decls; tr_in = tlambda cont; }
+      Trec { tr_decls = List.rev_map
+	  (fun (id, lam ) ->
+	    match lam with
+	    | Lprim (p,l) ->
+	      ( id, prim_translate p, extract_vars l )
+	    | _ -> assert false
+	  ) decls;
+	     tr_in = tlambda cont; }
     | Lvar v -> Tend v
     | _ -> assert false
   and tcontrol = function

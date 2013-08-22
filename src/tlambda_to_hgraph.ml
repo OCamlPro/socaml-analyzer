@@ -112,9 +112,10 @@ let mk_graph ~last_id ~funs main =
     tlambda ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.te_in
 
   and trec entry outv exnv ret_id exn_id d =
-    (* let in_out = nv () in *)
-    
-    failwith "TODO: rec"
+    (* at this point, there are only primitives *)
+    let in_out = nv () in
+    add_hedge g ( Hedge.mk ()) ( List.rev_map (fun ( id, p, args ) -> id, Prim (p, args) ) d.tr_decls ) ~pred:[|entry|] ~succ:[|outv|];
+    tlambda ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.tr_in
 
   and tcontrol inv outv exnv id ret_id exn_id c =
     match c with

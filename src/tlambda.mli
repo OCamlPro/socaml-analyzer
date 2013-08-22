@@ -119,7 +119,7 @@ and tlet =
 
 and trec =
 {
-  tr_decls : ( id * tcontrol) list;
+  tr_decls : ( id * primitive * id list ) list;
   tr_in : tlambda;
 }
 
