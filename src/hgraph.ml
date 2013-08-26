@@ -18,6 +18,18 @@ module type T = sig
 
 end
 
+module MakeT ( V : OrderedHashedType ) ( H : OrderedHashedType )
+  : T with module Vertex = V and module Hedge = H =
+struct
+  type vertex = V.t
+  type hedge = H.t
+  module Vertex = V
+  module Hedge = H
+
+  let print_vertex = V.print
+  let print_hedge = H.print
+end
+
 module type Hgraph = sig
   module T : T
 
