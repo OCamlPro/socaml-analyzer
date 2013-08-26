@@ -269,6 +269,8 @@ let lambda_to_tlambda last_id code =
     | Lconst _ as lam -> lam
     | Lapply ( lam, args, loc ) -> Lapply ( add_let lam, List.map add_let args, loc )
     | Lfunction ( k, args, body ) -> Lfunction ( k, args, add_let body )
+    | Lprim ( Psequand, [a;b] ) -> Lifthenelse ( add_let a, add_let b, add_let ( Lconst ( Const_pointer 0 )) )
+    | Lprim ( Psequor, [a;b] ) -> Lifthenelse ( add_let a, add_let ( Lconst ( Const_pointer 0 )), add_let b )
     | Lprim ( p, l ) -> Lprim ( p, List.map add_let l )
     | Lswitch ( i, s ) ->
       let aux = List.rev_map (fun (i,lam) -> (i, add_let lam) ) in
@@ -372,7 +374,11 @@ let lambda_to_tlambda last_id code =
   and organize_let = function
     | Llet ( k, i, lam, cont ) ->
       organize_in_let k i cont lam
-    | Lletrec _ -> failwith "TODO: letrec"
+    | Lletrec ( decls, cont) ->
+      let decls, to_out =
+	List.fold_left (fun (decls, to_out) (id, lam) -> promote_rec decls to_out id lam ) ([],[]) decls
+      in
+      List.fold_left (fun cont (id,lam) -> Llet ( Strict, id, lam, cont ) ) ( Lletrec ( decls, organize_let cont )) to_out
     | Lvar _  as lam -> lam
     | _ -> assert false
   and organize_let_switch s =
@@ -385,6 +391,21 @@ let lambda_to_tlambda last_id code =
       | Some lam -> Some ( organize_let lam )
     in
     { s with sw_blocks; sw_consts; sw_failaction; }
+
+  and promote_rec promoted expelled i lam =
+    match lam with
+    | Lprim ( Praise, _) -> ( promoted, ( i, lam ) :: expelled )
+    | Lprim _
+    | Lfunction _
+    | Lsend _  -> ( ( i, lam ) :: promoted, expelled )
+    | Llet ( k, id, e, cont ) ->
+      let ( promoted, expelled ) = promote_rec promoted expelled id e in
+      promote_rec promoted expelled i cont
+    | Lletrec ( l, cont ) ->
+      let ( promoted, expelled ) =
+	List.fold_left (fun (p,e) (id,lam) -> promote_rec p e id lam ) ( promoted, expelled ) l in
+      promote_rec promoted expelled i cont
+    | _ -> ( promoted, ( i, lam ) :: expelled )
   in
 
   (* end organizing lets *)
