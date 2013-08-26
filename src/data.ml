@@ -31,6 +31,14 @@ module Fm = Map.Make (struct type t = f let compare = compare end)
 
 (* The data *)
 
+type boole =
+(* top and bottom *)  
+ T | B
+(* logical operators *)
+| A of boole * boole | O of boole * boole | X of boole * boole | N of boole
+(* constraint expressions: C ( i1, i2) <=> i1 meets i2 *)
+| C of id * id
+
 type data =
   {
     top : bool;
@@ -44,6 +52,7 @@ type data =
     cp : Ints.t;
     blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
     f : Ids.t array Fm.t;
+    boolexpr : boole list;
   }
 
 let simple_bottom = Constants Constants.empty
@@ -61,6 +70,7 @@ let bottom =
     cp = Ints.empty;
     blocks = Tagm.empty;
     f = Fm.empty;
+    boolexpr = [];
   }
 
 
@@ -158,7 +168,7 @@ let set_field i v b =
 
 
 (* booleans *)
-let booleans = cp_any 2
+let booleans = { (cp_any 2) with boolexpr = [ T; B ] }
 
 let restrict_bool x =
   { bottom with cp = Ints.inter x.cp booleans.cp }
@@ -170,7 +180,9 @@ let not_bool x =
 	  match i with
 	  | 0 -> Ints.add 1 res
 	  | 1 -> Ints.add 0 res
-	  | _ -> res ) x.cp Ints.empty }
+	  | _ -> res ) x.cp Ints.empty;
+    boolexpr = List.rev_map ( fun b -> N b ) x.boolexpr;
+  }
 
 (* Bottom test *)
 
@@ -234,6 +246,7 @@ let rec union (* env *) a b =
     cp = Ints.union a.cp b.cp;
     blocks;
     f;
+    boolexpr = List.rev_append a.boolexpr b.boolexpr;
   }
 
 and union_id env i1 i2 =
@@ -418,6 +431,7 @@ let intersect_noncommut env a b =
       cp = Ints.inter a.cp b.cp;
       blocks;
       f;
+      boolexpr = List.fold_left (fun l a -> List.rev_append ( List.rev_map (fun b -> A (a,b) ) b.boolexpr ) l ) [] a.boolexpr;
     }
   
 (* Environment joining *)
@@ -445,72 +459,3 @@ let is_leq_env e1 e2 =
   | Env e1, Env e2 ->
     Idm.for_all (fun id d -> try is_leq d ( Idm.find id e2) with Not_found -> false ) e1
 
-
-(* let rec intersection env a b = *)
-(*   if a.top then (env, b) *)
-(*   else if b.top then (env, a) *)
-(*   else *)
-(*     let ( env, blocks) =  *)
-(*       Tagm.merge *)
-(* 	begin *)
-(* 	  fun _ a b -> *)
-(* 	    match a, b with *)
-(* 	    | _, None | None, _ -> None *)
-(* 	    | Some is1, Some is2 -> *)
-(* 	      Some ( *)
-(* 		Intm.merge *)
-(* 		  (fun _ a b -> *)
-(* 		    match a, b with *)
-(* 		    | _, None | None, _ -> None *)
-(* 		    | Some s1, Some s2 -> *)
-(* 		      Some *)
-(* 			( *)
-(* 			  Array.mapi *)
-(* 			    (fun i i1 -> *)
-(* 			      let inter = intersection env ( union_ids env i1) ( union_ids env s2.(i)) in *)
-(* 			      Ids.singleton ( register_id inter) *)
-(* 			    ) *)
-(* 			    s1 *)
-(* 			) *)
-(* 		  ) *)
-(* 		  is1 is2 *)
-(* 	      ) *)
-(* 	end *)
-(* 	a.blocks b.blocks *)
-(*     in *)
-(*     let ( env, f) = *)
-(*       Fm.merge *)
-(* 	begin *)
-(* 	  fun _ a b -> *)
-(* 	    match a, b with *)
-(* 	    | _, None | None, _ -> None *)
-(* 	    | Some i1, Some i2 -> *)
-(* 	      Some ( *)
-(* 		Array.mapi (fun i i1i -> *)
-		  
-(* 		  let inter = intersection *)
-(* 		    env *)
-(* 		    ( union_ids i1i) *)
-(* 		    ( union_ids i2.(i)) *)
-(* 		  in Ids.singleton ( register_id inter) *)
-(* 		) i1 *)
-(* 	      ) *)
-(* 	end *)
-(* 	a.f b.f; *)
-(*     in *)
-(*     env, *)
-(*     { top = false; *)
-(*       int = intersection_simple a.int b.int; *)
-(*       float = intersection_simple a.float b.float; *)
-(*       string = intersection_simple a.string b.string; *)
-(*       floata = intersection_simple a.floata b.floata; *)
-(*       i32 = intersection_simple a.i32 b.i32; *)
-(*       i64 = intersection_simple a.i64 b.i64; *)
-(*       inat = intersection_simple a.inat b.inat; *)
-(*       cp = Ints.inter a.cp b.cp; *)
-(*       blocks; *)
-(*       f; *)
-(*     } *)
-
-(* and intersection_id env i1 i2 = *)
-(*   register_id ( intersection env (get_id i1) (get_id i2)) *)
