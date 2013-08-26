@@ -84,16 +84,30 @@ let uminus x =
 let add x y =
   match x, y with
   | None, _ | _, None -> None
-  | Some ( xl, xg), Some ( yl, yg) -> Some ( xl + yl, yl + yg)
+  | Some ( xl, xg), Some ( yl, yg) ->
+    Some (
+      if xl = minimum || yl = minimum then minimum else xl + yl,
+      if xg = maximum || yg = maximum then maximum else  xg + yg)
 
 let sub x y = add x (uminus y)
 let mul x y = match x, y with
   | None, _ | _, None -> None
   | Some ( xl, xg), Some ( yl, yg) ->
-    let xlyl = xl * yl
-    and xlyg = xl * yg
-    and xgyl = xg * yl
-    and xgyg = xg * yg in
+    let aux x y =
+      if x = 0 || y = 0
+      then 0
+      else
+	if ( x = minimum && y < 0 ) || ( x = maximum && y > 0 ) || ( y = minimum && x < 0 ) || ( y = maximum && x > 0 ) 
+	then maximum
+	else
+	  if ( x = maximum && y < 0 ) || ( x = minimum && y > 0 ) || ( y = maximum && x < 0 ) || ( y = minimum && x > 0 )
+	  then minimum
+	  else x * y
+
+    let xlyl = aux xl yl
+    and xlyg = aux xl yg
+    and xgyl = aux xg yl
+    and xgyg = aux xg yg in
     Some ( min ( min xlyl xlyg) ( min xgyl xgyg), max ( max xlyl xlyg) ( max xgyl xgyg))
 let div x y = top
 let modulo x y = top
