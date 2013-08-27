@@ -86,8 +86,8 @@ let add x y =
   | None, _ | _, None -> None
   | Some ( xl, xg), Some ( yl, yg) ->
     Some (
-      if xl = minimum || yl = minimum then minimum else xl + yl,
-      if xg = maximum || yg = maximum then maximum else  xg + yg)
+      ( if xl = minimum || yl = minimum then minimum else xl + yl ),
+      ( if xg = maximum || yg = maximum then maximum else  xg + yg ) )
 
 let sub x y = add x (uminus y)
 let mul x y = match x, y with
@@ -103,6 +103,7 @@ let mul x y = match x, y with
 	  if ( x = maximum && y < 0 ) || ( x = minimum && y > 0 ) || ( y = maximum && x < 0 ) || ( y = minimum && x > 0 )
 	  then minimum
 	  else x * y
+    in
 
     let xlyl = aux xl yl
     and xlyg = aux xl yg
