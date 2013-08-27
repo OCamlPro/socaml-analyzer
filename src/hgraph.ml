@@ -19,7 +19,7 @@ module type T = sig
 end
 
 module MakeT ( V : OrderedHashedType ) ( H : OrderedHashedType )
-  : T with module Vertex = V and module Hedge = H =
+  : T with module Vertex = V and module Hedge = H and type vertex = V.t and type hedge = H.t =
 struct
   type vertex = V.t
   type hedge = H.t
