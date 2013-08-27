@@ -3,8 +3,8 @@ exception Bad_file
 let add_cmt result file =
   Queue.add ( Tt_restore.load_and_restore file ) result
 let add_cmti = Tt_restore.add_interface
-let add_ml result file = failwith "TODO: .ml file"
-let add_mli file = failwith "TODO: .mli file"
+let add_ml result file = Queue.add ( Tt_restore.load_ml file ) result
+let add_mli = Tt_restore.load_mli
 
 let add_file result file =
   let c = Filename.check_suffix file in

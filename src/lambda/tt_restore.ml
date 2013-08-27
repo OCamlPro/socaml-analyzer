@@ -119,3 +119,9 @@ let load_and_restore fn =
     | Implementation s -> s
     | _ -> assert false )
     cmt.cmt_modname
+
+let load_ml _ =
+  failwith "TODO: .ml file"
+
+let load_mli _ =
+  failwith "TODO: .mli file"
