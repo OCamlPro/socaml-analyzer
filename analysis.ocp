@@ -1,5 +1,11 @@
 comp += [ "-g" ]
 
+begin library "lambda"
+ dirname = "src/lambda"
+ files = [ "tt_mapper.ml" "tt_restore.ml" "mk_lambda.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" ]
+end
+
 begin library "tlambda"
  dirname = "src/tlambda"
  files = [ "tlambda.mli" "tlambda_interpret.ml" "lambda_to_tlambda.ml" ]
