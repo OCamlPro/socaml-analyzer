@@ -1,24 +1,24 @@
 comp += [ "-g" ]
 
 begin library "tlambda"
- dirname = "src"
+ dirname = "src/tlambda"
  files = [ "tlambda.mli" "tlambda_interpret.ml" "lambda_to_tlambda.ml" ]
  requires = [ "compiler-libs" "compiler-libs.common" ]
 end
 
 begin library "data"
- dirname = "src"
+ dirname = "src/data"
  files = [ "utils.ml" "int_interv.ml" "data.ml" ]
  requires = [ "compiler-libs" "compiler-libs.common" "tlambda" ]
 end
 
 begin library "hgraph"
- dirname = "src"
+ dirname = "src/hgraph"
  files = [ "hgraph.ml" ]
 end
 
 begin library "lambda-analysis"
- dirname = "src"
+ dirname = "src/tlambda-analysis"
  files = [ "tlambda_to_hgraph.ml" ]
  requires = [ "tlambda" "hgraph" ]
 end
