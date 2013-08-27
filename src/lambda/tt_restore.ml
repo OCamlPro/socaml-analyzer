@@ -123,8 +123,31 @@ let load_and_restore fn =
     | _ -> assert false )
     cmt.cmt_modname
 
-let load_ml _ =
-  failwith "TODO: .ml file"
+let (++) x f = f x
+let ppf = Format.err_formatter
 
-let load_mli _ =
-  failwith "TODO: .mli file"
+let fn_to_modname fn =
+  let n = Filename.basename ( Filename.chop_extension fn ) in
+  String.capitalize n
+
+let load_ml filename =
+  let outputprefix = Filename.chop_suffix filename ".ml" in
+  let modulename = fn_to_modname filename in
+  let env = Compmisc.initial_env() in
+  let tt =
+    Pparse.file ppf filename Parse.implementation Config.ast_impl_magic_number
+    ++ Typemod.type_implementation filename outputprefix modulename env
+  in
+  restore filename (fst tt) modulename
+
+let load_mli inputfile =
+  let mname = fn_to_modname inputfile in
+  let ast =
+    Pparse.file ppf inputfile Parse.interface Config.ast_intf_magic_number in
+  let initial_env = Compmisc.initial_env() in
+  let tsg = Typemod.transl_signature initial_env ast in
+  let sg = tsg.Typedtree.sig_type in
+
+  r#add_module_env
+    Ident.({stamp = 0; name = mname; flags = 0 })
+    ( Types.Mty_signature sg)
