@@ -485,4 +485,4 @@ let lambda_to_tlambda last_id code =
   in
 
   let code = tlambda ( normalize code ) in
-  funs, code
+  !ir, funs, code

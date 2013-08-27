@@ -3,7 +3,21 @@
 open Utils
 
 (* use generative applications to have a new type each time *)
-module Id = MakeId(struct end)
+module Id =
+struct
+  open Ident
+  type t = Ident.t
+  let compare = compare
+  let name x = Some x.name
+  let to_string x = Printf.sprintf "%s/%d" x.name x.stamp
+  let output o x = Printf.fprintf o "%s/%d" x.name x.stamp
+  let print = print
+  let idref = ref 0
+  let create ?(name="") () =
+    decr idref;
+    { stamp = !idref; name = ( "$$" ^ name ); flags = 0; }
+end
+
 module Constant = MakeId(struct end)
 module F = MakeId(struct end)
 

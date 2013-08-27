@@ -7,5 +7,5 @@ sig
   val exnv : v
 end
 
-module M : functor ( Entry ) ->
-  ( Hgraph.Manager with module H = Tlambda.to_hgraph.G )
+module M : functor ( E : Entry ) ->
+   Hgraph.Manager with module H = Tlambda_to_hgraph.G

@@ -10,7 +10,8 @@ type hinfo =
 | Const of Lambda.structured_constant
 | Prim of Tlambda.primitive * id list
 | Constraint of constr
+| App of id * id (* function, argument *)
 and constr = Ccp of int | Ctag of int
 
-val mk_graph : last_id:int -> funs:Tlambda.tlambda array -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t
+val mk_graph : last_id:int -> funs:( int, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t
 (* the graph, the in, out and exn vectors *)

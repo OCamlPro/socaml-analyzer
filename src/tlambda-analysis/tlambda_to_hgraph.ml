@@ -59,6 +59,7 @@ type hinfo =
 | Const of Lambda.structured_constant
 | Prim of Tlambda.primitive * id list
 | Constraint of constr
+| App of id * id (* function, argument *)
 and constr = Ccp of int | Ctag of int
 
 let ctrue = Constraint (Ccp 1)
@@ -86,15 +87,22 @@ let mk_graph ~last_id ~funs main =
   let nv () =
     let v = Vertex.mk () in
     add_vertex g v (); v in
-  let nf = Array.length funs in
-  let fun_id = mk_id "$f" in
+  let nf = Hashtbl.length funs in
+(*  let fun_id = mk_id "$f" in
   let f_arg_id = mk_id "$x" in
   let f_ret_id = mk_id "$ans" in
-  let f_exn_id = mk_id "$exn" in
-  let fun_in = Array.init nf (fun _ -> nv ())
-  and fun_out = Array.init nf (fun _ -> nv ())
-  and fun_exn = Array.init nf (fun _ -> nv ())
+  let f_exn_id = mk_id "$exn" in *)
+  let fun_in = Hashtbl.create nf
+  and fun_out = Hashtbl.create nf
+  and fun_exn = Hashtbl.create nf
   and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in
+
+  Hashtbl.iter
+    (fun i _ ->
+      Hashtbl.add fun_in i ( nv () );
+      Hashtbl.add fun_out i ( nv () );
+      Hashtbl.add fun_exn i ( nv () ) )
+    funs;
 
   (* let dummy = nv () in *)
   let one_id = mk_id "$1" in
@@ -124,9 +132,8 @@ let mk_graph ~last_id ~funs main =
     | Tconst c -> simpleh id ( Const c) ~inv ~outv
 
     | Tapply ( f, x) ->
-      add_hedge g ( Hedge.mk ()) [f_arg_id, ( Var x); fun_id, ( Var f)] ~pred:[|inv|] ~succ:fun_in;
-      add_hedge g ( Hedge.mk ()) [exn_id, ( Var f_exn_id)] ~pred:fun_exn ~succ:[|exnv|];
-      add_hedge g ( Hedge.mk ()) [id, ( Var f_ret_id)] ~pred:fun_out ~succ:[|outv|]
+      add_hedge g ( Hedge.mk ()) [ id, App ( f, x ) ]
+	~pred:[|inv|] ~succ:[| outv; exnv |]
 
     | Tprim ( p, args) -> simpleh id ( Prim ( p, args)) ~inv ~outv
 
@@ -208,8 +215,18 @@ let mk_graph ~last_id ~funs main =
       simpleh test_id cfalse ~inv:testv ~outv;
       tlambda ~outv:outb ~ret_id ~exn_id ~inv:inb ~exnv lbody
   in
-  let inv = nv () and outv = nv () and exnv = nv () in
+
+      
+
   let exn_id = mk_id "$exn" in
   let ret_id = mk_id "$ret" in
+  Hashtbl.iter (fun i lam ->
+    tlambda
+      ~inv:(Hashtbl.find fun_in i)
+      ~outv:(Hashtbl.find fun_out i)
+      ~exnv:(Hashtbl.find fun_exn i)
+      ~ret_id ~exn_id
+      lam ) funs;
+  let inv = nv () and outv = nv () and exnv = nv () in
   tlambda ~inv ~outv ~exnv ~ret_id ~exn_id main;
   (g,inv,outv,exnv)

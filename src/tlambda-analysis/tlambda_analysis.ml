@@ -46,7 +46,9 @@ struct
   let join_list _ = List.fold_left join_env bottom_env
   let abstract_init v = if v = E.inv then empty_env else bottom_env
 
+
   let apply _ l envs =
+  let constant _ = failwith "TODO: constant !" in
     let in_apply ( id, action) env =
       let set x = set_env id x env
       and get x = get_env x env
@@ -61,115 +63,117 @@ struct
       | Prim ( p, l) ->
 	begin
 	  match p, l with
-	  | Pidentity, [i] -> set ( get i)
-	  | Pignore, _ -> set vunit
+	  | TPidentity, [i] -> set ( get i)
+	  | TPignore, _ -> set vunit
 	  (* Operations on heap blocks *)
-	  | Pmakeblock ( tag, _), _ -> set ( block_singleton tag ( Array.of_list l))
-	  | Pfield i, [b] ->
+(*	  | TPmakeblock ( tag, _), _ ->
+	    let a = Array.of_list l in
+	    set ( block_singleton tag ( Ids.singleton ( Array.length a ) a ) ) *) (* SORT IT OUT ! *)
+(*	  | TPfield i, [b] ->
 	    let env = set_env b ( restrict_block ~has_field:i ( get b)) env in
-	    set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *)
-	  | Psetfield ( i, _), [b;v] ->
+	    set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *) *)
+(*	  | TPsetfield ( i, _), [b;v] ->
 	    let env = set_env b ( set_field i v ( get b)) env in
-	    set_env id vunit env
-	  | Pfloatfield i, [b] -> failwith "TODO: floatfield"
-	  | Psetfloatfield i, [b,v] -> failwith "TODO: setfloatfield"
-	  | Pduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
+	    set_env id vunit env *)
+	  | TPfloatfield i, [b] -> failwith "TODO: floatfield"
+	  | TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
+	  | TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
 	  (* Force lazy values *)
-	  | Plazyforce -> failwith "TODO: Force lazy"
+	  | TPlazyforce, _ -> failwith "TODO: Force lazy"
 	  (* External call *)
-	  | Pccall prim, _ -> failwith "TODO: C-call"
+	  | TPccall prim, _ -> failwith "TODO: C-call"
 	  (* Boolean operations *)
-	  | Pnot, [x] -> set ( not_bool ( get i))
+	  | TPnot, [i] -> set ( not_bool ( get i))
 	  (* Integer operations *)
-	  | Pnegint, [i] -> set ( int_op1 uminus ( get i))
-	  | Paddint as op, [x;y]
-	  | Psubint as op, [x;y]
-	  | Pmulint as op, [x;y]
-	  | Pdivint as op, [x;y]
-	  | Pmodint as op, [x;y]
-	  | Pandint as op, [x;y]
-	  | Porint as op, [x;y]
-	  | Pxorint as op, [x;y]
-	  | Plslint as op, [x;y]
-	  | Plsrint as op, [x;y]
-	  | Pasrint as op, [x;y] -> set ( int_op2 ( intop2_of_prim op) (get x) (get y))
-	  | Pintcomp c, [x;y] -> set ( comp c ( get x) ( get y))
-(*	  | Poffsetint of int
-	  | Poffsetref of int
+	  | TPnegint, [i] -> set ( int_op1 uminus ( get i))
+(*	  | TPaddint as op, [x;y]
+	  | TPsubint as op, [x;y]
+	  | TPmulint as op, [x;y]
+	  | TPdivint as op, [x;y]
+	  | TPmodint as op, [x;y]
+	  | TPandint as op, [x;y]
+	  | TPorint as op, [x;y]
+	  | TPxorint as op, [x;y]
+	  | TPlslint as op, [x;y]
+	  | TPlsrint as op, [x;y]
+	  | TPasrint as op, [x;y] -> set ( int_op2 ( intop2_of_prim op) (get x) (get y)) *) (* TODO,handle that *)
+(*	  | TPintcomp c, [x;y] -> set ( comp c ( get x) ( get y)) *)
+(*	  | TPoffsetint of int
+	  | TPoffsetref of int
 	  (* Float operations *)
-	  | Pintoffloat | Pfloatofint
-	  | Pnegfloat | Pabsfloat
-	  | Paddfloat | Psubfloat | Pmulfloat | Pdivfloat
-	  | Pfloatcomp of comparison
+	  | TPintoffloat | TPfloatofint
+	  | TPnegfloat | TPabsfloat
+	  | TPaddfloat | TPsubfloat | TPmulfloat | TPdivfloat
+	  | TPfloatcomp of comparison
 	  (* String operations *)
-	  | Pstringlength | Pstringrefu | Pstringsetu | Pstringrefs | Pstringsets
+	  | TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets
 	  (* Array operations *)
-	  | Pmakearray of array_kind
-	  | Parraylength of array_kind
-	  | Parrayrefu of array_kind
-	  | Parraysetu of array_kind
-	  | Parrayrefs of array_kind
-	  | Parraysets of array_kind
+	  | TPmakearray of array_kind
+	  | TParraylength of array_kind
+	  | TParrayrefu of array_kind
+	  | TParraysetu of array_kind
+	  | TParrayrefs of array_kind
+	  | TParraysets of array_kind
 	  (* Test if the argument is a block or an immediate integer *)
-	  | Pisint
+	  | TPisint
 	  (* Test if the (integer) argument is outside an interval *)
-	  | Pisout
+	  | TPisout
 	  (* Bitvect operations *)
-	  | Pbittest
+	  | TPbittest
 	  (* Operations on boxed integers (Nativeint.t, Int32.t, Int64.t) *)
-	  | Pbintofint of boxed_integer
-	  | Pintofbint of boxed_integer
-	  | Pcvtbint of boxed_integer (*source*) * boxed_integer (*destination*)
-	  | Pnegbint of boxed_integer
-	  | Paddbint of boxed_integer
-	  | Psubbint of boxed_integer
-	  | Pmulbint of boxed_integer
-	  | Pdivbint of boxed_integer
-	  | Pmodbint of boxed_integer
-	  | Pandbint of boxed_integer
-	  | Porbint of boxed_integer
-	  | Pxorbint of boxed_integer
-	  | Plslbint of boxed_integer
-	  | Plsrbint of boxed_integer
-	  | Pasrbint of boxed_integer
-	  | Pbintcomp of boxed_integer * comparison
+	  | TPbintofint of boxed_integer
+	  | TPintofbint of boxed_integer
+	  | TPcvtbint of boxed_integer (*source*) * boxed_integer (*destination*)
+	  | TPnegbint of boxed_integer
+	  | TPaddbint of boxed_integer
+	  | TPsubbint of boxed_integer
+	  | TPmulbint of boxed_integer
+	  | TPdivbint of boxed_integer
+	  | TPmodbint of boxed_integer
+	  | TPandbint of boxed_integer
+	  | TPorbint of boxed_integer
+	  | TPxorbint of boxed_integer
+	  | TPlslbint of boxed_integer
+	  | TPlsrbint of boxed_integer
+	  | TPasrbint of boxed_integer
+	  | TPbintcomp of boxed_integer * comparison
 	  (* Operations on big arrays: (unsafe, #dimensions, kind, layout) *)
-	  | Pbigarrayref of bool * int * bigarray_kind * bigarray_layout
-	  | Pbigarrayset of bool * int * bigarray_kind * bigarray_layout
+	  | TPbigarrayref of bool * int * bigarray_kind * bigarray_layout
+	  | TPbigarrayset of bool * int * bigarray_kind * bigarray_layout
 	  (* size of the nth dimension of a big array *)
-	  | Pbigarraydim of int
+	  | TPbigarraydim of int
 	  (* load/set 16,32,64 bits from a string: (unsafe)*)
-	  | Pstring_load_16 of bool
-	  | Pstring_load_32 of bool
-	  | Pstring_load_64 of bool
-	  | Pstring_set_16 of bool
-	  | Pstring_set_32 of bool
-	  | Pstring_set_64 of bool
+	  | TPstring_load_16 of bool
+	  | TPstring_load_32 of bool
+	  | TPstring_load_64 of bool
+	  | TPstring_set_16 of bool
+	  | TPstring_set_32 of bool
+	  | TPstring_set_64 of bool
 	  (* load/set 16,32,64 bits from a
 	     (char, int8_unsigned_elt, c_layout) Bigarray.Array1.t : (unsafe) *)
-	  | Pbigstring_load_16 of bool
-	  | Pbigstring_load_32 of bool
-	  | Pbigstring_load_64 of bool
-	  | Pbigstring_set_16 of bool
-	  | Pbigstring_set_32 of bool
-	  | Pbigstring_set_64 of bool
+	  | TPbigstring_load_16 of bool
+	  | TPbigstring_load_32 of bool
+	  | TPbigstring_load_64 of bool
+	  | TPbigstring_set_16 of bool
+	  | TPbigstring_set_32 of bool
+	  | TPbigstring_set_64 of bool
 	  (* Compile time constants *)
-	  | Pctconst of compile_time_constant
+	  | TPctconst of compile_time_constant
 	  (* byte swap *)
-	  | Pbswap16
-	  | Pbbswap of boxed_integer
+	  | TPbswap16
+	  | TPbbswap of boxed_integer
 	  (* method call *)
 	  | Method_send of Lambda.meth_kind * Location.t (* moved from lambda to primitive *)
 *)	      
 	  | _ -> failwith "TODO: primitives !"
-	end env
-      | Constraint c ->
-	begin
-	  match c with
-	  | Ccp i  -> set ( restrict_cp (get_env id env) i)
-	  | Ctag t -> set ( restrict_block ( get_env id env) t)
 	end
-	
+      | Constraint c -> failwith "TO CORRECT CONSTRAINT"
+	(* begin *)
+	(*   match c with *)
+	(*   | Ccp i  -> set ( restrict_cp (get_env id env) i) *)
+	(*   | Ctag t -> set ( restrict_block ( get_env id env) t) *)
+	(* end *)
+    in	
     let env = Array.fold_left join_env bottom_env envs in
     let rec aux e l =
     match l with

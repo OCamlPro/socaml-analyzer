@@ -25,8 +25,14 @@ end
 
 begin library "lambda-analysis"
  dirname = "src/tlambda-analysis"
- files = [ "tlambda_to_hgraph.ml" ]
- requires = [ "tlambda" "hgraph" ]
+ files = [ "tlambda_to_hgraph.ml" "tlambda_analysis.ml" ]
+ requires = [ "tlambda" "hgraph" "data" ]
+end
+
+begin program "main"
+ dirname = "src/driver"
+ files = [ "main.ml" ]
+ requires = [ "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
 begin test "test_graph"
