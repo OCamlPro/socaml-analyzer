@@ -1,4 +1,5 @@
 exception Bad_file
+exception No_implementation
 
 let add_cmt result file =
   Queue.add ( Tt_restore.load_and_restore file ) result
@@ -22,9 +23,52 @@ let tt_to_lambda ( name, tree ) =
   Translmod.transl_implementation name
     ( tree, Typedtree.Tcoerce_none)
 
-let mk_lambda ( files : string array ) =
+let mk_lambdas ( files : string array ) =
   let result = Queue.create () in
   Array.iter ( add_file result ) files;
   Array.init
     ( Queue.length result )
     ( fun _ -> tt_to_lambda ( Queue.take result ) )
+
+let unglobalize lambdas =
+  let open Lambda in
+  let m =
+object (self)
+  inherit Lmapper.mapper as super
+
+  val mutable globals = ([] : ( Ident.t * lambda ) list )
+  method register_global i ll =
+    globals <- (i,ll) :: globals
+
+  method! prim p l =
+    match p with
+    | Pgetglobal id -> self#var id
+    | _ -> super#prim p l
+end
+  in
+  let rec aux i =
+    if i = pred (Array.length lambdas)
+    then
+      match m#lambda lambdas.(i) with
+      | Lprim (Psetglobal id, ( [lam]) ) ->
+	m#register_global id lam;
+	lam
+      | _ -> assert false
+    else
+      let l = m#lambda lambdas.(i) in
+      match l with
+      | Lprim (Psetglobal id, [lam]) ->
+	m#register_global id lam;
+	Llet ( Alias, id, lam, aux (succ i))
+      | _ -> assert false
+  in
+  aux 0
+
+let merge_lambdas ( lambdas : Lambda.lambda array ) =
+  if lambdas = [| |]
+  then raise No_implementation
+  else unglobalize lambdas
+
+let mk_lambda files = 
+  let l = merge_lambdas ( mk_lambdas files ) in
+  ( l, Tt_restore.last_ident () )

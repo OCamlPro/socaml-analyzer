@@ -10,6 +10,7 @@ class restorer =
 object (self)
 
   inherit mapper
+  inherit! Identer.reidenter 1001
 
   val mutable import = Sm.empty
   val mutable last_env = Env.initial
@@ -92,6 +93,8 @@ object (self)
 
 end
 let r = new restorer
+
+let last_ident () = r#last_id
 
 let restore fn s nam =
   let s = r # structure s in
