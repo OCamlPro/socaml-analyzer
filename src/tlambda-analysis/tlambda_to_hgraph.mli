@@ -13,5 +13,13 @@ type hinfo =
 | App of id * id (* function, argument *)
 and constr = Ccp of int | Ctag of int
 
-val mk_graph : last_id:int -> funs:( int, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t
-(* the graph, the in, out and exn vectors *)
+type fun_desc =
+  {
+    f_graph : ( unit, (id * hinfo) list, unit ) G.graph;
+    f_in : Vertex.t array;
+    f_out : Vertex.t array;
+  }
+
+
+val mk_graph : last_id:int -> funs:( int, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( int, fun_desc ) Hashtbl.t
+(* the graph, the in, out and exn vectors, the functions *)

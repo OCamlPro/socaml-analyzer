@@ -1,9 +1,11 @@
 open Lambda
 open Tlambda
 open Tlambda_to_hgraph
+module G = G
 
 open Data
 open Int_interv
+
 
 type v = Vertex.t
 type h = Hedge.t
@@ -13,17 +15,17 @@ type ha = ( id * hinfo ) list
 let intop2_of_prim o =
   let open Int_interv in
   match o with
-  | Paddint -> add
-  | Psubint -> sub
-  | Pmulint -> mul
-  | Pdivint -> div
-  | Pmodint -> modulo
-  | Pandint -> band
-  | Porint -> bor
-  | Pxorint -> bxor
-  | Plslint -> blsl
-  | Plsrint -> blsr
-  | Pasrint -> basr
+  | TPaddint -> add
+  | TPsubint -> sub
+  | TPmulint -> mul
+  | TPdivint -> div
+  | TPmodint -> modulo
+  | TPandint -> band
+  | TPorint -> bor
+  | TPxorint -> bxor
+  | TPlslint -> blsl
+  | TPlsrint -> blsr
+  | TPasrint -> basr
   | _ -> assert false
 
 module type Entry =
@@ -31,14 +33,17 @@ sig
   val inv : v
   val outv : v
   val exnv : v
+  val g : ( unit, ( id * hinfo ) list, unit ) G.graph 
+  val funs : ( int, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
 end
 
 module M ( E : Entry ) =
 struct
+  module H = Tlambda_to_hgraph.G
+
   type hedge = h
   type vertex = v
   type abstract = e
-  type hedge_atribute = ha
 
   let bottom _ = bottom_env
   let is_bottom _ = is_bottom_env
@@ -46,8 +51,26 @@ struct
   let join_list _ = List.fold_left join_env bottom_env
   let abstract_init v = if v = E.inv then empty_env else bottom_env
 
+  type hedge_attribute = ha
+  type vertex_attribute = unit
+  type graph_attribute = unit
 
-  let apply _ l envs =
+  type function_id = int
+  module Function_id =
+    struct
+      type t = int
+      let compare (x:int) y = compare x y
+      let equal (x:int) y = x = y
+      let hash (x:int) = Hashtbl.hash x
+      let print f x = Format.fprintf f "<%d>" x
+    end
+  let find_function id = failwith "TODO: find_function"
+
+  let clone_vertex v = failwith "TODO: clone vertex"
+  let clone_hedge h = failwith "TODO: clone hedge"
+
+
+  let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
   let constant _ = failwith "TODO: constant !" in
     let in_apply ( id, action) env =
       let set x = set_env id x env
@@ -58,6 +81,7 @@ struct
       and vbool_any = cp_any 2
       in
       match action with
+      | App ( f, x ) -> failwith "TODO: App"
       | Var i -> set ( get i)
       | Const c -> set ( constant c)
       | Prim ( p, l) ->
@@ -86,17 +110,17 @@ struct
 	  | TPnot, [i] -> set ( not_bool ( get i))
 	  (* Integer operations *)
 	  | TPnegint, [i] -> set ( int_op1 uminus ( get i))
-(*	  | TPaddint as op, [x;y]
-	  | TPsubint as op, [x;y]
-	  | TPmulint as op, [x;y]
-	  | TPdivint as op, [x;y]
-	  | TPmodint as op, [x;y]
-	  | TPandint as op, [x;y]
-	  | TPorint as op, [x;y]
-	  | TPxorint as op, [x;y]
-	  | TPlslint as op, [x;y]
-	  | TPlsrint as op, [x;y]
-	  | TPasrint as op, [x;y] -> set ( int_op2 ( intop2_of_prim op) (get x) (get y)) *) (* TODO,handle that *)
+	  | TPaddint, [x;y]
+	  | TPsubint, [x;y]
+	  | TPmulint, [x;y]
+	  | TPdivint, [x;y]
+	  | TPmodint, [x;y]
+	  | TPandint, [x;y]
+	  | TPorint, [x;y]
+	  | TPxorint, [x;y]
+	  | TPlslint, [x;y]
+	  | TPlsrint, [x;y]
+	  | TPasrint, [x;y] -> set ( int_op2 ( intop2_of_prim p) (get x) (get y))
 (*	  | TPintcomp c, [x;y] -> set ( comp c ( get x) ( get y)) *)
 (*	  | TPoffsetint of int
 	  | TPoffsetref of int
@@ -179,7 +203,6 @@ struct
     match l with
     | [] -> e
     | h :: t -> aux (in_apply h e) t
-    in aux env l
-
+    in [|aux env l|], []
 
 end
