@@ -35,6 +35,8 @@ sig
   val exnv : v
   val g : ( unit, ( id * hinfo ) list, unit ) G.graph 
   val funs : ( int, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
+  val mk_vertex : unit -> v
+  val mk_hedge : unit -> Hedge.t
 end
 
 module M ( E : Entry ) =
@@ -66,8 +68,8 @@ struct
     end
   let find_function id = failwith "TODO: find_function"
 
-  let clone_vertex v = failwith "TODO: clone vertex"
-  let clone_hedge h = failwith "TODO: clone hedge"
+  let clone_vertex _ = E.mk_vertex ()
+  let clone_hedge _ = E.mk_hedge ()
 
 
   let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
@@ -90,12 +92,12 @@ struct
 	  | TPidentity, [i] -> set ( get i)
 	  | TPignore, _ -> set vunit
 	  (* Operations on heap blocks *)
-(*	  | TPmakeblock ( tag, _), _ ->
+	  | TPmakeblock ( tag, _), _ ->
 	    let a = Array.of_list l in
-	    set ( block_singleton tag ( Ids.singleton ( Array.length a ) a ) ) *) (* SORT IT OUT ! *)
-(*	  | TPfield i, [b] ->
+	    set ( block_singleton tag a )
+	  | TPfield i, [b] ->
 	    let env = set_env b ( restrict_block ~has_field:i ( get b)) env in
-	    set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *) *)
+	    set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *)
 (*	  | TPsetfield ( i, _), [b;v] ->
 	    let env = set_env b ( set_field i v ( get b)) env in
 	    set_env id vunit env *)
@@ -121,7 +123,9 @@ struct
 	  | TPlslint, [x;y]
 	  | TPlsrint, [x;y]
 	  | TPasrint, [x;y] -> set ( int_op2 ( intop2_of_prim p) (get x) (get y))
-(*	  | TPintcomp c, [x;y] -> set ( comp c ( get x) ( get y)) *)
+	  | TPintcomp c, [x;y] -> 
+	    let res, x', y' = int_comp c ( get x) ( get y) in
+	    set_env x x' ( set_env y y' ( set res ) )
 (*	  | TPoffsetint of int
 	  | TPoffsetref of int
 	  (* Float operations *)

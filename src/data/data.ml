@@ -115,6 +115,8 @@ let reg_env data env =
 
 (* ints *)
 
+let restrict_int x = { bottom with int = x.int }
+
 let int_singleton const =
   { bottom with int = Int_interv.cst const }
 let any_int = { bottom with int = Int_interv.top }
@@ -128,6 +130,15 @@ let int_op1 ( f : Int_interv.t -> Int_interv.t) x =
 let int_op2 ( f : Int_interv.t -> Int_interv.t -> Int_interv.t) x y =
   { bottom with int = f x.int y.int }
 
+let int_comp c x y =
+  begin
+    match Int_interv.comp c x.int y.int with
+    | Some true -> { bottom with cp = Ints.singleton 1 }
+    | Some false -> { bottom with cp = Ints.singleton 0 }
+    | None -> { bottom with cp = Ints.add 1 ( Ints.singleton 0 ) }
+  end,
+    restrict_int x,
+    restrict_int y
 
 let cp_any i =
   let rec aux res = function
@@ -138,8 +149,8 @@ let cp_any i =
 let cp_singleton i =
   { bottom with cp = Ints.singleton i }
 
-let block_singleton tag contents =
-  { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length contents) contents) }
+let block_singleton tag content =
+  { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length content) ( Array.map Ids.singleton content) ) }
 
 let restrict_cp ?v d =
   match v with
@@ -172,6 +183,8 @@ let set_field i v b =
   let b = restrict_block ~has_field:i b in
   { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
 
+
+let get_field i b env = failwith "TODO: get_field"
 
 (* booleans *)
 let booleans = (cp_any 2)

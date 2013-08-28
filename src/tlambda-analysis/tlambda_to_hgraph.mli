@@ -1,5 +1,13 @@
-module Vertex : Hgraph.OrderedHashedType
-module Hedge : Hgraph.OrderedHashedType
+module Vertex :
+sig
+  include Hgraph.OrderedHashedType
+  val mk : unit -> t
+end
+module Hedge :
+sig
+  include Hgraph.OrderedHashedType
+  val mk : unit -> t
+end
 
 module G : ( Hgraph.Hgraph with type T.vertex = Vertex.t and type T.hedge = Hedge.t )
 
