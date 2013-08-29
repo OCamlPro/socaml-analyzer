@@ -147,7 +147,8 @@ let mk_graph ~last_id ~funs main =
       add_hedge g ( Hedge.mk ()) [ id, App ( f, x ) ]
 	~pred:[|inv|] ~succ:[| outv; exnv |]
 
-    | Tprim ( p, args) -> simpleh g id ( Prim ( p, args)) ~inv ~outv
+    | Tprim ( p, args) ->
+      add_hedge g ( Hedge.mk ()) [ id, ( Prim ( p, args))] ~pred:[|inv|] ~succ:[|outv;exnv|]
 
     | Tswitch ( si_id, s) ->
       let switch_handle is_cp (i,lam) =
