@@ -85,15 +85,12 @@ struct
       let set x = set_env id x env
       and get x = get_env x env
       and vunit = cp_singleton 0
-      and vtrue = cp_singleton 1
-      and vfalse = cp_singleton 0
-      and vbool_any = cp_any 2
       in
       match action with
       | App _ -> assert false
       | Var i -> set ( get i)
       | Const c -> set ( constant c)
-      | Prim ( p, l) ->
+      | Prim ( p, l,exnid) ->
 	begin
 	  match p, l with
 	  | TPidentity, [i] -> set ( get i)

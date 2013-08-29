@@ -34,7 +34,7 @@ type id = Ident.t
 type hinfo =
 | Var of id
 | Const of Lambda.structured_constant
-| Prim of Tlambda.primitive * id list
+| Prim of Tlambda.primitive * id list * id
 | Constraint of constr
 | App of id * id (* function, argument *)
 and constr = Ccp of int | Ctag of int
