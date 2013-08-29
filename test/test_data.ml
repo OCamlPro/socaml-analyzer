@@ -1,6 +1,7 @@
 open Format
 open Data
 open Utils
+open Common_types
 
 module Vertex = struct
   type t = string
@@ -287,8 +288,8 @@ module Manager = struct
 
   let is_leq _ = Env.is_leq
 
-  type function_id = Data.f
-  module Function_id = Data.F
+  type function_id = F.t
+  module Function_id = F
 
   let find_function id =
     assert(F.equal id func);
@@ -321,7 +322,7 @@ let ouput_dot g =
     (* ~print_attrhedge *)
     Format.std_formatter g
 
-module FP = Hgraph.Fixpoint(Manager)
+module FP = Hgraph.Fixpoint(T)(Manager)
 (* let err_graph = ref None *)
 let r =
   try FP.kleene_fixpoint (* ~err_graph *) g (Manager.H.VertexSet.singleton v0)

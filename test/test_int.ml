@@ -268,7 +268,7 @@ module Manager = struct
 
 end
 
-module FP = Hgraph.Fixpoint(Manager)
+module FP = Hgraph.Fixpoint(T)(Manager)
 module H = Manager.H
 
 let g = H.create ()
