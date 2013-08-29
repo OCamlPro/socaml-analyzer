@@ -1,5 +1,11 @@
 comp += [ "-g" ]
 
+begin library "common"
+ dirname = "src/common"
+ files = [ "utils.ml" "common_types.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" ]
+end
+
 begin library "lambda"
  dirname = "src/lambda"
  files = [ "tt_mapper.ml" "identer.ml" "tt_restore.ml" "lmapper.ml" "mk_lambda.ml" ]
@@ -9,13 +15,13 @@ end
 begin library "tlambda"
  dirname = "src/tlambda"
  files = [ "tlambda.mli" "tlambda_interpret.ml" "lambda_to_tlambda.ml" ]
- requires = [ "compiler-libs" "compiler-libs.common" ]
+ requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 
 begin library "data"
  dirname = "src/data"
- files = [ "utils.ml" "int_interv.ml" "data.ml" ]
- requires = [ "compiler-libs" "compiler-libs.common" "tlambda" ]
+ files = [ "int_interv.ml" "data.ml" ]
+ requires = [ "common" "compiler-libs" "compiler-libs.common" "tlambda" ]
 end
 
 begin library "hgraph"
@@ -26,13 +32,13 @@ end
 begin library "lambda-analysis"
  dirname = "src/tlambda-analysis"
  files = [ "tlambda_to_hgraph.ml" "tlambda_analysis.ml" ]
- requires = [ "tlambda" "hgraph" "data" ]
+ requires = [ "common" "tlambda" "hgraph" "data" ]
 end
 
 begin program "main"
  dirname = "src/driver"
  files = [ "main.ml" ]
- requires = [ "lambda" "tlambda" "hgraph" "lambda-analysis" ]
+ requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
 begin test "test_graph"
@@ -47,10 +53,10 @@ end
 
 begin test "test_data"
  files = [ "test/test_data.ml" ]
- requires = [ "hgraph" "data" ]
+ requires = [ "common" "hgraph" "data" ]
 end
 
 begin test "test_tlambda"
  files = [ "test/test_tlambda.ml" ]
- requires = [ "tlambda" ]
+ requires = [ "common" "tlambda" ]
 end

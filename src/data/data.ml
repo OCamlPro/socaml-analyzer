@@ -1,25 +1,10 @@
 (* The atomic types *)
 
 open Utils
-
+open Common_types
 (* use generative applications to have a new type each time *)
-module Id =
-struct
-  open Ident
-  type t = Ident.t
-  let compare = compare
-  let name x = Some x.name
-  let to_string x = Printf.sprintf "%s/%d" x.name x.stamp
-  let output o x = Printf.fprintf o "%s/%d" x.name x.stamp
-  let print = print
-  let idref = ref 0
-  let create ?(name="") () =
-    decr idref;
-    { stamp = !idref; name = ( "$$" ^ name ); flags = 0; }
-end
 
 module Constant = MakeId(struct end)
-module F = MakeId(struct end)
 
 type id = Id.t
 
@@ -272,6 +257,9 @@ and union_id env i1 i2 =
   reg_env u env
   
 let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_env a env) b) ids ( (* env, *) bottom)
+
+let fun_ids i env =
+  Fm.fold (fun i _ l -> i::l ) (get_env i env).f []
 
 (* simple access *)
 
