@@ -1,3 +1,4 @@
+open Common_types
 open Lambda
 open Tlambda
 open Tlambda_to_hgraph
@@ -34,14 +35,20 @@ sig
   val outv : v
   val exnv : v
   val g : ( unit, ( id * hinfo ) list, unit ) G.graph 
-  val funs : ( int, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
+  val funs : ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
+  val return_id : Ident.t
 end
 
-module M ( E : Entry ) =
+module M : functor ( E : Entry ) ->
+  Hgraph.Manager with module T := T and module H = G =
+			functor ( E : Entry ) ->
 struct
+
   module H = Tlambda_to_hgraph.G
+
+  open H
 
   type hedge = h
   type vertex = v
@@ -57,16 +64,16 @@ struct
   type vertex_attribute = unit
   type graph_attribute = unit
 
-  type function_id = int
-  module Function_id =
-    struct
-      type t = int
-      let compare (x:int) y = compare x y
-      let equal (x:int) y = x = y
-      let hash (x:int) = Hashtbl.hash x
-      let print f x = Format.fprintf f "<%d>" x
-    end
-  let find_function id = failwith "TODO: find_function"
+  type function_id = F.t
+  module Function_id = F
+  let find_function fid =
+    let f = Hashtbl.find E.funs fid in
+    f.f_graph, {
+      sg_input = f.f_in;
+      sg_output = f.f_out;
+      sg_vertex = f.f_vertex;
+      sg_hedge = f.f_hedge;
+    }
 
   let clone_vertex _ = E.mk_vertex ()
   let clone_hedge _ = E.mk_hedge ()
@@ -83,7 +90,7 @@ struct
       and vbool_any = cp_any 2
       in
       match action with
-      | App ( f, x ) -> failwith "TODO: App"
+      | App _ -> assert false
       | Var i -> set ( get i)
       | Const c -> set ( constant c)
       | Prim ( p, l) ->
@@ -195,18 +202,22 @@ struct
 *)	      
 	  | _ -> failwith "TODO: primitives !"
 	end
-      | Constraint c -> failwith "TO CORRECT CONSTRAINT"
-	(* begin *)
-	(*   match c with *)
-	(*   | Ccp i  -> set ( restrict_cp (get_env id env) i) *)
-	(*   | Ctag t -> set ( restrict_block ( get_env id env) t) *)
-	(* end *)
+      | Constraint c ->
+	begin
+	  match c with
+	  | Ccp v  -> set ( restrict_cp ~v (get_env id env))
+	  | Ctag tag -> set ( restrict_block ~tag ( get_env id env ) )
+	end
     in	
     let env = Array.fold_left join_env bottom_env envs in
     let rec aux e l =
     match l with
     | [] -> e
     | h :: t -> aux (in_apply h e) t
-    in [|aux env l|], []
+    in 
+    match l with
+    | [ id, ( App ( f, x ) ) ] ->
+      ( [| set_env id (get_env E.return_id env) env; env |], ( fun_ids f env ) )
+    | _ -> [|aux env l|], []
 
 end

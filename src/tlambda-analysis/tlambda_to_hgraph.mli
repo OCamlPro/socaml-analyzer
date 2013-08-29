@@ -9,7 +9,25 @@ sig
   val mk : unit -> t
 end
 
-module G : ( Hgraph.Hgraph with type T.vertex = Vertex.t and type T.hedge = Hedge.t )
+module T :  Hgraph.T
+with type vertex = Vertex.t and type hedge = Hedge.t
+and module Vertex = Vertex and module Hedge = Hedge
+
+module G :
+  ( Hgraph.Hgraph
+    with
+      type T.vertex = T.vertex
+    and type T.hedge = T.hedge
+    and module T := T
+    and type VertexSet.t = Set.Make(T.Vertex).t
+    and type VertexSet.elt = T.vertex
+    and type HedgeSet.t = Set.Make(T.Hedge).t
+    and type HedgeSet.elt = Set.Make(T.Hedge).elt
+    and module VertexSet = Set.Make(T.Vertex)
+    and module HedgeSet = Set.Make(T.Hedge)
+  )
+    
+open G
 
 type id = Ident.t
 
@@ -26,8 +44,10 @@ type fun_desc =
     f_graph : ( unit, (id * hinfo) list, unit ) G.graph;
     f_in : Vertex.t array;
     f_out : Vertex.t array;
+    f_vertex : VertexSet.t;
+    f_hedge : HedgeSet.t;
   }
 
 
-val mk_graph : last_id:int -> funs:( int, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( int, fun_desc ) Hashtbl.t
-(* the graph, the in, out and exn vectors, the functions *)
+val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * id * id * id
+(* the graph, the in, out and exn vectors, the functions, the arg, return and exn ids *)

@@ -1,8 +1,6 @@
+open Common_types
 open Lambda
 open Tlambda
-
-module Id =
-struct type t = Ident.t let compare = compare end
 
 module Imap = Map.Make ( Id )
 module Iset = Set.Make ( Id )
@@ -114,14 +112,12 @@ let prim_translate = function
 
 let lambda_to_tlambda last_id code =
 
-  let fid = ref 0 in
-  let funs : ( int, tlambda) Hashtbl.t
+  let funs : ( F.t, tlambda) Hashtbl.t
       = Hashtbl.create 100
   in
   let register_function body =
-    let f = !fid in
+    let f = F.create () in
     Hashtbl.add funs f body;
-    incr fid;
     f
   in
   let ir = ref last_id in

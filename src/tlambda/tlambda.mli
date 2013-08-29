@@ -97,7 +97,7 @@ type primitive =
 (* method call *)
 | TPmethod_send of Lambda.meth_kind (* moved from lambda to primitive *)
 (* function operations *)
-| TPfun of int
+| TPfun of Common_types.F.t
 | TPfunfield of int
 
 

@@ -36,7 +36,7 @@ struct
   let mk () = incr c; !c
 end
 
-module Desc =
+module T =
 struct
   type vertex = Vertex.t
   type hedge = Hedge.t
@@ -52,7 +52,7 @@ struct
   let print_hedge _ _ = ()
 end
 
-module G = Hgraph.Make (Desc)
+module G = Hgraph.Make (T)
 open G
 
 type hinfo =
@@ -68,6 +68,8 @@ type fun_desc =
     f_graph : ( unit, (id * hinfo) list, unit ) G.graph;
     f_in : Vertex.t array;
     f_out : Vertex.t array;
+    f_vertex : VertexSet.t;
+    f_hedge : HedgeSet.t;
   }
 
 let ctrue = Constraint (Ccp 1)
@@ -96,10 +98,10 @@ let mk_graph ~last_id ~funs main =
     let v = Vertex.mk () in
     add_vertex g v (); v in
   let nf = Hashtbl.length funs in
-(*  let fun_id = mk_id "$f" in
+(*  let fun_id = mk_id "$f" in *)
   let f_arg_id = mk_id "$x" in
   let f_ret_id = mk_id "$ans" in
-  let f_exn_id = mk_id "$exn" in *)
+  let f_exn_id = mk_id "$exn" in
   let fun_descs = Hashtbl.create nf
   and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in
 
@@ -108,7 +110,9 @@ let mk_graph ~last_id ~funs main =
       let f_graph = create () in
       let f_in = [| nv g |]
       and f_out = [| nv g; nv g |] in
-      Hashtbl.add fun_descs i { f_graph; f_in; f_out; }
+      let f_vertex = VertexSet.empty
+      and f_hedge = HedgeSet.empty in
+      Hashtbl.add fun_descs i { f_graph; f_in; f_out; f_vertex; f_hedge; }
     )
     funs;
 
@@ -232,7 +236,25 @@ let mk_graph ~last_id ~funs main =
       ~outv:f.f_out.(0)
       ~exnv:f.f_out.(1)
       ~ret_id ~exn_id
-      ( Hashtbl.find funs i ) ) fun_descs;
+      ( Hashtbl.find funs i );
+    Hashtbl.replace fun_descs i
+      { f with
+	f_vertex =
+	  VertexSet.remove f.f_in.(0) (
+	      VertexSet.remove f.f_out.(0) (
+		VertexSet.remove f.f_out.(1) (
+		  ( List.fold_left
+		      (fun vs v -> VertexSet.add v vs )
+		      VertexSet.empty
+		      ( list_vertex f.f_graph )
+		  ))));
+	f_hedge =
+	  List.fold_left
+	    (fun hs h -> HedgeSet.add h hs )
+	    HedgeSet.empty
+	    ( list_hedge f.f_graph )
+      }
+  ) fun_descs;
   let inv = nv g and outv = nv g and exnv = nv g in
   tlambda ~g ~inv ~outv ~exnv ~ret_id ~exn_id main;
-  ( g, inv, outv, exnv, fun_descs )
+  ( g, inv, outv, exnv, fun_descs, f_arg_id, f_ret_id, f_exn_id )
