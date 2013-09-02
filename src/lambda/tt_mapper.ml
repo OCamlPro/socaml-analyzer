@@ -298,7 +298,7 @@ object (self)
     | Tstr_class_type ( l ) ->
       Tstr_class_type ( map3 self#ident self#string_loc self#class_type_declaration l )
     | Tstr_include ( mexpr, l ) ->
-      Tstr_include ( self#module_expr mexpr, map self#ident l)
+      Tstr_include ( self#module_expr mexpr, map self#t_signature_item l)
 
   method module_coercion =
     function
