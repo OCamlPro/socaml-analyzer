@@ -43,7 +43,7 @@ type data =
     cp : Ints.t;
     blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
     f : Ids.t array Fm.t;
-    expr : Tlambda.tcontrol list;
+    expr : hinfo list;
   }
 
 let simple_bottom = Constants Constants.empty
@@ -103,8 +103,11 @@ let reg_env data env =
 let restrict_int x = { bottom with int = x.int }
 
 let int_singleton const =
-  { bottom with int = Int_interv.cst const }
-let any_int = { bottom with int = Int_interv.top }
+  { bottom with
+    int = Int_interv.cst const;
+  }
+let any_int =
+  { bottom with int = Int_interv.top;  }
 
 let int_add x y =
   { bottom with int = Int_interv.add x.int y.int }
@@ -186,6 +189,13 @@ let not_bool x =
 	  | 1 -> Ints.add 0 res
 	  | _ -> res ) x.cp Ints.empty;
   }
+
+(* expressions *)
+
+let set_expression d e = { d with expr = [e]; }
+let set_expressions d l = { d with expr = l; }
+let add_expressions d e = { d with expr = e :: d.expr; }
+
 
 (* Bottom test *)
 

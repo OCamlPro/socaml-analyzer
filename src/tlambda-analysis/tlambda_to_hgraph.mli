@@ -1,3 +1,5 @@
+open Common_types
+
 module Vertex :
 sig
   include Hgraph.OrderedHashedType
@@ -28,16 +30,6 @@ module G :
   )
     
 open G
-
-type id = Ident.t
-
-type hinfo =
-| Var of id
-| Const of Lambda.structured_constant
-| Prim of Tlambda.primitive * id list * id
-| Constraint of constr
-| App of id * id (* function, argument *)
-and constr = Ccp of int | Ctag of int
 
 type fun_desc =
   {

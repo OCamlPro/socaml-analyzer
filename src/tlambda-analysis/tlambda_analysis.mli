@@ -1,3 +1,4 @@
+open Common_types
 open Tlambda_to_hgraph
 
 type v = Vertex.t

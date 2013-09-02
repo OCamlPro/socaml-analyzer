@@ -1,3 +1,5 @@
+open Common_types
+
 type id = Ident.t
 
 module type E =
@@ -54,14 +56,6 @@ end
 
 module G = Hgraph.Make (T)
 open G
-
-type hinfo =
-| Var of id
-| Const of Lambda.structured_constant
-| Prim of Tlambda.primitive * id list * id (* the exn id *)
-| Constraint of constr
-| App of id * id (* function, argument *)
-and constr = Ccp of int | Ctag of int
 
 type fun_desc =
   {

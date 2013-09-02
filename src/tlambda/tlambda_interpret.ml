@@ -2,6 +2,7 @@ open Ident
 open Lambda
 open Asttypes
 open Tlambda
+open Common_types
 
 module Idm = Map.Make ( struct type t = Ident.t let compare = compare end )
 

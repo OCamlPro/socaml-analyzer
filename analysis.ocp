@@ -21,7 +21,7 @@ end
 begin library "data"
  dirname = "src/data"
  files = [ "int_interv.ml" "data.ml" ]
- requires = [ "common" "compiler-libs" "compiler-libs.common" "tlambda" ]
+ requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 
 begin library "hgraph"

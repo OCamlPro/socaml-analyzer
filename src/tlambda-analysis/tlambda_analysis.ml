@@ -85,11 +85,12 @@ struct
     let set x = set_env id x env
     and get x = get_env x env
     and vunit = cp_singleton 0
+    and act d = set_expression d action
     in
     match action with
     | App _ -> assert false
     | Var i -> set ( get i)
-    | Const c -> set ( constant c)
+    | Const c -> set ( act (constant c) )
     | Prim ( p, l,exnid) ->
       begin
 	match p, l with
@@ -98,7 +99,7 @@ struct
 	  (* Operations on heap blocks *)
 	| TPmakeblock ( tag, _), _ ->
 	  let a = Array.of_list l in
-	  set ( block_singleton tag a )
+	  set ( act ( block_singleton tag a ))
 	| TPfield i, [b] ->
 	  let env = set_env b ( restrict_block ~has_field:i ( get b)) env in
 	  set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *)
@@ -126,7 +127,7 @@ struct
 	| TPxorint, [x;y]
 	| TPlslint, [x;y]
 	| TPlsrint, [x;y]
-	| TPasrint, [x;y] -> set ( int_op2 ( intop2_of_prim p) (get x) (get y))
+	| TPasrint, [x;y] -> set ( act ( int_op2 ( intop2_of_prim p) (get x) (get y)))
 	| TPintcomp c, [x;y] -> 
 	  let res, x', y' = int_comp c ( get x) ( get y) in
 	  set_env x x' ( set_env y y' ( set res ) )
