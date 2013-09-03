@@ -64,6 +64,20 @@ let bottom =
     expr = [];
   }
 
+(* Bottom test *)
+
+let is_bottom_simple = function
+  | Top -> false
+  | Constants c -> Constants.is_empty c
+
+let is_bottom env { top; int; float; string; floata; i32;
+                i64; inat; cp; blocks; f } =
+  top = false && Int_interv.is_bottom int && is_bottom_simple float &&
+  is_bottom_simple string && is_bottom_simple floata &&
+  is_bottom_simple i32 && is_bottom_simple i64 &&
+  is_bottom_simple inat &&
+  Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
+
 
 (* Environment management *)
 
@@ -95,6 +109,9 @@ let reg_env data env =
   let i = Id.create () in
   ( set_env i data env, i)
 
+let mem_env id = function
+  | Bottom -> false
+  | Env m -> Idm.mem id m
 
 (* simple functions and values *)
 
@@ -146,7 +163,7 @@ let block_singleton tag content =
 
 let has_cp v d = Ints.mem v d.cp
 let is_one_cp d env =
-  Ints.length d.cp = 1 &&
+  Ints.cardinal d.cp = 1 &&
   is_bottom env { d with cp = bottom.cp }
 
 let restrict_cp ?v d =
@@ -173,7 +190,7 @@ let restrict_block ?tag ?has_field ?size d =
 
 let has_tag t d = Tagm.mem t d.blocks
 let is_one_tag d env =
-  Tagm.length d.blocks = 1 &&
+  Tagm.cardinal d.blocks = 1 &&
   is_bottom env { d with blocks = bottom.blocks }
 
 let set_a i v a =
@@ -209,21 +226,6 @@ let not_bool x =
 let set_expression d e = { d with expr = [e]; }
 let set_expressions d l = { d with expr = l; }
 let add_expressions d e = { d with expr = e :: d.expr; }
-
-
-(* Bottom test *)
-
-let is_bottom_simple = function
-  | Top -> false
-  | Constants c -> Constants.is_empty c
-
-let is_bottom env { top; int; float; string; floata; i32;
-                i64; inat; cp; blocks; f } =
-  top = false && Int_interv.is_bottom int && is_bottom_simple float &&
-  is_bottom_simple string && is_bottom_simple floata &&
-  is_bottom_simple i32 && is_bottom_simple i64 &&
-  is_bottom_simple inat &&
-  Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
 
 (* Union *)
 
@@ -489,3 +491,51 @@ let is_leq_env e1 e2 =
   | Env e1, Env e2 ->
     Idm.for_all (fun id d -> try is_leq d ( Idm.find id e2) with Not_found -> false ) e1
 
+(* Garbage collection *)
+
+let gc_env roots env =
+  let dep_blocks b res =
+    Tagm.fold (fun _ t res ->
+      Intm.fold
+	(fun _ a res ->
+	  Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
+	) t res
+    ) b res
+  and dep_funs f res =
+    Fm.fold (fun _ a res ->
+      Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
+    ) f res
+  and dep_expr l res =
+    let rec aux res = function
+    | [] -> res
+    | e :: tl ->
+      begin
+	match e with
+	| Var x -> aux (x::res) tl
+	| App ( f, x ) -> aux ( f :: x :: res ) tl
+	| Constraint _
+	| Const _ -> aux res tl
+	| Prim ( _, l, exnid ) -> aux ( List.rev_append l ( exnid :: res ) ) tl
+      end
+    in aux res l
+
+  in
+  let dependancies id idm =
+    let d = Idm.find id idm in
+    dep_blocks d.blocks ( dep_funs d.f ( dep_expr d.expr [] ) )
+  in
+  let rec add_with_dependants id idm res =
+    if mem_env id res
+    then res
+    else
+      let res = set_env id (Idm.find id idm) res in
+      aux res idm (dependancies id idm)
+  and aux res idm = function
+    | [] -> res
+    | id :: tl ->
+      aux ( add_with_dependants id idm res ) idm tl
+  in
+  match env with
+    Bottom -> Bottom
+  | Env m -> aux empty_env m roots
+    

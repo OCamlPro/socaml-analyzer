@@ -38,20 +38,20 @@ let may_rev_comp c cp =
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
   let l = d.expr in
-  if has_cp v d
+  if has_cp cp d
   then
-    if is_one_cp d
+    if is_one_cp d env
     then env
     else
       begin
 	constraint_env_cp_list l cp env
-	|> set_env id (restrict_cp ~v d)
+	|> set_env id (restrict_cp ~v:cp d)
       end
   else bottom_env
 
 and constraint_env_cp_list l cp env =
   List.fold_left
-    (fun e expr -> join_env e ( constraint_env_cp expr c env ) )
+    (fun e expr -> join_env e ( constraint_env_cp expr cp env ) )
     bottom_env l
 
 and constraint_env_cp expr cp env =
@@ -71,15 +71,16 @@ and constraint_env_cp expr cp env =
 	  set_env x x' env
       |> set_env y y'
       | TPmakeblock _, _ -> bottom_env
+      | _, _ -> failwith "TODO: primitive constraints"
     end
   | _ -> env
 
-let rec constraint_env_tag_var id cp env =
+let rec constraint_env_tag_var id tag env =
   let d = get_env id env in
   let l = d.expr in
   if has_tag tag d
   then
-    if is_one_tag d
+    if is_one_tag d env
     then env
     else
       begin
@@ -275,10 +276,8 @@ struct
     | Constraint c ->
       begin
 	match c with
-	| Ccp v  ->
-	  constraint_env_cp_var id cp env
-	| Ctag tag ->
-	  constraint_env_tag_var id cp env
+	| Ccp cp  -> constraint_env_cp_var id cp env
+	| Ctag tag -> constraint_env_tag_var id tag env
       end
   in	
   let env = Array.fold_left join_env bottom_env envs in

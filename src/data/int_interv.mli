@@ -33,5 +33,6 @@ val basr : t -> t -> t
 type compres = bool option
 
 val comp : Lambda.comparison -> t -> t -> compres
+val make_comp : Lambda.comparison -> t -> t -> t * t
 val leqcst : t -> int -> t
 val geqcst : t -> int -> t

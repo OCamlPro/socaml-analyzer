@@ -160,7 +160,8 @@ let comp c x y =
       | Cge -> test_le yl yg xl yg
     end
 
-let make_comp c x y =
+let make_comp c x y : t * t =
+  let open Lambda in
   match x, y with
   | None, _ | _, None -> bottom, bottom
   | Some _, Some _ when is_top x || is_top y ->  x, y
@@ -172,12 +173,12 @@ let make_comp c x y =
 	and g = min xg yg
 	in
 	if l <= g
-	then Some ( l, g )
-	else None
+	then ( let r = Some ( l, g ) in r, r )
+	else ( bottom, bottom )
       | Cneq ->
 	if xl = xg
 	then
-	  begin
+	  (
 	    if xl = yl
 	    then
 	      if yl = yg
@@ -186,14 +187,17 @@ let make_comp c x y =
 	    else if xg = yg
 	    then ( x, Some ( yl, pred yg ) )
 	    else ( x, y )
-	  end
+	  )
 	else if yl = yg
 	then
-	  if yl = xl
-	  then ( Some ( succ xl, xg ), y )
-	  else if yg = xg
-	  then ( Some ( xl, pred xg ), y )
-	  else ( x, y )
+	  (
+	    if yl = xl
+	    then ( Some ( succ xl, xg ), y )
+	    else if yg = xg
+	    then ( Some ( xl, pred xg ), y )
+	    else ( x, y )
+	  )
+	else ( x, y )
       | Clt ->
 	if xl >= yg
 	then ( bottom, bottom )
