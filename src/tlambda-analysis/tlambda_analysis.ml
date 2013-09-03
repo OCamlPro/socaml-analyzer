@@ -158,12 +158,12 @@ struct
     in
     match action with
     | App _ -> assert false
-    | Var i -> set ( get i)
+    | Var i -> set ( act (get i) )
     | Const c -> set ( act (constant c) )
     | Prim ( p, l,exnid) ->
       begin
 	match p, l with
-	| TPidentity, [i] -> set ( get i)
+	| TPidentity, [i] -> set ( act (get i) )
 	| TPignore, _ -> set vunit
 	  (* Operations on heap blocks *)
 	| TPmakeblock ( tag, _), _ ->
