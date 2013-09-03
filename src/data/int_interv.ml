@@ -159,7 +159,60 @@ let comp c x y =
       | Cle -> test_le xl xg yl yg
       | Cge -> test_le yl yg xl yg
     end
-      
+
+let make_comp c x y =
+  match x, y with
+  | None, _ | _, None -> bottom, bottom
+  | Some _, Some _ when is_top x || is_top y ->  x, y
+  | Some ( xl, xg ), Some ( yl, yg ) ->
+    begin
+      match c with
+      | Ceq ->
+	let l = max xl yl
+	and g = min xg yg
+	in
+	if l <= g
+	then Some ( l, g )
+	else None
+      | Cneq ->
+	if xl = xg
+	then
+	  begin
+	    if xl = yl
+	    then
+	      if yl = yg
+	      then ( bottom, bottom )
+	      else ( x, Some ( succ yl, yg ) )
+	    else if xg = yg
+	    then ( x, Some ( yl, pred yg ) )
+	    else ( x, y )
+	  end
+	else if yl = yg
+	then
+	  if yl = xl
+	  then ( Some ( succ xl, xg ), y )
+	  else if yg = xg
+	  then ( Some ( xl, pred xg ), y )
+	  else ( x, y )
+      | Clt ->
+	if xl >= yg
+	then ( bottom, bottom )
+	else ( Some ( xl, min xg (pred yg) ), Some ( max yl (succ xl), yg ) )
+      | Cgt ->
+	if xg <= yl
+	then ( bottom, bottom )
+	else ( Some ( max xl (succ yl), xg ), Some ( yl, min yg (pred xg) ) )
+      | Cle ->
+	if xl > yg
+	then ( bottom, bottom )
+	else ( Some ( xl, min xg yg ), Some ( max yl xl, yg ) )
+      | Cge ->
+	if xg < yl
+	then ( bottom, bottom )
+	else ( Some ( max xl yl, xg ), Some ( yl, min yg xg ) )
+	
+    end
+    
 
 let leqcst x c = meet x ( Some ( minimum, c))
 let geqcst x c = meet x ( Some ( c, maximum))

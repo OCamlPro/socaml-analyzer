@@ -128,6 +128,10 @@ let int_comp c x y =
     restrict_int x,
     restrict_int y
 
+let int_make_comp c x y =
+  let xi, yi = Int_interv.make_comp c x.int y.int in
+  { x with int = xi }, { y with int = yi }
+
 let cp_any i =
   let rec aux res = function
     | 0 -> res
@@ -139,6 +143,11 @@ let cp_singleton i =
 
 let block_singleton tag content =
   { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length content) ( Array.map Ids.singleton content) ) }
+
+let has_cp v d = Ints.mem v d.cp
+let is_one_cp d env =
+  Ints.length d.cp = 1 &&
+  is_bottom env { d with cp = bottom.cp }
 
 let restrict_cp ?v d =
   match v with
@@ -161,6 +170,11 @@ let restrict_block ?tag ?has_field ?size d =
       | None -> Tagm.map restrict_tag d.blocks
       | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d.blocks))
   }
+
+let has_tag t d = Tagm.mem t d.blocks
+let is_one_tag d env =
+  Tagm.length d.blocks = 1 &&
+  is_bottom env { d with blocks = bottom.blocks }
 
 let set_a i v a =
   let a = Array.copy a in

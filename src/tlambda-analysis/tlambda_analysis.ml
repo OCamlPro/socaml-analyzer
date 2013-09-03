@@ -29,6 +29,75 @@ let intop2_of_prim o =
   | TPasrint -> basr
   | _ -> assert false
 
+let rev_comp = function
+  | Ceq -> Cneq | Cneq -> Ceq | Clt -> Cge | Cgt -> Cle | Cle -> Cgt | Cge -> Clt
+
+let may_rev_comp c cp =
+  if cp = 0 then rev_comp c else c
+
+let rec constraint_env_cp_var id cp env =
+  let d = get_env id env in
+  let l = d.expr in
+  if has_cp v d
+  then
+    if is_one_cp d
+    then env
+    else
+      begin
+	constraint_env_cp_list l cp env
+	|> set_env id (restrict_cp ~v d)
+      end
+  else bottom_env
+
+and constraint_env_cp_list l cp env =
+  List.fold_left
+    (fun e expr -> join_env e ( constraint_env_cp expr c env ) )
+    bottom_env l
+
+and constraint_env_cp expr cp env =
+  match expr with
+  | Var x -> constraint_env_cp_var x cp env
+  | Prim ( p, l,exnid) ->
+    begin
+      match p, l with
+      | TPintcomp c, [x;y]  ->
+	if cp > 1
+	then bottom_env
+	else
+	  let c = may_rev_comp c cp in
+	  let x' = get_env x env
+	  and y' = get_env y env in
+	  let (x',y') = int_make_comp c x' y' in
+	  set_env x x' env
+      |> set_env y y'
+      | TPmakeblock _, _ -> bottom_env
+    end
+  | _ -> env
+
+let rec constraint_env_tag_var id cp env =
+  let d = get_env id env in
+  let l = d.expr in
+  if has_tag tag d
+  then
+    if is_one_tag d
+    then env
+    else
+      begin
+	constraint_env_tag_list l tag env
+	|> set_env id (restrict_block ~tag d)
+      end
+  else bottom_env
+
+and constraint_env_tag_list l tag env =
+  List.fold_left
+    (fun e expr -> join_env e ( constraint_env_tag expr tag env ) )
+    bottom_env l
+
+and constraint_env_tag expr tag env =
+  match expr with
+  | Var x -> constraint_env_tag_var x tag env
+  | _ -> env
+
 module type Entry =
 sig
   val inv : v
@@ -204,12 +273,12 @@ struct
 	| _ -> failwith "TODO: primitives !"
       end
     | Constraint c ->
-      let d = get_env id env in
-      let l = d.expr in
       begin
 	match c with
-	| Ccp v  -> set ( restrict_cp ~v d)
-	| Ctag tag -> set ( restrict_block ~tag d )
+	| Ccp v  ->
+	  constraint_env_cp_var id cp env
+	| Ctag tag ->
+	  constraint_env_tag_var id cp env
       end
   in	
   let env = Array.fold_left join_env bottom_env envs in
