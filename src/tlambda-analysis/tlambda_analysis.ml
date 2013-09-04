@@ -33,6 +33,10 @@ let rev_comp = function
 let may_rev_comp c cp =
   if cp = 0 then rev_comp c else c
 
+let list_of_one f = function
+  | [x] -> f x
+  | _ -> assert false
+
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
   let l = d.expr in
@@ -68,8 +72,31 @@ and constraint_env_cp expr cp env =
 	  let (x',y') = int_make_comp c x' y' in
 	  set_env x x' env
       |> set_env y y'
-      | TPmakeblock _, _ -> bottom_env
-      | _, _ -> failwith "TODO: primitive constraints"
+      | TPidentity, [x] -> constraint_env_cp_var x cp env
+      | TPignore, _::[]
+      | TPsetfield _, _::_::[]
+      | TPsetfloatfield _, _::_::[]
+	  when cp = 0 -> env
+      | TPfield i, [b] ->
+	let ids = get_field i (get_env b env) in
+	Ids.fold
+	    (fun id acc ->
+	      join_env acc
+		( constraint_env_cp_var id cp env)
+	    ) ids bottom_env
+      | TPnot, [x] when cp < 2 ->
+	constraint_env_cp_var x (1-cp) env
+      | TPisint, [x] when cp = 0 ->
+	set_env x ( restrict_not_int (get_env x env) ) env
+      | TPisint, [x] when cp = 1 ->
+	set_env x ( restrict_int (get_env x env) ) env
+      | TPisout, [x] when cp = 0 -> failwith "TODO: isout"
+      | TPisout, [x] when cp = 1 -> failwith "TODO: isout"
+      | TPbittest, [x] when cp = 0 -> failwith "TODO: bittest"
+      | TPbittest, [x] when cp = 1 -> failwith "TODO: bittest"
+      | TPctconst Lambda.Word_size, [] -> bottom_env
+      | TPctconst _, [] when cp < 2 -> env (* to correct ? *)
+      | _, _ -> bottom_env
     end
   | _ -> env
 
@@ -100,20 +127,20 @@ and constraint_env_tag expr tag env =
   | Prim ( p, l, exnid ) ->
     begin
       match p with
-      | TPmakeblock (t, _) when t = tag ->  env (* TODO ? *)
+      | TPidentity ->
+	list_of_one (fun b -> constraint_env_tag_var b tag env) l
+      | TPmakeblock (t, _) when t = tag ->  env
       | TPfield i ->
-	begin
-	  match l with
-	  | [b] ->
-	    let b = get_env b env in
-	    Ids.fold
-	      (fun id acc ->
-		join_env acc
-		  ( constraint_env_tag_var id tag env)
-	      ) ( get_field i b) bottom_env
-	  | _ -> assert false
-	end
-
+	list_of_one (fun b ->
+	  let b = get_env b env in
+	  Ids.fold
+	    (fun id acc ->
+	      join_env acc
+		( constraint_env_tag_var id tag env)
+	    ) ( get_field i b) bottom_env
+	) l
+      | TPduprecord _ when tag = 0 ->
+	list_of_one (fun b -> constraint_env_tag_var b tag env ) l
       | _ -> bottom_env
     end
   | Constraint _ -> assert false
@@ -317,8 +344,8 @@ struct
     | h :: t -> aux (in_apply h e) t
   in 
   match l with
-  | [ id, ( App ( f, x ) ) ] ->
-    ( [| set_env id (get_env E.return_id env) env; env |], ( fun_ids f env ) )
+  | [ id, ( App ( f, x ) as a ) ] ->
+    ( [| set_env id (set_expression (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
   | _ -> [|aux env l|], []
 
 end

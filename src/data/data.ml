@@ -119,6 +119,9 @@ let mem_env id = function
 
 let restrict_int x = { bottom with int = x.int }
 
+let restrict_not_int x =
+  { x with int = bottom.int; cp = bottom.cp; }
+
 let int_singleton const =
   { bottom with
     int = Int_interv.cst const;
