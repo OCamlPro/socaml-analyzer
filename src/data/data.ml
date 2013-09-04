@@ -203,7 +203,16 @@ let set_field i v b =
   { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
 
 
-let get_field i b env = failwith "TODO: get_field"
+let get_field i b =
+  Tagm.fold
+    (fun _ b acc ->
+      Intm.fold
+	(fun s a acc ->
+	  if s > i
+	  then Ids.union acc a.(i)
+	  else acc
+	) b acc
+    ) b.blocks Ids.empty
 
 (* booleans *)
 let booleans = (cp_any 2)

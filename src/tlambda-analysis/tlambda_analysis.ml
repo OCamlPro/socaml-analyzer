@@ -5,8 +5,6 @@ open Tlambda_to_hgraph
 module G = G
 
 open Data
-open Int_interv
-
 
 type v = Vertex.t
 type h = Hedge.t
@@ -97,7 +95,28 @@ and constraint_env_tag_list l tag env =
 and constraint_env_tag expr tag env =
   match expr with
   | Var x -> constraint_env_tag_var x tag env
-  | _ -> env
+  | Const _
+  | App ( _, _ ) -> env
+  | Prim ( p, l, exnid ) ->
+    begin
+      match p with
+      | TPmakeblock (t, _) when t = tag ->  env (* TODO ? *)
+      | TPfield i ->
+	begin
+	  match l with
+	  | [b] ->
+	    let b = get_env b env in
+	    Ids.fold
+	      (fun id acc ->
+		join_env acc
+		  ( constraint_env_tag_var id tag env)
+	      ) ( get_field i b) bottom_env
+	  | _ -> assert false
+	end
+
+      | _ -> bottom_env
+    end
+  | Constraint _ -> assert false
 
 module type Entry =
 sig
@@ -171,11 +190,22 @@ struct
 	  let a = Array.of_list l in
 	  set ( act ( block_singleton tag a ))
 	| TPfield i, [b] ->
-	  let env = set_env b ( restrict_block ~has_field:i ( get b)) env in
-	  set ( get_field i ( get_env b env) env) (* must restrict b to a block with field at least i *)
-	  (*	  | TPsetfield ( i, _), [b;v] ->
-		  let env = set_env b ( set_field i v ( get b)) env in
-		  set_env id vunit env *)
+	  let env =
+	    set_env b
+	      ( restrict_block ~has_field:i ( get b))
+	      env in
+	  let ids = get_field i ( get_env b env) in
+	  set_env id
+	    ( act
+		( Ids.fold
+		    (fun id d -> union (get_env id env) d )
+		    ids Data.bottom )
+	    )
+	    env
+	  (*
+	    | TPsetfield ( i, _), [b;v] ->
+	    let env = set_env b ( set_field i v ( get b)) env in
+	    set_env id vunit env *)
 	| TPfloatfield i, [b] -> failwith "TODO: floatfield"
 	| TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
 	| TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
@@ -186,7 +216,7 @@ struct
 	  (* Boolean operations *)
 	| TPnot, [i] -> set ( not_bool ( get i))
 	  (* Integer operations *)
-	| TPnegint, [i] -> set ( int_op1 uminus ( get i))
+	| TPnegint, [i] -> set ( int_op1 Int_interv.uminus ( get i))
 	| TPaddint, [x;y]
 	| TPsubint, [x;y]
 	| TPmulint, [x;y]
