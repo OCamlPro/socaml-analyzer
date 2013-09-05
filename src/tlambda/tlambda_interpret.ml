@@ -160,8 +160,6 @@ and call_fun funs f x =
 and call_prim funs p l =
   match p, l with
   (* Utilities *)
-  | TPidentity, [x] -> x
-  | TPignore, _::[] -> val_unit
   (* Blocks *)
   | TPmakeblock (i,_), l -> ref ( Block ( i, l))
   | TPfield i, [{ contents = Block ( _, l)}]
@@ -171,10 +169,6 @@ and call_prim funs p l =
   | TPsetfloatfield i, [{ contents = Block (_,l)};v] ->
     (List.nth l i) := !v; val_unit
   | TPduprecord _, [r] -> ref !r
-  (* Lazyness *)
-  | TPlazyforce,  _ -> failwith "TODO: lazy" (* not that I'm being lazy *)
-  (* Externals *)
-  | TPccall _, _ -> failwith "TODO: ccall"
   (* Booleans *)
   | TPnot, [b] -> of_bool ( not (val_to_bool b))
   (* Ints *)

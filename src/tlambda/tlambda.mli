@@ -33,6 +33,9 @@ and tcontrol =
 | Twhile of tlambda * tlambda
 | Tfor of id * id * id * direction_flag * tlambda
 (* | Tassign of id * id *)
+| Tlazyforce of id
+| Tccall of Primitive.description * id list
+| Tsend of Lambda.meth_kind * id * id
 
 and tswitch =
 {

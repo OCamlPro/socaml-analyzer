@@ -72,8 +72,6 @@ and constraint_env_cp expr cp env =
 	  let (x',y') = int_make_comp c x' y' in
 	  set_env x x' env
       |> set_env y y'
-      | TPidentity, [x] -> constraint_env_cp_var x cp env
-      | TPignore, _::[]
       | TPsetfield _, _::_::[]
       | TPsetfloatfield _, _::_::[]
 	  when cp = 0 -> env
@@ -127,8 +125,6 @@ and constraint_env_tag expr tag env =
   | Prim ( p, l, exnid ) ->
     begin
       match p with
-      | TPidentity ->
-	list_of_one (fun b -> constraint_env_tag_var b tag env) l
       | TPmakeblock (t, _) when t = tag ->  env
       | TPfield i ->
 	list_of_one (fun b ->
@@ -200,7 +196,7 @@ struct
   let in_apply ( id, action) env =
     let set x = set_env id x env
     and get x = get_env x env
-    and vunit = cp_singleton 0
+    (* and vunit = cp_singleton 0 *)
     and act d = set_expression d action
     in
     match action with
@@ -210,8 +206,6 @@ struct
     | Prim ( p, l,exnid) ->
       begin
 	match p, l with
-	| TPidentity, [i] -> set ( act (get i) )
-	| TPignore, _ -> set vunit
 	  (* Operations on heap blocks *)
 	| TPmakeblock ( tag, _), _ ->
 	  let a = Array.of_list l in
@@ -237,10 +231,6 @@ struct
 	| TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
 	| TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
 	  (* Force lazy values *)
-	| TPlazyforce, _ -> failwith "TODO: Force lazy"
-	  (* External call *)
-	| TPccall prim, _ -> failwith "TODO: C-call"
-	  (* Boolean operations *)
 	| TPnot, [i] -> set ( not_bool ( get i))
 	  (* Integer operations *)
 	| TPnegint, [i] -> set ( int_op1 Int_interv.uminus ( get i))
@@ -326,7 +316,6 @@ struct
 	  | TPbswap16
 	  | TPbbswap of boxed_integer
 	  (* method call *)
-	  | Method_send of Lambda.meth_kind * Location.t (* moved from lambda to primitive *)
 	*)	      
 	| _ -> failwith "TODO: primitives !"
       end

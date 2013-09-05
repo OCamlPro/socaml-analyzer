@@ -5,9 +5,18 @@ open Tlambda
 module Imap = Map.Make ( Id )
 module Iset = Set.Make ( Id )
 
+let zero_of k =
+  let open Asttypes in
+  Const_base (
+    match k with
+    | Pnativeint -> Const_nativeint 0n
+    | Pint32 -> Const_int32 0l
+    | Pint64 -> Const_int64 0L
+  )
+
+let zeroint =  Const_base ( Asttypes.Const_int 0 )
+
 let prim_translate = function
-  | Pidentity -> TPidentity
-  | Pignore -> TPignore
   (* Operations on heap blocks *)
   | Pmakeblock ( i, m) -> TPmakeblock ( i, m)
   | Pfield i -> TPfield i
@@ -15,10 +24,6 @@ let prim_translate = function
   | Pfloatfield i -> TPfloatfield i
   | Psetfloatfield i -> TPsetfloatfield i
   | Pduprecord ( t, i ) -> TPduprecord ( t, i )
-  (* Force lazy values *)
-  | Plazyforce -> TPlazyforce
-  (* External call *)
-  | Pccall p -> TPccall p
   (* Boolean operations *)
   | Pnot -> TPnot
   (* Integer operations *)
@@ -244,6 +249,9 @@ let lambda_to_tlambda last_id code =
 	let fv = check nfv fv b in
 	let fv = check nfv fv e in
 	aux nfv fv body
+      | Tlazyforce id -> check nfv fv id
+      | Tccall ( _, l ) -> List.fold_left (check nfv) fv l
+      | Tsend ( _, o, m) -> check nfv ( check nfv fv o ) m
     in aux nfv Iset.empty
   in
 
@@ -453,8 +461,12 @@ let lambda_to_tlambda last_id code =
       in
       let idf = register_function body in
       Tprim ( TPfun idf, fst ( List.split fvl ) )
-    | Lprim ( Praise, [Lvar e] ) -> Traise e (* sequand and sequor should not be there already *)
-    | Lprim ( p, l ) -> Tprim ( prim_translate p, extract_vars l ) (* TODO: RAISE AND STUFF *)
+    | Lprim ( Praise, [Lvar e] ) -> Traise e
+    | Lprim ( Plazyforce, [Lvar e] ) -> Tlazyforce e
+    | Lprim ( Pccall p, l ) -> Tccall ( p, extract_vars l )
+    | Lprim ( Pidentity, [Lvar x] ) -> Tvar x
+    | Lprim ( Pignore, [Lvar _] ) -> Tconst (Const_pointer 0)
+    | Lprim ( p, l ) -> Tprim ( prim_translate p, extract_vars l )
     | Lswitch ( Lvar x, s ) ->
       let aux = List.rev_map (fun (a,b) -> (a, tlambda b) ) in
       Tswitch ( x,
@@ -476,7 +488,7 @@ let lambda_to_tlambda last_id code =
     | Lifthenelse ( Lvar v, t, e ) -> Tifthenelse ( v, tlambda t, tlambda e )
     | Lwhile ( c, b ) -> Twhile ( tlambda c, tlambda b )
     | Lfor ( i, Lvar start, Lvar stop, d, body ) -> Tfor ( i, start, stop, d, tlambda body )
-    | Lsend ( k, Lvar obj, Lvar meth, [], _ ) -> Tprim ( TPmethod_send k, [ obj; meth ] )
+    | Lsend ( k, Lvar obj, Lvar meth, [], _ ) -> Tsend (  k, obj, meth )
     | _ -> assert false
   in
 

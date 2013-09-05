@@ -29,8 +29,6 @@ and direction_flag = Asttypes.direction_flag
 
 
 type primitive =
-| TPidentity
-| TPignore
 (* Operations on heap blocks *)
 | TPmakeblock of int * Asttypes.mutable_flag
 | TPfield of int
@@ -38,10 +36,6 @@ type primitive =
 | TPfloatfield of int
 | TPsetfloatfield of int
 | TPduprecord of Types.record_representation * int
-(* Force lazy values *)
-| TPlazyforce
-(* External call *)
-| TPccall of Primitive.description
 (* Boolean operations *)
 | TPnot
 (* Integer operations *)
@@ -113,8 +107,6 @@ type primitive =
 (* byte swap *)
 | TPbswap16
 | TPbbswap of boxed_integer
-(* method call *)
-| TPmethod_send of Lambda.meth_kind (* moved from lambda to primitive *)
 (* function operations *)
 | TPfun of F.t
 | TPfunfield of int
