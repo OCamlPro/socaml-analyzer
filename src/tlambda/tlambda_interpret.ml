@@ -162,7 +162,6 @@ and call_prim funs p l =
   (* Utilities *)
   | TPidentity, [x] -> x
   | TPignore, _::[] -> val_unit
-  | TPrevapply, [x;f] | TPdirapply, [f;x] -> call_fun funs f x
   (* Blocks *)
   | TPmakeblock (i,_), l -> ref ( Block ( i, l))
   | TPfield i, [{ contents = Block ( _, l)}]

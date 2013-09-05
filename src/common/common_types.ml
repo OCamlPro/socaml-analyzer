@@ -31,8 +31,6 @@ and direction_flag = Asttypes.direction_flag
 type primitive =
 | TPidentity
 | TPignore
-| TPrevapply
-| TPdirapply
 (* Operations on heap blocks *)
 | TPmakeblock of int * Asttypes.mutable_flag
 | TPfield of int
