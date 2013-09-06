@@ -221,6 +221,16 @@ let mk_graph ~last_id ~funs main =
       simpleh g i ( Prim ( TPaddint, [i;one_id], exn_id)) ~inv:outb ~outv:initv;
       simpleh g test_id cfalse ~inv:testv ~outv;
       tlambda ~g ~outv:outb ~ret_id ~exn_id ~inv:inb ~exnv lbody
+
+    | Tlazyforce i ->
+      add_hedge g (Hedge.mk ()) [ id, (Lazyforce i)]
+	~pred:[|inv|] ~succ:[|outv;exnv|]
+    | Tccall ( p, l ) ->
+      add_hedge g (Hedge.mk ()) [ id, (Ccall (p,l))]
+	~pred:[|inv|] ~succ:[|outv;exnv|]
+    | Tsend ( _, o, m ) ->
+      add_hedge g (Hedge.mk ()) [ id, (Send(o,m))]
+	~pred:[|inv|] ~succ:[|outv;exnv|]
   in      
 
   let exn_id = mk_id "$exn" in

@@ -118,4 +118,7 @@ type hinfo =
 | Prim of primitive * id list * id (* the exn id *)
 | Constraint of constr
 | App of id * id (* function, argument *)
+| Lazyforce of id
+| Ccall of Primitive.description * id list
+| Send of id * id
 and constr = Ccp of int | Ctag of int
