@@ -109,6 +109,17 @@ let prim_translate = function
   (* byte swap *)
   | Pbswap16 -> TPbswap16
   | Pbbswap k -> TPbbswap k
+  (* | Pidentity -> assert false *)
+  (* | Pignore -> assert false *)
+  (* | Prevapply _ *)
+  (* | Pdirapply _ -> assert false *)
+  (* | Pgetglobal _ -> assert false *)
+  (* | Psetglobal _ -> assert false *)
+  (* | Plazyforce -> assert false *)
+  (* | Pccall _ -> assert false *)
+  (* | Praise -> assert false *)
+  (* | Psequand | Psequor -> assert false *)
+  (* | Parrayrefs _ | Parraysets _ | Pstringrefs | Pstringsets -> assert false *)
   | _ -> assert false
 
 let cp i = Lconst ( Const_pointer i )
@@ -190,7 +201,26 @@ let lambda_to_tlambda last_id code =
       tcontrol (Ids.add id nfv) fv [id, Lvar id] lam
     | Llet ( k, id , e, cont ) ->
       tcontrol (Ids.add id nfv) fv [id, cont] e
-    | Lletrec _ -> failwith "TODO: letrec"
+    | Lletrec (l, continuation) ->
+      (* let nfv = List.fold_left (fun nfv (i,_) -> Idm.add i nfv ) nfv l in *)
+      let promoted, expelled =
+        List.fold_left
+          (fun (promoted, expelled) (id, lam) -> promote_rec promoted expelled id lam )
+          ([],[]) l
+      in
+      if expelled = []
+      then
+        let nfv = List.fold_left (fun nfv (i,_) -> Ids.add i nfv ) nfv promoted in
+        let fv, tr_decls = mk_tletrec nfv fv [] promoted in
+        let fv, tr_in = tlambda nfv fv continuation in
+        ( fv, ( Trec { tr_decls; tr_in } ) )
+      else
+        let stack, cont =
+          List.fold_left
+            (fun (stack,cont) (i,lam) -> ((i,cont)::stack,lam))
+            ([], Lletrec ( promoted, continuation ) ) expelled
+        in
+        tcontrol nfv fv stack cont (* must check the variables ? *)
     | Lsequence ( a, b ) ->
       let id = mk () in
       tcontrol (Ids.add id nfv) fv [id, b] a
@@ -245,19 +275,23 @@ let lambda_to_tlambda last_id code =
           | _ -> assert false
         )
         (f::args)
-    | Lfunction ( k, [arg], body ) ->
-      let nfv2 = Ids.singleton arg in
-      let fv2 = Idm.empty in
-      let fv2, lam = tlambda nfv2 fv2 body in
-      let i = register_function lam fv2 in
-      let fv, l = Idm.fold
-          (fun i _ (fv,l) ->
-             let fv,i = check nfv fv i in
-             (fv,i::l)) fv2 (fv,[])
-      in
-      let l = List.rev l in
-      mk_tlet nfv fv stack
-        ( Tprim ( TPfun i, l ) )
+    | Lfunction ( _, [arg], body ) ->
+      let fv, f, l = fun_create nfv fv arg body in
+      mk_tlet nfv fv stack ( Tprim ( f, l ) )
+
+      (* let nfv2 = Ids.singleton arg in *)
+      (* let fv2 = Idm.empty in *)
+      (* let fv2, lam = tlambda nfv2 fv2 body in *)
+      (* let i = register_function lam fv2 in *)
+      (* let fv, l = Idm.fold *)
+      (*     (fun i _ (fv,l) -> *)
+      (*        let fv,i = check nfv fv i in *)
+      (*        (fv,i::l)) fv2 (fv,[]) *)
+      (* in *)
+      (* let l = List.rev l in *)
+
+      (* mk_tlet nfv fv stack *)
+      (*   ( Tprim ( TPfun i, l ) ) *)
     | Lfunction ( k, arg::args, body ) ->
       tcontrol nfv fv stack
         ( Lfunction ( k, [arg], Lfunction (k,args,body) ) )
@@ -390,6 +424,9 @@ let lambda_to_tlambda last_id code =
 
   and mk_tlet nfv fv stack tc =
     match stack with
+    | [ id,Lvar v ] ->
+      let fv, v = check nfv fv v in
+      fv, tlet ~id tc ( Tend v )
     | (id,cont) :: stack ->
       let fv, lam = ( tcontrol nfv fv stack cont ) in
       fv, tlet ~id tc lam
@@ -411,6 +448,7 @@ let lambda_to_tlambda last_id code =
       tlet ( Tlazyforce a )
     | Praise, [e] ->
       tlet ( Traise e )
+    | Pccall c, _ -> tlet ( Tccall ( c, l ) )
     | Pdivint, [a;b]
     | Pmodint, [a;b] ->
       let lb = Lvar b in
@@ -476,6 +514,42 @@ let lambda_to_tlambda last_id code =
     | p, l ->
       tlet ( Tprim ( prim_translate p, l ) )
 
+  and promote_rec promoted expelled i lam = (* TODO: lambda -> Lvar *)
+    match lam with
+    | Lprim ( Pmakeblock _ , lv )
+    | Lprim ( Pmakearray _, lv )
+        when only_vars lv ->  ( ( i, lam ) :: promoted, expelled )
+    | Lfunction ( _, _::[], _ ) -> ( ( i, lam ) :: promoted, expelled )
+    | Lfunction ( k, x::tl, body ) -> failwith "TODO: unarize funs promote_rec"
+    | Lprim ( Pmakeblock _ as p, l )
+    | Lprim ( Pmakearray _ as p, l ) -> failwith "TODO: kick vars promote_rec"
+    | Llet ( k, id, e, cont ) ->
+      let ( promoted, expelled ) = promote_rec promoted expelled id e in
+      promote_rec promoted expelled i cont
+    | Lletrec ( l, cont ) ->
+      let ( promoted, expelled ) =
+	List.fold_left (fun (p,e) (id,lam) -> promote_rec p e id lam ) ( promoted, expelled ) l in
+      promote_rec promoted expelled i cont
+    | _ -> ( promoted, ( i, lam ) :: expelled )
+
+  and mk_tletrec nfv fv res l =
+    match l with
+    | [] -> fv, res
+    | (i,lam) :: tl ->
+      let fv, x =
+        begin
+          match lam with
+          | Lprim ( p, l ) ->
+            let l = get_vars l in
+            let p = prim_translate p in
+            fv, ( i, p, l ) (* need to check vars? *)
+          | Lfunction ( _, [arg], body ) ->
+            let fv, f, l = fun_create nfv fv arg body in
+            fv, ( i, f, l)
+          | _ -> assert false
+        end in
+      mk_tletrec nfv fv (x::res) tl
+        
   and extract_vars l =
     let b, l =
       List.fold_left
@@ -524,6 +598,24 @@ let lambda_to_tlambda last_id code =
            (fv,i::l)
         ) (fv,[]) l
     in fv, List.rev l
+         
+  and get_vars = List.map (function Lvar v -> v | _ -> assert false )
+
+  and fun_create nfv fv arg body =
+    let nfv2 = Ids.singleton arg in
+    let fv2 = Idm.empty in
+    let fv2, lam = tlambda nfv2 fv2 body in
+    let i = register_function lam fv2 in
+    let fv, l = Idm.fold
+        (fun i _ (fv,l) ->
+           let fv,i = check nfv fv i in
+           (fv,i::l)) fv2 (fv,[])
+    in
+    let l = List.rev l in
+    ( fv, TPfun i, l )
+
+  and only_vars = List.for_all (function Lvar _ -> true | _ -> false )
+
   in
 
   let fv, lam =  tlambda Ids.empty Idm.empty code in
