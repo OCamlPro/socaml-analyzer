@@ -1,3 +1,4 @@
+open Common_types
 open Lambda
 open Asttypes
 open Ident
@@ -5,8 +6,6 @@ open Tlambda
 
 let tlet te_id te_lam te_in =
   Tlet { te_id; te_lam; te_in; te_kind = Alias }
-
-
 
 let last_id = ref (-1)
 let mk_id s =
@@ -37,6 +36,8 @@ let t2 =
     
 open Tlambda_interpret
 
+let nofuns = Hashtbl.create 1
+
 let () =
-  assert ( !( tlambda [||] env_empty t1) = Int 42);
-  assert ( !( tlambda [||] env_empty t2) = Int (1605+1666))
+  assert ( !( tlambda nofuns env_empty t1) = Int 42);
+  assert ( !( tlambda nofuns env_empty t2) = Int (1605+1666))

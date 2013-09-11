@@ -60,3 +60,8 @@ begin test "test_tlambda"
  files = [ "test/test_tlambda.ml" ]
  requires = [ "common" "tlambda" ]
 end
+
+begin test "test_toolchain"
+ files = [ "test/test_toolchain.ml" ]
+ requires = [ "common" "lambda" "tlambda" ]
+end

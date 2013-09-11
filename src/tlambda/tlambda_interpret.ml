@@ -17,10 +17,11 @@ and v =
 | String of string
 | Cp of int
 | Block of int * value list
+| Fun of F.t * value list
 | Rec_set
 
 type env = value Idm.t
-type fun_table = tlambda array
+type fun_table = ( F.t, tlambda ) Hashtbl.t
 
 let (env_empty:env) = Idm.empty
 
@@ -84,7 +85,7 @@ and tcontrol funs env = function
   | Tvar i -> get_env env i
   | Tconst sc -> structured_constant sc
   | Tapply ( f, x) -> call_fun funs (get_env env f) (get_env env x)
-  | Tprim ( p, l) -> call_prim funs p (List.map (get_env env) l)
+  | Tprim ( p, l) -> call_prim env funs p l
   | Tswitch ( i, s) ->
     let switch_handle i l =
       let b =
@@ -145,23 +146,24 @@ and tcontrol funs env = function
     
 and call_fun funs f x =
   match !f with
-  | Block ( 0, ({ contents = Cp i})::tl) ->
+  | Fun ( i, l ) ->
     begin
-      let body = funs.(i) in
+      let body = Hashtbl.find funs i in
       let e =
 	env_empty
-	  |> Idm.add id_fun f
-	  |> Idm.add id_arg x
+ |> Idm.add id_fun f
+ |> Idm.add id_arg x
       in
       tlambda funs e body
     end
   | _ -> assert false
 
-and call_prim funs p l =
-  match p, l with
+and call_prim env funs p l =
+  let lv = List.map (get_env env) l in
+  match p, lv with
   (* Utilities *)
   (* Blocks *)
-  | TPmakeblock (i,_), l -> ref ( Block ( i, l))
+  | TPmakeblock (i,_), _ -> ref ( Block ( i, lv))
   | TPfield i, [{ contents = Block ( _, l)}]
   | TPfloatfield i, [{ contents = Block ( _, l)}] ->
     List.nth l i
@@ -190,7 +192,13 @@ and call_prim funs p l =
   (* Floats *)
   
  
-
+  | TPfun i, _ -> ref ( Fun ( i, lv ) )
+  | TPfunfield i, [] ->
+    begin
+      match ! ( get_env env id_fun ) with
+      | Fun ( _, l) -> List.nth l i
+      | _ -> assert false
+    end
   | _, _ -> failwith "TODO: primitives"
 
 and comparison = function
