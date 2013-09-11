@@ -34,8 +34,6 @@ object (self)
   method add_modtype_env i m =
     last_env <- Env.add_modtype i m last_env
 
-
-
   method env_from_summary sum subst =
     try
       Hashtbl.find env_cache (sum, subst)

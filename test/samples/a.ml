@@ -4,4 +4,4 @@ let y = 3
 
 let z = x + y
 
-if z = 7 then () else assert false
+let a = if z = 7 then () else assert false
