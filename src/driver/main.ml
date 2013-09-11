@@ -1,7 +1,7 @@
 
 let lambda, last_id = Mk_lambda.mk_lambda Sys.argv
 let last_id, funs, tlambda =
-  Lambda_to_tlambda.lambda_to_tlambda last_id lambda
+  Mk_tlambda.lambda_to_tlambda last_id lambda
  
 let ( g, inv, outv, exnv, funs, arg_id, return_id, exn_id ) = Tlambda_to_hgraph.mk_graph
   ~last_id

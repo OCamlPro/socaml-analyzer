@@ -15,6 +15,10 @@ struct
     { stamp = !idref; name = ( "$$" ^ name ); flags = 0; }
 end
 
+let builtin id =
+  let s = id.Ident.stamp in
+  s > 0 && s < 1000
+
 module F = MakeId(struct end)
 
 type id = Id.t
@@ -29,6 +33,7 @@ and direction_flag = Asttypes.direction_flag
 
 
 type primitive =
+  | TPbuiltin
 (* Operations on heap blocks *)
 | TPmakeblock of int * Asttypes.mutable_flag
 | TPfield of int

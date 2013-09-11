@@ -42,7 +42,7 @@ object (self)
 
   method! prim p l =
     match p with
-    | Pgetglobal id -> self#var id
+    | Pgetglobal id when not ( Common_types.builtin id ) -> self#var id
     | _ -> super#prim p l
 end
   in
