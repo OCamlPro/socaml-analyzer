@@ -180,9 +180,9 @@ let lambda_to_tlambda last_id code =
   in
   let lout_of_bounds = linvalid_arg in
 
-  let rec tlambda nfv fv = function
+  let rec tlambda rv nfv fv = function
     | Lvar v ->
-      let fv,v = check nfv fv v in
+      let fv,v = check rv nfv fv v in
       ( fv , Tend v )
     | Lconst _
     | Lapply _
@@ -198,35 +198,41 @@ let lambda_to_tlambda last_id code =
     | Lsend _
       as lam ->
       let id = mk () in
-      tcontrol (Ids.add id nfv) fv [id, Lvar id] lam
+      tcontrol rv (Ids.add id nfv) fv [id, Lvar id] lam
     | Llet ( k, id , e, cont ) ->
-      tcontrol (Ids.add id nfv) fv [id, cont] e
-    | Lletrec (l, continuation) -> trec_main nfv fv [] l continuation
+      tcontrol rv (Ids.add id nfv) fv [id, cont] e
+    | Lletrec (l, continuation) -> trec_main rv nfv fv [] l continuation
     | Lsequence ( a, b ) ->
       let id = mk () in
-      tcontrol (Ids.add id nfv) fv [id, b] a
+      tcontrol rv (Ids.add id nfv) fv [id, b] a
     | Lassign _
     | Levent _
     | Lifused _ -> assert false
 
-  and trec_main nfv fv stack l continuation =
-    let promoted, expelled =
+  and trec_main rv nfv fv stack l continuation =
+    let vars, promoted, expelled =
       List.fold_left
-        (fun (promoted, expelled) (id, lam) -> promote_rec promoted expelled id lam )
-        ([],[]) l
+        (fun (vars,promoted, expelled) (id, lam) -> promote_rec vars promoted expelled id lam )
+        ([],[],[]) l
     in
     if expelled = []
     then
-      let nfv = List.fold_left (fun nfv -> function
-          | (i,Lfunction (_,[arg],_)) -> Ids.add i ( Ids.add arg nfv )
-          | (i,_) -> Ids.add i nfv )
-          nfv promoted in
-      
-      let fv, tr_decls = mk_tletrec nfv fv [] promoted in
+      let nrv =
+        List.fold_left
+          (fun rv (i,_) -> Ids.add i rv)
+          Ids.empty promoted
+      in
+      let brv = Ids.union nrv rv in
+      (* let nfv = Ids.union nfv rv in *)
+      let fv, tr_decls = mk_tletrec brv nfv fv [] promoted in
+      (* let fv = *)
+      (*   List.fold_left *)
+      (*     (fun fv i -> Idm.remove i fv) *)
+      (*     fv vars in *)
       let fv, tr_in =
         if stack = []
-        then tlambda nfv fv continuation
-        else tcontrol nfv fv stack continuation
+        then tlambda rv (Ids.union nfv nrv) fv continuation
+        else tcontrol rv (Ids.union nfv nrv) fv stack continuation
       in
       ( fv, ( Trec { tr_decls; tr_in } ) )
     else
@@ -235,89 +241,65 @@ let lambda_to_tlambda last_id code =
           (fun (stack,cont) (i,lam) -> ((i,cont)::stack,lam))
           ( stack, Lletrec ( promoted, continuation ) ) expelled
       in
-      tcontrol nfv fv stack cont
+      tcontrol rv nfv fv stack cont
 
 
-  and tcontrol nfv fv stack = function
+  and tcontrol rv nfv fv stack = function
     | Lvar v ->
-      let fv,v = check nfv fv v in
-      mk_tlet nfv fv stack ( Tvar v )
-    | Lconst c -> mk_tlet nfv fv stack ( Tconst c )
+      let fv,v = check rv nfv fv v in
+      mk_tlet rv nfv fv stack ( Tvar v )
+    | Lconst c -> mk_tlet rv nfv fv stack ( Tconst c )
     | Lapply ( Lvar f, [Lvar x], _ ) ->
-      let fv, f = check nfv fv f in
-      let fv, x = check nfv fv x in
-      mk_tlet nfv fv stack ( Tapply ( f, x ) )
-    | Lapply ( f, args, loc ) ->
-      let rec extract_apps stack cont f = function
-          [] -> stack, cont
-        | x::tl ->
-          let i = mk () in
-          extract_apps
-            ((i,cont)::stack)
-            ( Lapply ( Lvar f, [Lvar x], loc ))
-            i tl
-      in
-      extract_and_apply nfv fv stack
-        ( function
-          | f::args -> Lapply ( f, args, loc )
-          | _ -> assert false )
-        ( function
-          | f::x::args ->
-            begin
-              match stack with
-              | (id,cont)::stack ->
-                let i = mk () in
-                let stack,cont =
-                  extract_apps
-                    ((i,cont)::stack)
-                    (Lapply ( Lvar f, [Lvar x], loc ))
-                    i args
-                in
-                let stack =
-                  match stack with
-                  | (i,cont)::tl -> (id,cont)::tl
-                  | _ -> assert false
-                in
-                tcontrol nfv fv stack cont
-              | _ -> assert false
-            end
-          | _ -> assert false
-        )
-        (f::args)
+      let fv, f = check rv nfv fv f in
+      let fv, x = check rv nfv fv x in
+      mk_tlet rv nfv fv stack ( Tapply ( f, x ) )
+    | Lapply ( Lvar _ as f, [x], loc ) ->
+      let ix = mk () in
+      tcontrol rv (Ids.add ix nfv) fv
+        ( (ix, Lapply ( f, [Lvar ix], loc ))::stack)
+        x
+    | Lapply ( f, ( _::[] as arg), loc ) ->
+      let idf = mk () in
+      tcontrol rv (Ids.add idf nfv) fv
+        ( (idf, Lapply ( Lvar idf, arg, loc ) )::stack)
+        f
+    | Lapply ( f, arg::args, loc ) ->
+      tcontrol rv nfv fv stack
+        ( Lapply ( Lapply ( f, [arg], loc ), args, loc ))
     | Lfunction ( _, [arg], body ) ->
-      let fv, f, l = fun_create nfv fv arg body in
-      mk_tlet nfv fv stack ( Tprim ( f, l ) )
+      let fv, f, l = fun_create Ids.empty nfv fv arg body in
+      mk_tlet rv nfv fv stack ( Tprim ( f, l ) )
     | Lfunction ( k, arg::args, body ) ->
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lfunction ( k, [arg], Lfunction (k,args,body) ) )
     | Llet ( k, id, e, cont ) ->
-      tcontrol (Ids.add id nfv) fv ((id,cont)::stack) e
-    | Lletrec ( l, continuation ) -> trec_main nfv fv stack l continuation
+      tcontrol rv (Ids.add id nfv) fv ((id,cont)::stack) e
+    | Lletrec ( l, continuation ) -> trec_main rv nfv fv stack l continuation
     | Lprim ( Psequand, [a;b] ) ->
-      tcontrol nfv fv stack ( Lifthenelse ( a, b, cp 0 ) )
+      tcontrol rv nfv fv stack ( Lifthenelse ( a, b, cp 0 ) )
     | Lprim ( Psequor, [a;b] ) ->
-      tcontrol nfv fv stack ( Lifthenelse ( a, cp 1, b ) )
+      tcontrol rv nfv fv stack ( Lifthenelse ( a, cp 1, b ) )
     | Lprim ( p, l ) ->
-      extract_and_apply nfv fv stack
+      extract_and_apply rv nfv fv stack
         (fun l -> Lprim ( p, l ) )
-        ( prim_handle nfv fv stack p )
+        ( prim_handle rv nfv fv stack p )
         l
     | Lswitch ( Lvar v, s ) ->
-      let fv, v = check nfv fv v in
+      let fv, v = check rv nfv fv v in
       let f fv =
         List.fold_left (fun (fv,l) (i,lam) ->
-            let fv, tlam = tlambda nfv fv lam in
+            let fv, tlam = tlambda rv nfv fv lam in
             (fv, (i,tlam)::l) ) (fv,[]) in
       let fv, t_consts = f fv s.sw_consts in
       let fv, t_blocks = f fv s.sw_blocks in
       let fv, t_failaction =
         match s.sw_failaction with
         | Some lam ->
-          let fv, tlam = tlambda nfv fv lam in
+          let fv, tlam = tlambda rv nfv fv lam in
           fv, Some tlam
         | None -> fv, None
       in
-      mk_tlet nfv fv stack     
+      mk_tlet rv nfv fv stack     
         ( Tswitch
             ( v,
               {
@@ -329,88 +311,88 @@ let lambda_to_tlambda last_id code =
         )                                
     | Lswitch ( lam, s ) ->
       let i = mk () in
-      tcontrol nfv fv ( (i, Lswitch ( Lvar i, s))::stack ) lam
+      tcontrol rv nfv fv ( (i, Lswitch ( Lvar i, s))::stack ) lam
     | Lstaticraise (i, l) ->
-      extract_and_apply nfv fv stack
+      extract_and_apply rv nfv fv stack
         (fun l -> Lstaticraise ( i, l ) )
         (fun l ->
-           let fv, l = lcheck nfv fv l in
-           mk_tlet nfv fv stack ( Tstaticraise ( i, l ))
+           let fv, l = lcheck rv nfv fv l in
+           mk_tlet rv nfv fv stack ( Tstaticraise ( i, l ))
         )
         l
     | Lstaticcatch ( lam, args, lam2 ) ->
-      let fv, tlam = tlambda nfv fv lam in
+      let fv, tlam = tlambda rv nfv fv lam in
       let nfv =
         List.fold_left
           (fun nfv v -> Ids.add v nfv)
           nfv (snd args) in
-      let fv, tlam2 = tlambda nfv fv lam2 in
-      mk_tlet nfv fv stack ( Tstaticcatch ( tlam, args, tlam2 ) )
+      let fv, tlam2 = tlambda rv nfv fv lam2 in
+      mk_tlet rv nfv fv stack ( Tstaticcatch ( tlam, args, tlam2 ) )
     | Ltrywith ( lam, i, lam2 ) ->
-      let fv, tlam = tlambda nfv fv lam in
+      let fv, tlam = tlambda rv nfv fv lam in
       let nfv = Ids.add i nfv in
-      let fv, tlam2 = tlambda nfv fv lam2 in
-      mk_tlet nfv fv stack ( Ttrywith ( tlam, i, tlam2 ) )
+      let fv, tlam2 = tlambda rv nfv fv lam2 in
+      mk_tlet rv nfv fv stack ( Ttrywith ( tlam, i, tlam2 ) )
     | Lifthenelse ( Lvar v, t, e ) ->
-      let fv, v = check nfv fv v in
-      let fv, t = tlambda nfv fv t in
-      let fv, e = tlambda nfv fv e in
-      mk_tlet nfv fv stack ( Tifthenelse ( v, t, e) )
+      let fv, v = check rv nfv fv v in
+      let fv, t = tlambda rv nfv fv t in
+      let fv, e = tlambda rv nfv fv e in
+      mk_tlet rv nfv fv stack ( Tifthenelse ( v, t, e) )
     | Lifthenelse ( c, t, e ) ->
       let i = mk () in
-      tcontrol (Ids.add i nfv) fv
+      tcontrol rv (Ids.add i nfv) fv
         (( i, Lifthenelse ( Lvar i, t, e ) )
          ::stack )
         c
     | Lsequence ( a, b ) ->
       let i = mk () in
-      tcontrol (Ids.add i nfv) fv ((i,b)::stack) a
+      tcontrol rv (Ids.add i nfv) fv ((i,b)::stack) a
     | Lwhile ( c, b ) ->
-      let fv, c = tlambda nfv fv c in
-      let fv, b = tlambda nfv fv b in
-      mk_tlet nfv fv stack ( Twhile ( c, b ) )
+      let fv, c = tlambda rv nfv fv c in
+      let fv, b = tlambda rv nfv fv b in
+      mk_tlet rv nfv fv stack ( Twhile ( c, b ) )
     | Lfor ( i, Lvar s, Lvar e, d, b ) ->
-      let fv, s = check nfv fv s in
-      let fv, e = check nfv fv e in
+      let fv, s = check rv nfv fv s in
+      let fv, e = check rv nfv fv e in
       let nfv = Ids.add i nfv in
-      let fv, b = tlambda nfv fv b in
-      mk_tlet nfv fv stack
+      let fv, b = tlambda rv nfv fv b in
+      mk_tlet rv nfv fv stack
         ( Tfor ( i, s, e, d, b ) )
     | Lfor ( i, s, e, d, b ) ->
       let is = mk () in
       let ie = mk () in
-      tcontrol nfv fv
+      tcontrol rv nfv fv
         ((is,e)
          ::(ie, Lfor ( i, Lvar is, Lvar ie, d, b ) )
          ::stack)
         s
     | Lsend ( k, Lvar o, Lvar m, [], _ ) ->
-      let fv, o = check nfv fv o in
-      let fv, m = check nfv fv m in
-      mk_tlet nfv fv stack
+      let fv, o = check rv nfv fv o in
+      let fv, m = check rv nfv fv m in
+      mk_tlet rv nfv fv stack
         ( Tsend ( k, o, m ) )
     | Lsend ( k, ( Lvar _ as o ), m, [], loc ) ->
       let im = mk () in
-      tcontrol nfv fv
+      tcontrol rv nfv fv
         ( (im, Lsend ( k, o, Lvar im, [], loc))
           ::stack )
         m
     | Lsend ( k, o, (Lvar _ as m), [], loc ) ->
       let io = mk () in
-      tcontrol nfv fv
+      tcontrol rv nfv fv
         ( (io, Lsend ( k, Lvar io, m, [], loc))
           ::stack )
         o
     | Lsend ( k, o,  m, [], loc ) ->
       let im = mk () in
       let io = mk () in
-      tcontrol nfv fv
+      tcontrol rv nfv fv
         ( (io, m)
           ::( im, Lsend ( k, Lvar io, Lvar im, [], loc ) )
           ::stack )
         o
     | Lsend ( k, o, m, args, loc ) ->
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lapply
             ( Lsend ( k, o, m, [], loc )
             , args, loc )
@@ -418,25 +400,25 @@ let lambda_to_tlambda last_id code =
     | _ -> assert false
 
 
-  and mk_tlet nfv fv stack tc =
+  and mk_tlet rv nfv fv stack tc =
     match stack with
     | [ id, cont ] ->
-      let fv, cont = tlambda (Ids.add id nfv) fv cont in
+      let fv, cont = tlambda rv (Ids.add id nfv) fv cont in
       fv, tlet ~id tc cont
     | (id,cont) :: stack ->
-      let fv, lam = ( tcontrol (Ids.add id nfv) fv stack cont ) in
+      let fv, lam = ( tcontrol rv (Ids.add id nfv) fv stack cont ) in
       fv, tlet ~id tc lam
     | [] -> assert false
 
-  and prim_handle nfv fv stack p l =
-    let tlet = mk_tlet nfv fv stack in
-    let fv, l = lcheck nfv fv l in
+  and prim_handle rv nfv fv stack p l =
+    let tlet = mk_tlet rv nfv fv stack in
+    let fv, l = lcheck rv nfv fv l in
     match p, l with
     | Pidentity, [a] -> tlet ( Tvar a )
     | Pignore, [a] -> tlet ( Tconst ( Const_pointer 0 ) )
     | Prevapply loc, x::f::tl
     | Pdirapply loc, f::x::tl ->
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lapply ( Lvar f, lvars (x::tl), loc ) )
     | Pgetglobal i, [] -> tlet ( Tprim ( TPbuiltin, [i] ) )
     | Psetglobal _, _ -> assert false
@@ -448,7 +430,7 @@ let lambda_to_tlambda last_id code =
     | Pdivint, [a;b]
     | Pmodint, [a;b] ->
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Cneq, [lb; Lconst zeroint] ),
              Lprim ( p, [Lvar a; lb; lb]),
@@ -461,7 +443,7 @@ let lambda_to_tlambda last_id code =
     | Pstringrefs, [a;b] ->
       let la = Lvar a in
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Clt , [lb; Lprim ( Pstringlength, [la])] ),
              Lprim ( Pstringrefu, [la; lb]),
@@ -470,7 +452,7 @@ let lambda_to_tlambda last_id code =
     | Pstringsets, [a;b;c] ->
       let la = Lvar a in
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Clt , [lb; Lprim ( Pstringlength, [la])] ),
              Lprim ( Pstringsetu, [la; lb; Lvar c]),
@@ -479,7 +461,7 @@ let lambda_to_tlambda last_id code =
     | Parrayrefs k, [a;b] ->
       let la = Lvar a in
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Clt , [lb; Lprim ( Parraylength k, [la])] ),
              Lprim ( Parrayrefu k, [la; lb]),
@@ -488,7 +470,7 @@ let lambda_to_tlambda last_id code =
     | Parraysets k, [a;b;c] ->
       let la = Lvar a in
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Clt , [lb; Lprim ( Parraylength k, [la])] ),
              Lprim ( Parraysetu k, [la; lb; Lvar c]),
@@ -497,7 +479,7 @@ let lambda_to_tlambda last_id code =
     | Pdivbint k, [a;b]
     | Pmodbint k, [a;b] ->
       let lb = Lvar b in
-      tcontrol nfv fv stack
+      tcontrol rv nfv fv stack
         ( Lifthenelse (
              Lprim ( Pintcomp Cneq, [lb; Lconst (zero_of k)] ),
              Lprim ( p, [Lvar a; lb; lb]),
@@ -510,34 +492,38 @@ let lambda_to_tlambda last_id code =
     | p, l ->
       tlet ( Tprim ( prim_translate p, l ) )
 
-  and promote_rec promoted expelled i lam = (* TODO: lambda -> Lvar *)
-    let p_l promoted expelled =
+  and promote_rec vars promoted expelled i lam =
+    let p_l vars promoted expelled =
       List.fold_left
-        (fun (p,e) (id,lam) -> promote_rec p e id lam )
-        ( promoted, expelled )
+        (fun (v,p,e) (id,lam) -> promote_rec v p e id lam )
+        ( vars, promoted, expelled )
     in
     match lam with
-    | Lfunction ( _, _::[], _ ) -> ( ( i, lam ) :: promoted, expelled )
+    | Lfunction ( _, _::[], _ ) ->
+      ( vars, ( i, lam ) :: promoted, expelled )
     | Lfunction ( k, x::tl, body ) ->
-      let id = mk () in
-      let promoted, expelled =
-        promote_rec promoted expelled id ( Lfunction ( k, tl, body ) )
-      in
-      ( ( i, Lfunction ( k, [x], Lvar id ) ) :: promoted, expelled )
+      ( x :: vars, 
+        ( i, Lfunction ( k, [x],
+                         Lfunction ( k, tl, body ) )
+        ) :: promoted,
+        expelled )
     | Lprim ( Pmakeblock _ as p, l )
     | Lprim ( Pmakearray _ as p, l ) ->
       let ( lams, l ) = extract_lams [] [] l in
-      let promoted, expelled = p_l promoted expelled lams in
-      ( ( i, Lprim ( p, l ) ) :: promoted, expelled )
+      let vars, promoted, expelled =
+        p_l vars promoted expelled lams in
+      ( vars, ( i, Lprim ( p, l ) ) :: promoted, expelled )
     | Llet ( k, id, e, cont ) ->
-      let ( promoted, expelled ) = promote_rec promoted expelled id e in
-      promote_rec promoted expelled i cont
+      let ( vars, promoted, expelled ) =
+        promote_rec vars promoted expelled id e in
+      promote_rec vars promoted expelled i cont
     | Lletrec ( l, cont ) ->
-      let ( promoted, expelled ) = p_l promoted expelled l in
-      promote_rec promoted expelled i cont
-    | _ -> ( promoted, ( i, lam ) :: expelled )
+      let ( vars, promoted, expelled ) =
+        p_l vars promoted expelled l in
+      promote_rec vars promoted expelled i cont
+    | _ -> ( vars, promoted, ( i, lam ) :: expelled )
 
-  and mk_tletrec nfv fv res l =
+  and mk_tletrec rv nfv fv res l =
     match l with
     | [] -> fv, res
     | (i,lam) :: tl ->
@@ -545,15 +531,15 @@ let lambda_to_tlambda last_id code =
         begin
           match lam with
           | Lprim ( p, l ) ->
-            let fv, l = lcheck nfv fv ( get_vars l) in
+            let fv, l = lcheck rv nfv fv ( get_vars l) in
             let p = prim_translate p in
             fv, ( i, p, l )
           | Lfunction ( _, [arg], body ) ->
-            let fv, f, l = fun_create nfv fv arg body in
+            let fv, f, l = fun_create rv nfv fv arg body in
             fv, ( i, f, l)
           | _ -> assert false
         end in
-      mk_tletrec nfv fv (x::res) tl
+      mk_tletrec rv nfv fv (x::res) tl
         
   and extract_vars l =
     let b, l =
@@ -575,7 +561,7 @@ let lambda_to_tlambda last_id code =
       let i = mk () in
       extract_lams ((i,lam)::res) ((Lvar i)::l) tl
 
-  and extract_and_apply nfv fv stack mkl (mkt:id list -> 'a) l =
+  and extract_and_apply rv nfv fv stack mkl (mkt:id list -> 'a) l =
     let ok, lv = extract_vars l in
     if ok
     then mkt lv
@@ -589,10 +575,10 @@ let lambda_to_tlambda last_id code =
              | _,[] -> assert false
           ) ( stack, ( mkl ( lvars lv ) ), lv ) l
       in
-      tcontrol nfv fv stack cont
+      tcontrol rv nfv fv stack cont
 
-  and check nfv fv v =
-    if Ids.mem v nfv
+  and check rv nfv fv v =
+    if Ids.mem v nfv || Ids.mem v rv
     then fv,v
     else
       try
@@ -602,26 +588,26 @@ let lambda_to_tlambda last_id code =
         let i = mk () in
         Idm.add v i fv, i
 
-  and lcheck nfv fv l =
+  and lcheck rv nfv fv l =
     let fv, l =
       List.fold_left
         (fun (fv,l) i ->
-           let fv,i = check nfv fv i in
+           let fv,i = check rv nfv fv i in
            (fv,i::l)
         ) (fv,[]) l
     in fv, List.rev l
          
   and get_vars = List.map (function Lvar v -> v | _ -> assert false )
 
-  and fun_create nfv fv arg body =
+  and fun_create rv nfv fv arg body =
     let nfv = Ids.add arg nfv in
     let nfv2 = Ids.singleton arg in
     let fv2 = Idm.empty in
-    let fv2, lam = tlambda nfv2 fv2 body in
+    let fv2, lam = tlambda rv nfv2 fv2 body in
     let i = register_function lam fv2 in
     let fv, l = Idm.fold
         (fun i _ (fv,l) ->
-           let fv,i = check nfv fv i in
+           let fv,i = check rv nfv fv i in
            (fv,i::l)
         )
         fv2 (fv,[])
@@ -631,7 +617,6 @@ let lambda_to_tlambda last_id code =
 
   in
 
-  let fv, lam =  tlambda Ids.empty Idm.empty code in
-  Idm.iter (fun i _ -> Printf.printf "%s: %d\n" i.Ident.name i.Ident.stamp ) fv;
+  let fv, lam =  tlambda Ids.empty Ids.empty Idm.empty code in
   assert ( Idm.is_empty fv );
   !ir, funcs, lam
