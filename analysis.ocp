@@ -65,5 +65,5 @@ begin test "test_toolchain"
  files = [ "test/test_toolchain.ml" ]
  requires = [ "common" "lambda" "tlambda" ]
  test_dir = "test/samples"
- test_args = [ "pervasives.cmt" "a.cmt" ]
+ test_args = [ "myper.cmt" ]
 end

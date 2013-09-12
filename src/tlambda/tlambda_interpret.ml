@@ -6,8 +6,7 @@ open Common_types
 
 module Idm = Map.Make ( struct type t = Ident.t let compare = compare end )
 
-type value = v ref
-and v =
+type v =
 | Int of int
 | Intn of nativeint
 | Int32 of int32
@@ -16,17 +15,17 @@ and v =
 | Floata of float array
 | String of string
 | Cp of int
-| Block of int * value list
-| Fun of F.t * value list
-| Rec_set
+| Block of int * id ref list
+| Fun of F.t * v list
+| Unknown
 
-type env = value Idm.t
+type env = v Idm.t
 type fun_table = ( F.t, tlambda ) Hashtbl.t
 
 let (env_empty:env) = Idm.empty
 
-exception Staticraise of int * value list
-exception Exn of value
+exception Staticraise of int * v list
+exception Exn of v
 
 let id_fun = { stamp = max_int; name = "#switch_f"; flags = 0}
 let id_arg = { stamp = pred ( pred max_int); name = "#arg_f"; flags = 0}
@@ -37,20 +36,20 @@ let set_env env i v = Idm.add i v env
 let rec assign_list e l1 l2 =
   List.fold_left2 set_env e l1 l2
 
-let val_to_bool v = match !v with
+let val_to_bool v = match v with
   | Cp 0 | Int 0 -> false
   | Cp _ | Int _ -> true
   | _ -> assert false
 
-let val_to_int i = match !i with
+let val_to_int i = match i with
   | Int i
   | Cp i -> i
   | _ -> assert false
 
-let of_bool b = ref ( Cp ( if b then 1 else 0))
-let of_int i = ref ( Int i)
+let of_bool b = Cp ( if b then 1 else 0)
+let of_int i = Int i
 
-let val_unit = ref ( Cp 0)
+let val_unit = Cp 0
 let match_failure = Exn val_unit (* This is indeed false *) (* TODO *)
 
 let rec tlambda (funs:fun_table) (env:env) = function
@@ -59,10 +58,16 @@ let rec tlambda (funs:fun_table) (env:env) = function
     let v = tcontrol funs env te_lam in
     let env = set_env env te_id v in
     tlambda funs env te_in
-  | Trec _ -> failwith "TODO: rec"
+  | Trec { tr_decls; tr_in; }  ->
+    let env =
+      List.fold_left
+        (fun env (i,p,l) ->
+           set_env env i ( call_prim env funs p l )
+        )
+        env tr_decls in
+    tlambda funs env tr_in
 
-and structured_constant sc =
-  ref ( match sc with
+and structured_constant = function
   | Const_base c ->
     let open Asttypes in
     begin
@@ -76,10 +81,11 @@ and structured_constant sc =
       | Const_nativeint i -> Intn i
     end
   | Const_pointer i -> Cp i
-  | Const_block (i, l) -> Block ( i, List.map structured_constant l)
+  | Const_block (i, l) -> failwith "TODO: const_block"
+    (* Block ( i, List.map structured_constant l) *)
   | Const_float_array l -> failwith "TODO: float_array const"
   | Const_immstring s -> String s
-  )
+  
 
 and tcontrol funs env = function
   | Tvar i -> get_env env i
@@ -98,7 +104,7 @@ and tcontrol funs env = function
       tlambda funs env b
     in
     begin
-      match !(get_env env i) with
+      match get_env env i with
       | Int i | Cp i -> switch_handle i s.t_consts
       | Block (i,l) -> switch_handle i s.t_blocks
       | _ -> assert false
@@ -131,7 +137,7 @@ and tcontrol funs env = function
     let start = val_to_int ( get_env env start) in
     let stop = val_to_int ( get_env env stop) in
     let f i =
-      let env = set_env env id (ref ( Int i)) in
+      let env = set_env env id (Int i) in
       ignore ( tlambda funs env body)
     in
     begin
@@ -140,12 +146,13 @@ and tcontrol funs env = function
       else for i =  start downto stop do f i done
     end;
     val_unit
-  (* | Tassign ( id, x) -> *)
-  (*   ( get_env env id) := !( get_env env x); *)
-  (*   val_unit *)
+  | Tlazyforce _ -> Unknown
+  | Tccall _ -> Unknown
+  | Tsend _ -> Unknown
+
     
 and call_fun funs f x =
-  match !f with
+  match f with
   | Fun ( i, l ) ->
     begin
       let body = Hashtbl.find funs i in
@@ -159,43 +166,59 @@ and call_fun funs f x =
   | _ -> assert false
 
 and call_prim env funs p l =
-  let lv = List.map (get_env env) l in
-  match p, lv with
+  let g i = get_env env i in
+  match p, l with
   (* Utilities *)
   (* Blocks *)
-  | TPmakeblock (i,_), _ -> ref ( Block ( i, lv))
-  | TPfield i, [{ contents = Block ( _, l)}]
-  | TPfloatfield i, [{ contents = Block ( _, l)}] ->
-    List.nth l i
-  | TPsetfield ( i, _), [{ contents = Block (_,l)};v]
-  | TPsetfloatfield i, [{ contents = Block (_,l)};v] ->
-    (List.nth l i) := !v; val_unit
-  | TPduprecord _, [r] -> ref !r
+  | TPmakeblock (i,_), _ ->  ( Block ( i, List.map ref l))
+  | TPfield i, [b]
+  | TPfloatfield i, [b] ->
+    begin
+      match g b with
+      | Block ( _, l) ->
+        g !( List.nth l i )
+      | _ -> assert false
+    end
+  | TPsetfield ( i, _), [b;v]
+  | TPsetfloatfield i, [b;v] ->
+    begin
+      match g b with
+      | Block (_,l) ->
+        (List.nth l i) := v; val_unit
+      | _ -> assert false
+    end
+  | TPduprecord _, [i] ->
+    begin
+      match g i with
+      |  Block (i,l) ->
+        Block (i, List.map (fun i -> ref !i) l )
+      | _ -> assert false
+    end
   (* Booleans *)
-  | TPnot, [b] -> of_bool ( not (val_to_bool b))
+  | TPnot, [b] -> of_bool ( not (val_to_bool (g b)))
   (* Ints *)
-  | TPnegint, [x] -> of_int ( ~- (val_to_int x))
-  | TPaddint, [ x; y] -> of_int ( ( val_to_int x) + ( val_to_int y))
-  | TPsubint, [ x; y] -> of_int ( ( val_to_int x) - ( val_to_int y))
-  | TPmulint, [ x; y] -> of_int ( ( val_to_int x) * ( val_to_int y))
-  | TPdivint, [ x; y] -> of_int ( ( val_to_int x) / ( val_to_int y))
-  | TPmodint, [ x; y] -> of_int ( ( val_to_int x) mod ( val_to_int y))
-  | TPandint, [ x; y] -> of_int ( ( val_to_int x) land ( val_to_int y))
-  | TPorint, [ x; y] -> of_int ( ( val_to_int x) lor ( val_to_int y))
-  | TPxorint, [ x; y] -> of_int ( ( val_to_int x) lxor ( val_to_int y))
-  | TPlslint, [ x; y] -> of_int ( ( val_to_int x) lsl ( val_to_int y))
-  | TPlsrint, [ x; y] -> of_int ( ( val_to_int x) lsr ( val_to_int y))
-  | TPasrint, [ x; y] -> of_int ( ( val_to_int x) asr ( val_to_int y))
-  | TPintcomp c, [ x; y] -> of_bool ( comparison c ( val_to_int x)  ( val_to_int y))
+  | TPnegint, [x] -> of_int ( ~- (val_to_int (g x)))
+  | TPaddint, [ x; y] -> of_int ( ( val_to_int (g x)) + ( val_to_int (g y)))
+  | TPsubint, [ x; y] -> of_int ( ( val_to_int (g x)) - ( val_to_int (g y)))
+  | TPmulint, [ x; y] -> of_int ( ( val_to_int (g x)) * ( val_to_int (g y)))
+  | TPdivint, [ x; y] -> of_int ( ( val_to_int (g x)) / ( val_to_int (g y)))
+  | TPmodint, [ x; y] -> of_int ( ( val_to_int (g x)) mod ( val_to_int (g y)))
+  | TPandint, [ x; y] -> of_int ( ( val_to_int (g x)) land ( val_to_int (g y)))
+  | TPorint, [ x; y] -> of_int ( ( val_to_int (g x)) lor ( val_to_int (g y)))
+  | TPxorint, [ x; y] -> of_int ( ( val_to_int (g x)) lxor ( val_to_int (g y)))
+  | TPlslint, [ x; y] -> of_int ( ( val_to_int (g x)) lsl ( val_to_int (g y)))
+  | TPlsrint, [ x; y] -> of_int ( ( val_to_int (g x)) lsr ( val_to_int (g y)))
+  | TPasrint, [ x; y] -> of_int ( ( val_to_int (g x)) asr ( val_to_int (g y)))
+  | TPintcomp c, [ x; y] -> of_bool ( comparison c ( val_to_int (g x))  ( val_to_int (g y)))
   | TPoffsetint _, _ -> failwith "TODO: ask Pierre"
   | TPoffsetref _, _ -> failwith "TODO: ask Pierre"
   (* Floats *)
   
  
-  | TPfun i, _ -> ref ( Fun ( i, lv ) )
+  | TPfun i, _ -> Fun ( i, List.map g l )
   | TPfunfield i, [] ->
     begin
-      match ! ( get_env env id_fun ) with
+      match g id_fun with
       | Fun ( _, l) -> List.nth l i
       | _ -> assert false
     end
