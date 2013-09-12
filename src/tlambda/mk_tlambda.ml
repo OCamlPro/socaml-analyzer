@@ -201,32 +201,41 @@ let lambda_to_tlambda last_id code =
       tcontrol (Ids.add id nfv) fv [id, Lvar id] lam
     | Llet ( k, id , e, cont ) ->
       tcontrol (Ids.add id nfv) fv [id, cont] e
-    | Lletrec (l, continuation) ->
-      (* let nfv = List.fold_left (fun nfv (i,_) -> Idm.add i nfv ) nfv l in *)
-      let promoted, expelled =
-        List.fold_left
-          (fun (promoted, expelled) (id, lam) -> promote_rec promoted expelled id lam )
-          ([],[]) l
-      in
-      if expelled = []
-      then
-        let nfv = List.fold_left (fun nfv (i,_) -> Ids.add i nfv ) nfv promoted in
-        let fv, tr_decls = mk_tletrec nfv fv [] promoted in
-        let fv, tr_in = tlambda nfv fv continuation in
-        ( fv, ( Trec { tr_decls; tr_in } ) )
-      else
-        let stack, cont =
-          List.fold_left
-            (fun (stack,cont) (i,lam) -> ((i,cont)::stack,lam))
-            ([], Lletrec ( promoted, continuation ) ) expelled
-        in
-        tcontrol nfv fv stack cont (* must check the variables ? *)
+    | Lletrec (l, continuation) -> trec_main nfv fv [] l continuation
     | Lsequence ( a, b ) ->
       let id = mk () in
       tcontrol (Ids.add id nfv) fv [id, b] a
     | Lassign _
     | Levent _
     | Lifused _ -> assert false
+
+  and trec_main nfv fv stack l continuation =
+    let promoted, expelled =
+      List.fold_left
+        (fun (promoted, expelled) (id, lam) -> promote_rec promoted expelled id lam )
+        ([],[]) l
+    in
+    if expelled = []
+    then
+      let nfv = List.fold_left (fun nfv -> function
+          | (i,Lfunction (_,[arg],_)) -> Ids.add i ( Ids.add arg nfv )
+          | (i,_) -> Ids.add i nfv )
+          nfv promoted in
+      
+      let fv, tr_decls = mk_tletrec nfv fv [] promoted in
+      let fv, tr_in =
+        if stack = []
+        then tlambda nfv fv continuation
+        else tcontrol nfv fv stack continuation
+      in
+      ( fv, ( Trec { tr_decls; tr_in } ) )
+    else
+      let stack, cont =
+        List.fold_left
+          (fun (stack,cont) (i,lam) -> ((i,cont)::stack,lam))
+          ( stack, Lletrec ( promoted, continuation ) ) expelled
+      in
+      tcontrol nfv fv stack cont
 
 
   and tcontrol nfv fv stack = function
@@ -278,26 +287,12 @@ let lambda_to_tlambda last_id code =
     | Lfunction ( _, [arg], body ) ->
       let fv, f, l = fun_create nfv fv arg body in
       mk_tlet nfv fv stack ( Tprim ( f, l ) )
-
-      (* let nfv2 = Ids.singleton arg in *)
-      (* let fv2 = Idm.empty in *)
-      (* let fv2, lam = tlambda nfv2 fv2 body in *)
-      (* let i = register_function lam fv2 in *)
-      (* let fv, l = Idm.fold *)
-      (*     (fun i _ (fv,l) -> *)
-      (*        let fv,i = check nfv fv i in *)
-      (*        (fv,i::l)) fv2 (fv,[]) *)
-      (* in *)
-      (* let l = List.rev l in *)
-
-      (* mk_tlet nfv fv stack *)
-      (*   ( Tprim ( TPfun i, l ) ) *)
     | Lfunction ( k, arg::args, body ) ->
       tcontrol nfv fv stack
         ( Lfunction ( k, [arg], Lfunction (k,args,body) ) )
     | Llet ( k, id, e, cont ) ->
       tcontrol (Ids.add id nfv) fv ((id,cont)::stack) e
-    | Lletrec _ -> failwith "TODO: letrec (tcontrol)"
+    | Lletrec ( l, continuation ) -> trec_main nfv fv stack l continuation
     | Lprim ( Psequand, [a;b] ) ->
       tcontrol nfv fv stack ( Lifthenelse ( a, b, cp 0 ) )
     | Lprim ( Psequor, [a;b] ) ->
@@ -369,7 +364,7 @@ let lambda_to_tlambda last_id code =
         c
     | Lsequence ( a, b ) ->
       let i = mk () in
-      tcontrol nfv fv ((i,b)::stack) a
+      tcontrol (Ids.add i nfv) fv ((i,b)::stack) a
     | Lwhile ( c, b ) ->
       let fv, c = tlambda nfv fv c in
       let fv, b = tlambda nfv fv b in
@@ -377,7 +372,8 @@ let lambda_to_tlambda last_id code =
     | Lfor ( i, Lvar s, Lvar e, d, b ) ->
       let fv, s = check nfv fv s in
       let fv, e = check nfv fv e in
-      let fv, b = tlambda (Ids.add i nfv) fv b in
+      let nfv = Ids.add i nfv in
+      let fv, b = tlambda nfv fv b in
       mk_tlet nfv fv stack
         ( Tfor ( i, s, e, d, b ) )
     | Lfor ( i, s, e, d, b ) ->
@@ -424,11 +420,11 @@ let lambda_to_tlambda last_id code =
 
   and mk_tlet nfv fv stack tc =
     match stack with
-    | [ id,Lvar v ] ->
-      let fv, v = check nfv fv v in
-      fv, tlet ~id tc ( Tend v )
+    | [ id, cont ] ->
+      let fv, cont = tlambda (Ids.add id nfv) fv cont in
+      fv, tlet ~id tc cont
     | (id,cont) :: stack ->
-      let fv, lam = ( tcontrol nfv fv stack cont ) in
+      let fv, lam = ( tcontrol (Ids.add id nfv) fv stack cont ) in
       fv, tlet ~id tc lam
     | [] -> assert false
 
@@ -515,20 +511,29 @@ let lambda_to_tlambda last_id code =
       tlet ( Tprim ( prim_translate p, l ) )
 
   and promote_rec promoted expelled i lam = (* TODO: lambda -> Lvar *)
+    let p_l promoted expelled =
+      List.fold_left
+        (fun (p,e) (id,lam) -> promote_rec p e id lam )
+        ( promoted, expelled )
+    in
     match lam with
-    | Lprim ( Pmakeblock _ , lv )
-    | Lprim ( Pmakearray _, lv )
-        when only_vars lv ->  ( ( i, lam ) :: promoted, expelled )
     | Lfunction ( _, _::[], _ ) -> ( ( i, lam ) :: promoted, expelled )
-    | Lfunction ( k, x::tl, body ) -> failwith "TODO: unarize funs promote_rec"
+    | Lfunction ( k, x::tl, body ) ->
+      let id = mk () in
+      let promoted, expelled =
+        promote_rec promoted expelled id ( Lfunction ( k, tl, body ) )
+      in
+      ( ( i, Lfunction ( k, [x], Lvar id ) ) :: promoted, expelled )
     | Lprim ( Pmakeblock _ as p, l )
-    | Lprim ( Pmakearray _ as p, l ) -> failwith "TODO: kick vars promote_rec"
+    | Lprim ( Pmakearray _ as p, l ) ->
+      let ( lams, l ) = extract_lams [] [] l in
+      let promoted, expelled = p_l promoted expelled lams in
+      ( ( i, Lprim ( p, l ) ) :: promoted, expelled )
     | Llet ( k, id, e, cont ) ->
       let ( promoted, expelled ) = promote_rec promoted expelled id e in
       promote_rec promoted expelled i cont
     | Lletrec ( l, cont ) ->
-      let ( promoted, expelled ) =
-	List.fold_left (fun (p,e) (id,lam) -> promote_rec p e id lam ) ( promoted, expelled ) l in
+      let ( promoted, expelled ) = p_l promoted expelled l in
       promote_rec promoted expelled i cont
     | _ -> ( promoted, ( i, lam ) :: expelled )
 
@@ -540,9 +545,9 @@ let lambda_to_tlambda last_id code =
         begin
           match lam with
           | Lprim ( p, l ) ->
-            let l = get_vars l in
+            let fv, l = lcheck nfv fv ( get_vars l) in
             let p = prim_translate p in
-            fv, ( i, p, l ) (* need to check vars? *)
+            fv, ( i, p, l )
           | Lfunction ( _, [arg], body ) ->
             let fv, f, l = fun_create nfv fv arg body in
             fv, ( i, f, l)
@@ -562,6 +567,13 @@ let lambda_to_tlambda last_id code =
         ) (true,[]) l
     in
     ( b, (List.rev l) )
+
+  and extract_lams res l = function
+    | [] -> res, List.rev l
+    | ( Lvar _ as lam ) :: tl -> extract_lams res (lam::l) tl
+    | lam :: tl ->
+      let i = mk () in
+      extract_lams ((i,lam)::res) ((Lvar i)::l) tl
 
   and extract_and_apply nfv fv stack mkl (mkt:id list -> 'a) l =
     let ok, lv = extract_vars l in
@@ -602,6 +614,7 @@ let lambda_to_tlambda last_id code =
   and get_vars = List.map (function Lvar v -> v | _ -> assert false )
 
   and fun_create nfv fv arg body =
+    let nfv = Ids.add arg nfv in
     let nfv2 = Ids.singleton arg in
     let fv2 = Idm.empty in
     let fv2, lam = tlambda nfv2 fv2 body in
@@ -609,15 +622,16 @@ let lambda_to_tlambda last_id code =
     let fv, l = Idm.fold
         (fun i _ (fv,l) ->
            let fv,i = check nfv fv i in
-           (fv,i::l)) fv2 (fv,[])
+           (fv,i::l)
+        )
+        fv2 (fv,[])
     in
     let l = List.rev l in
     ( fv, TPfun i, l )
 
-  and only_vars = List.for_all (function Lvar _ -> true | _ -> false )
-
   in
 
   let fv, lam =  tlambda Ids.empty Idm.empty code in
+  Idm.iter (fun i _ -> Printf.printf "%s: %d\n" i.Ident.name i.Ident.stamp ) fv;
   assert ( Idm.is_empty fv );
   !ir, funcs, lam
