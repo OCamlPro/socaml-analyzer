@@ -41,27 +41,27 @@ begin program "main"
  requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
-begin test "test_graph"
+begin test "tgraph"
  files = [ "test/test_graph.ml" ]
  requires = [ "hgraph" ]
 end
 
-begin test "test_int"
+begin test "tint"
  files = [ "test/test_int.ml" ]
  requires = [ "hgraph" ]
 end
 
-begin test "test_data"
+begin test "tdata"
  files = [ "test/test_data.ml" ]
  requires = [ "common" "hgraph" "data" ]
 end
 
-begin test "test_tlambda"
+begin test "ttlambda"
  files = [ "test/test_tlambda.ml" ]
  requires = [ "common" "tlambda" ]
 end
 
-begin test "test_toolchain"
+begin test "ttoolchain"
  files = [ "test/test_toolchain.ml" ]
  requires = [ "common" "lambda" "tlambda" ]
  test_dir = "test/samples"
