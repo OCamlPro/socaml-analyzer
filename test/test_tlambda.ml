@@ -39,5 +39,5 @@ open Tlambda_interpret
 let nofuns = Hashtbl.create 1
 
 let () =
-  assert ( !( tlambda nofuns env_empty t1) = Int 42);
-  assert ( !( tlambda nofuns env_empty t2) = Int (1605+1666))
+  assert ( ( tlambda nofuns env_empty t1) = Int 42);
+  assert ( ( tlambda nofuns env_empty t2) = Int (1605+1666))
