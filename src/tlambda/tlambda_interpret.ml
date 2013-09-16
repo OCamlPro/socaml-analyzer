@@ -16,7 +16,7 @@ type v =
 | String of string
 | Cp of int
 | Block of int * id ref list
-| Fun of F.t * v list
+| Fun of F.t * id list
 | Unknown
 
 type env = v Idm.t
@@ -215,11 +215,11 @@ and call_prim env funs p l =
   (* Floats *)
   
  
-  | TPfun i, _ -> Fun ( i, List.map g l )
+  | TPfun i, _ -> Fun ( i, (* List.map g *) l )
   | TPfunfield i, [] ->
     begin
       match g id_fun with
-      | Fun ( _, l) -> List.nth l i
+      | Fun ( _, l) -> g ( List.nth l i )
       | _ -> assert false
     end
   | _, _ -> failwith "TODO: primitives"

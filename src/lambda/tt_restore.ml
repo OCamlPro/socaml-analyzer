@@ -19,6 +19,8 @@ object (self)
 
   method! env e = Env.env_of_only_summary self#env_from_summary e
 
+  method get_env = last_env
+
   method reset_cache =
     Hashtbl.clear env_cache;
     Env.reset_cache()
@@ -97,9 +99,10 @@ let last_ident () = r#last_id
 let restore fn s nam =
   let s = r # structure s in
   r # clear_type_table;
-  let mtype =
-    let cmi = try read_cmi fn with _ -> read_cmi (fn^"i") in
-    Types.Mty_signature (cmi.Cmi_format.cmi_sign) in
+  (* let mtype = *)
+  (*   let cmi = try read_cmi fn with _ -> read_cmi (fn^"i") in *)
+  (*   Types.Mty_signature (cmi.Cmi_format.cmi_sign) in *)
+  let mtype = Types.Mty_signature s.Typedtree.str_type in
   r#add_import nam;
   let i = Ident.({stamp = 0; name = nam; flags = 0 }) in
   r#add_module_env i mtype;
@@ -131,18 +134,20 @@ let fn_to_modname fn =
 let load_ml filename =
   let outputprefix = Filename.chop_suffix filename ".ml" in
   let modulename = fn_to_modname filename in
-  let env = Compmisc.initial_env() in
+  let env = r#get_env in
   let tt =
     Pparse.file ppf filename Parse.implementation Config.ast_impl_magic_number
+    (* ++ (print_endline "parsed"; fun x -> x) *)
     ++ Typemod.type_implementation filename outputprefix modulename env
   in
+  (* print_endline "typed"; *)
   restore filename (fst tt) modulename
 
 let load_mli inputfile =
   let mname = fn_to_modname inputfile in
   let ast =
     Pparse.file ppf inputfile Parse.interface Config.ast_intf_magic_number in
-  let initial_env = Compmisc.initial_env() in
+  let initial_env = r#get_env in
   let tsg = Typemod.transl_signature initial_env ast in
   let sg = tsg.Typedtree.sig_type in
 
