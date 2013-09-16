@@ -128,7 +128,7 @@ let mk_graph ~last_id ~funs main =
   and trec g entry outv exnv ret_id exn_id d =
     (* at this point, there are only primitives *)
     let in_out = nv g in
-    add_hedge g ( Hedge.mk ()) ( List.rev_map (fun ( id, p, args ) -> id, Prim (p, args,exn_id) ) d.tr_decls ) ~pred:[|entry|] ~succ:[|outv;exnv|];
+    add_hedge g ( Hedge.mk ()) ( List.rev_map (fun ( id, p, args ) -> id, Prim ( p, args ) ) d.tr_decls ) ~pred:[|entry|] ~succ:[|outv;exnv|];
     tlambda ~g ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.tr_in
 
   and tcontrol g inv outv exnv id ret_id exn_id c =
@@ -142,7 +142,7 @@ let mk_graph ~last_id ~funs main =
 	~pred:[|inv|] ~succ:[| outv; exnv |]
 
     | Tprim ( p, args) ->
-      add_hedge g ( Hedge.mk ()) [ id, ( Prim ( p, args, exn_id))] ~pred:[|inv|] ~succ:[|outv;exnv|]
+      add_hedge g ( Hedge.mk ()) [ id, ( Prim ( p, args ))] ~pred:[|inv|] ~succ:[|outv;exnv|]
 
     | Tswitch ( si_id, s) ->
       let switch_handle is_cp (i,lam) =
@@ -216,9 +216,9 @@ let mk_graph ~last_id ~funs main =
       let inb = nv g in
       let outb = nv g in
       simpleh g i ( Var start) ~inv ~outv:initv;
-      simpleh g test_id ( Prim ( TPintcomp Lambda.Cle, [i;stop], exn_id)) ~inv:initv ~outv:testv;
+      simpleh g test_id ( Prim ( TPintcomp Lambda.Cle, [i;stop] )) ~inv:initv ~outv:testv;
       simpleh g test_id ctrue ~inv:testv ~outv:inb;
-      simpleh g i ( Prim ( TPaddint, [i;one_id], exn_id)) ~inv:outb ~outv:initv;
+      simpleh g i ( Prim ( TPaddint, [i;one_id])) ~inv:outb ~outv:initv;
       simpleh g test_id cfalse ~inv:testv ~outv;
       tlambda ~g ~outv:outb ~ret_id ~exn_id ~inv:inb ~exnv lbody
 

@@ -120,7 +120,7 @@ type primitive =
 type hinfo =
 | Var of id
 | Const of Lambda.structured_constant
-| Prim of primitive * id list * id (* the exn id *)
+| Prim of primitive * id list
 | Constraint of constr
 | App of id * id (* function, argument *)
 | Lazyforce of id

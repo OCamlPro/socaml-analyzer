@@ -59,7 +59,7 @@ and constraint_env_cp_list l cp env =
 and constraint_env_cp expr cp env =
   match expr with
   | Var x -> constraint_env_cp_var x cp env
-  | Prim ( p, l,exnid) ->
+  | Prim ( p, l ) ->
     begin
       match p, l with
       | TPintcomp c, [x;y]  ->
@@ -121,8 +121,11 @@ and constraint_env_tag expr tag env =
   match expr with
   | Var x -> constraint_env_tag_var x tag env
   | Const _
-  | App ( _, _ ) -> env
-  | Prim ( p, l, exnid ) ->
+  | App ( _, _ )
+  | Lazyforce _
+  | Ccall (_, _)
+  | Send (_, _) -> env
+  | Prim ( p, l ) ->
     begin
       match p with
       | TPmakeblock (t, _) when t = tag ->  env
@@ -203,7 +206,7 @@ struct
     | App _ -> assert false
     | Var i -> set ( act (get i) )
     | Const c -> set ( act (constant c) )
-    | Prim ( p, l,exnid) ->
+    | Prim ( p, l ) ->
       begin
 	match p, l with
 	  (* Operations on heap blocks *)
@@ -325,6 +328,10 @@ struct
 	| Ccp cp  -> constraint_env_cp_var id cp env
 	| Ctag tag -> constraint_env_tag_var id tag env
       end
+    | Lazyforce _
+    | Ccall (_, _)
+    | Send (_, _) -> set ( act Data.top )
+
   in	
   let env = Array.fold_left join_env bottom_env envs in
   let rec aux e l =

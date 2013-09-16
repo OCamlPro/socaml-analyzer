@@ -64,6 +64,8 @@ let bottom =
     expr = [];
   }
 
+let top = { bottom with top = true; }
+
 (* Bottom test *)
 
 let is_bottom_simple = function
@@ -519,16 +521,20 @@ let gc_env roots env =
     ) f res
   and dep_expr l res =
     let rec aux res = function
-    | [] -> res
-    | e :: tl ->
-      begin
-	match e with
-	| Var x -> aux (x::res) tl
-	| App ( f, x ) -> aux ( f :: x :: res ) tl
-	| Constraint _
-	| Const _ -> aux res tl
-	| Prim ( _, l, exnid ) -> aux ( List.rev_append l ( exnid :: res ) ) tl
-      end
+      | [] -> res
+      | e :: tl ->
+        begin
+	  match e with
+   | Var x
+   | Lazyforce x -> aux (x::res) tl
+   | App ( x, y )
+   | Send ( x, y ) -> aux ( x :: y :: res ) tl
+   | Constraint _
+   | Const _ -> aux res tl
+   | Prim ( _, l )
+   | Ccall ( _, l )->
+     aux ( List.rev_append l res ) tl
+        end
     in aux res l
 
   in
