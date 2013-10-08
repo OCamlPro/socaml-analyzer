@@ -134,8 +134,9 @@ let s_insert a b = function
     (i,b) :: (a,c) :: tl
   | _ -> assert false
 
-(* let globals_tbl : (id, tlambda) Hashtbl.t = Hashtbl.create 128 *)
-(* let register_global = Hashtbl.add globals_tbl *)
+let globals_tbl : (id, id) Hashtbl.t = Hashtbl.create 128
+let register_global = Hashtbl.add globals_tbl
+let get_global id = Hashtbl.get globals_tbl id
 
 
 let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
@@ -410,6 +411,14 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
       fv, tlet ~id tc lam
     | [] -> assert false
 
+  and mk_no_tlet rv nfv fv stack =
+    match stack with
+    | [ _, cont ] ->
+      tlambda rv nfv fv cont
+    | (_,cont) :: stack ->
+      tcontrol rv nfv fv stack cont
+    | [] -> assert false
+
   and prim_handle rv nfv fv stack p l =
     let tlet = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
@@ -420,8 +429,13 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
     | Pdirapply loc, f::x::tl ->
       tcontrol rv nfv fv stack
         ( Lapply ( Lvar f, lvars (x::tl), loc ) )
-    | Pgetglobal i, [] -> tlet ( Tprim ( TPbuiltin, [i] ) )
-    | Psetglobal _, _ -> assert false
+    | Pgetglobal i, [] ->
+      if builtin i
+      then tlet ( Tprim ( TPbuiltin, [i] ) )
+      else tlet ( Tvar ( get_global i ) )
+    | Psetglobal ig, [ir] ->
+      register_global ig ir;
+      mk_no_tlet rv nfv fv stack
     | Plazyforce, [a] ->
       tlet ( Tlazyforce a )
     | Praise, [e] ->
