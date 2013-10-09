@@ -42,12 +42,12 @@ let rec constraint_env_cp_var id cp env =
   let l = d.expr in
   if has_cp cp d
   then
-    if is_one_cp d env
+    if Cp.is_one d env
     then env
     else
       begin
 	constraint_env_cp_list l cp env
-	|> set_env id (restrict_cp ~v:cp d)
+	|> set_env id (Cp.restrict ~v:cp d)
       end
   else bottom_env
 
@@ -76,7 +76,7 @@ and constraint_env_cp expr cp env =
       | TPsetfloatfield _, _::_::[]
 	  when cp = 0 -> env
       | TPfield i, [b] ->
-	let ids = get_field i (get_env b env) in
+	let ids = Block.get_field i (get_env b env) in
 	Ids.fold
 	    (fun id acc ->
 	      join_env acc
@@ -85,9 +85,9 @@ and constraint_env_cp expr cp env =
       | TPnot, [x] when cp < 2 ->
 	constraint_env_cp_var x (1-cp) env
       | TPisint, [x] when cp = 0 ->
-	set_env x ( restrict_not_int (get_env x env) ) env
+	set_env x ( restrict_not_intcp (get_env x env) ) env
       | TPisint, [x] when cp = 1 ->
-	set_env x ( restrict_int (get_env x env) ) env
+	set_env x ( restrict_intcp (get_env x env) ) env
       | TPisout, [x] when cp = 0 -> failwith "TODO: isout"
       | TPisout, [x] when cp = 1 -> failwith "TODO: isout"
       | TPbittest, [x] when cp = 0 -> failwith "TODO: bittest"
@@ -101,14 +101,14 @@ and constraint_env_cp expr cp env =
 let rec constraint_env_tag_var id tag env =
   let d = get_env id env in
   let l = d.expr in
-  if has_tag tag d
+  if Block.has_tag tag d
   then
-    if is_one_tag d env
+    if Block.is_one_tag d env
     then env
     else
       begin
 	constraint_env_tag_list l tag env
-	|> set_env id (restrict_block ~tag d)
+	|> set_env id (Block.restrict ~tag d)
       end
   else bottom_env
 
@@ -136,7 +136,7 @@ and constraint_env_tag expr tag env =
 	    (fun id acc ->
 	      join_env acc
 		( constraint_env_tag_var id tag env)
-	    ) ( get_field i b) bottom_env
+	    ) ( Block.get_field i b) bottom_env
 	) l
       | TPduprecord _ when tag = 0 ->
 	list_of_one (fun b -> constraint_env_tag_var b tag env ) l
@@ -195,153 +195,156 @@ struct
 
 
   let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
-  let constant _ = failwith "TODO: constant !" in
-  let in_apply ( id, action) env =
-    let set x = set_env id x env
-    and get x = get_env x env
-    (* and vunit = cp_singleton 0 *)
-    and act d = set_expression d action
-    in
-    match action with
-    | App _ -> assert false
-    | Var i -> set ( act (get i) )
-    | Const c -> set ( act (constant c) )
-    | Prim ( p, l ) ->
-      begin
-	match p, l with
+    let constant _ = failwith "TODO: constant !" in
+    let in_apply ( id, action) env =
+      let set x = set_env id x env
+      and get x = get_env x env
+      (* and vunit = Cp.singleton 0 *)
+      and act d = set_expression d action
+      in
+      match action with
+      | App _ -> assert false
+      | Var i -> set ( act (get i) )
+      | Const c -> set ( act (constant c) )
+      | Prim ( p, l ) ->
+        begin
+	  match p, l with
 	  (* Operations on heap blocks *)
-	| TPmakeblock ( tag, _), _ ->
-	  let a = Array.of_list l in
-	  set ( act ( block_singleton tag a ))
-	| TPfield i, [b] ->
-	  let env =
-	    set_env b
-	      ( restrict_block ~has_field:i ( get b))
-	      env in
-	  let ids = get_field i ( get_env b env) in
-	  set_env id
-	    ( act
-		( Ids.fold
-		    (fun id d -> union (get_env id env) d )
-		    ids Data.bottom )
-	    )
-	    env
-	  (*
-	    | TPsetfield ( i, _), [b;v] ->
-	    let env = set_env b ( set_field i v ( get b)) env in
-	    set_env id vunit env *)
-	| TPfloatfield i, [b] -> failwith "TODO: floatfield"
-	| TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
-	| TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
+	  | TPmakeblock ( tag, _), _ ->
+	    let a = Array.of_list l in
+	    set ( act ( Block.singleton tag a ))
+	  | TPfield i, [b] ->
+	    let env =
+	      set_env b
+	        ( Block.restrict ~has_field:i ( get b))
+	        env in
+	    let ids = Block.get_field i ( get_env b env) in
+	    set_env id
+	      ( act
+		  ( Ids.fold
+		      (fun id d -> union (get_env id env) d )
+		      ids Data.bottom )
+	      )
+	      env
+   (*
+| TPsetfield ( i, _), [b;v] ->
+let env = set_env b ( Block.set_field i v ( get b)) env in
+set_env id vunit env *)
+	  | TPfloatfield i, [b] -> failwith "TODO: floatfield"
+	  | TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
+	  | TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
 	  (* Force lazy values *)
-	| TPnot, [i] -> set ( not_bool ( get i))
+	  | TPnot, [i] -> set ( Bools.notb ( get i))
 	  (* Integer operations *)
-	| TPnegint, [i] -> set ( int_op1 Int_interv.uminus ( get i))
-	| TPaddint, [x;y]
-	| TPsubint, [x;y]
-	| TPmulint, [x;y]
-	| TPdivint, [x;y]
-	| TPmodint, [x;y]
-	| TPandint, [x;y]
-	| TPorint, [x;y]
-	| TPxorint, [x;y]
-	| TPlslint, [x;y]
-	| TPlsrint, [x;y]
-	| TPasrint, [x;y] -> set ( act ( int_op2 ( intop2_of_prim p) (get x) (get y)))
-	| TPintcomp c, [x;y] -> 
-	  let res, x', y' = int_comp c ( get x) ( get y) in
-	  set ( act res)
-	|> set_env x x'
-	|> set_env y y'
-	(*
-	  | TPoffsetint of int
-	  | TPoffsetref of int
-	  (* Float operations *)
-	  | TPintoffloat | TPfloatofint
-	  | TPnegfloat | TPabsfloat
-	  | TPaddfloat | TPsubfloat | TPmulfloat | TPdivfloat
-	  | TPfloatcomp of comparison
-	  (* String operations *)
-	  | TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets
-	  (* Array operations *)
-	  | TPmakearray of array_kind
-	  | TParraylength of array_kind
-	  | TParrayrefu of array_kind
-	  | TParraysetu of array_kind
-	  | TParrayrefs of array_kind
-	  | TParraysets of array_kind
-	  (* Test if the argument is a block or an immediate integer *)
-	  | TPisint
-	  (* Test if the (integer) argument is outside an interval *)
-	  | TPisout
-	  (* Bitvect operations *)
-	  | TPbittest
-	  (* Operations on boxed integers (Nativeint.t, Int32.t, Int64.t) *)
-	  | TPbintofint of boxed_integer
-	  | TPintofbint of boxed_integer
-	  | TPcvtbint of boxed_integer (*source*) * boxed_integer (*destination*)
-	  | TPnegbint of boxed_integer
-	  | TPaddbint of boxed_integer
-	  | TPsubbint of boxed_integer
-	  | TPmulbint of boxed_integer
-	  | TPdivbint of boxed_integer
-	  | TPmodbint of boxed_integer
-	  | TPandbint of boxed_integer
-	  | TPorbint of boxed_integer
-	  | TPxorbint of boxed_integer
-	  | TPlslbint of boxed_integer
-	  | TPlsrbint of boxed_integer
-	  | TPasrbint of boxed_integer
-	  | TPbintcomp of boxed_integer * comparison
-	  (* Operations on big arrays: (unsafe, #dimensions, kind, layout) *)
-	  | TPbigarrayref of bool * int * bigarray_kind * bigarray_layout
-	  | TPbigarrayset of bool * int * bigarray_kind * bigarray_layout
-	  (* size of the nth dimension of a big array *)
-	  | TPbigarraydim of int
-	  (* load/set 16,32,64 bits from a string: (unsafe)*)
-	  | TPstring_load_16 of bool
-	  | TPstring_load_32 of bool
-	  | TPstring_load_64 of bool
-	  | TPstring_set_16 of bool
-	  | TPstring_set_32 of bool
-	  | TPstring_set_64 of bool
-	  (* load/set 16,32,64 bits from a
-	  (char, int8_unsigned_elt, c_layout) Bigarray.Array1.t : (unsafe) *)
-	  | TPbigstring_load_16 of bool
-	  | TPbigstring_load_32 of bool
-	  | TPbigstring_load_64 of bool
-	  | TPbigstring_set_16 of bool
-	  | TPbigstring_set_32 of bool
-	  | TPbigstring_set_64 of bool
-	  (* Compile time constants *)
-	  | TPctconst of compile_time_constant
-	  (* byte swap *)
-	  | TPbswap16
-	  | TPbbswap of boxed_integer
-	  (* method call *)
-	*)	      
-	| _ -> failwith "TODO: primitives !"
-      end
-    | Constraint c ->
-      begin
-	match c with
-	| Ccp cp  -> constraint_env_cp_var id cp env
-	| Ctag tag -> constraint_env_tag_var id tag env
-      end
-    | Lazyforce _
-    | Ccall (_, _)
-    | Send (_, _) -> set ( act Data.top )
+	  | TPnegint, [i] -> set ( act ( int_op1 Int_interv.uminus ( get i)) )
+	  | TPaddint, [x;y]
+	  | TPsubint, [x;y]
+	  | TPmulint, [x;y]
+	  | TPdivint, [x;y]
+	  | TPmodint, [x;y]
+	  | TPandint, [x;y]
+	  | TPorint, [x;y]
+	  | TPxorint, [x;y]
+	  | TPlslint, [x;y]
+	  | TPlsrint, [x;y]
+	  | TPasrint, [x;y] -> set ( act ( int_op2 ( intop2_of_prim p) (get x) (get y)))
+          | TPintcomp c, [x;y] -> 
+	    let res, x', y' = int_comp c ( get x) ( get y) in
+	    set ( act res)
+	    |> set_env x x'
+	    |> set_env y y'
+          | TPoffsetint i, [x] -> set ( act ( int_op1 (Int_interv.addcst i) ( get x) ) )
+          | TPoffsetref i, [x] ->
+            let b = get x in
+            let b = Block.restrict ~tag:0 ~size:1 in
+            set ( Block.fieldn_map (fun _ _ v -> failwith "TODO: offsetref") 0 b )
+            (*
+(* Float operations *)
+| TPintoffloat | TPfloatofint
+| TPnegfloat | TPabsfloat
+| TPaddfloat | TPsubfloat | TPmulfloat | TPdivfloat
+| TPfloatcomp of comparison
+(* String operations *)
+| TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets
+(* Array operations *)
+| TPmakearray of array_kind
+| TParraylength of array_kind
+| TParrayrefu of array_kind
+| TParraysetu of array_kind
+| TParrayrefs of array_kind
+| TParraysets of array_kind
+(* Test if the argument is a block or an immediate integer *)
+| TPisint
+(* Test if the (integer) argument is outside an interval *)
+| TPisout
+(* Bitvect operations *)
+| TPbittest
+(* Operations on boxed integers (Nativeint.t, Int32.t, Int64.t) *)
+| TPbintofint of boxed_integer
+| TPintofbint of boxed_integer
+| TPcvtbint of boxed_integer (*source*) * boxed_integer (*destination*)
+| TPnegbint of boxed_integer
+| TPaddbint of boxed_integer
+| TPsubbint of boxed_integer
+| TPmulbint of boxed_integer
+| TPdivbint of boxed_integer
+| TPmodbint of boxed_integer
+| TPandbint of boxed_integer
+| TPorbint of boxed_integer
+| TPxorbint of boxed_integer
+| TPlslbint of boxed_integer
+| TPlsrbint of boxed_integer
+| TPasrbint of boxed_integer
+| TPbintcomp of boxed_integer * comparison
+(* Operations on big arrays: (unsafe, #dimensions, kind, layout) *)
+| TPbigarrayref of bool * int * bigarray_kind * bigarray_layout
+| TPbigarrayset of bool * int * bigarray_kind * bigarray_layout
+(* size of the nth dimension of a big array *)
+| TPbigarraydim of int
+(* load/set 16,32,64 bits from a string: (unsafe)*)
+| TPstring_load_16 of bool
+| TPstring_load_32 of bool
+| TPstring_load_64 of bool
+| TPstring_set_16 of bool
+| TPstring_set_32 of bool
+| TPstring_set_64 of bool
+(* load/set 16,32,64 bits from a
+(char, int8_unsigned_elt, c_layout) Bigarray.Array1.t : (unsafe) *)
+| TPbigstring_load_16 of bool
+| TPbigstring_load_32 of bool
+| TPbigstring_load_64 of bool
+| TPbigstring_set_16 of bool
+| TPbigstring_set_32 of bool
+| TPbigstring_set_64 of bool
+(* Compile time constants *)
+| TPctconst of compile_time_constant
+(* byte swap *)
+| TPbswap16
+| TPbbswap of boxed_integer
+(* method call *)
+*)	      
+	  | _ -> failwith "TODO: primitives !"
+        end
+      | Constraint c ->
+        begin
+	  match c with
+	  | Ccp cp  -> constraint_env_cp_var id cp env
+	  | Ctag tag -> constraint_env_tag_var id tag env
+        end
+      | Lazyforce _
+      | Ccall (_, _)
+      | Send (_, _) -> set ( act Data.top )
 
-  in	
-  let env = Array.fold_left join_env bottom_env envs in
-  let rec aux e l =
+    in	
+    let env = Array.fold_left join_env bottom_env envs in
+    let rec aux e l =
+      match l with
+      | [] -> e
+      | h :: t -> aux (in_apply h e) t
+    in 
     match l with
-    | [] -> e
-    | h :: t -> aux (in_apply h e) t
-  in 
-  match l with
-  | [ id, ( App ( f, x ) as a ) ] ->
-    ( [| set_env id (set_expression (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
-  | _ -> [|aux env l|], []
+    | [ id, ( App ( f, x ) as a ) ] ->
+      ( [| set_env id (set_expression (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
+    | _ -> [|aux env l|], []
 
 end

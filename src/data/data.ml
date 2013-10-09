@@ -119,9 +119,9 @@ let mem_env id = function
 
 (* ints *)
 
-let restrict_int x = { bottom with int = x.int }
+let restrict_intcp x = { bottom with int = x.int; cp = x.cp; }
 
-let restrict_not_int x =
+let restrict_not_intcp x =
   { x with int = bottom.int; cp = bottom.cp; }
 
 let int_singleton const =
@@ -154,86 +154,11 @@ let int_make_comp c x y =
   let xi, yi = Int_interv.make_comp c x.int y.int in
   { x with int = xi }, { y with int = yi }
 
-let cp_any i =
-  let rec aux res = function
-    | 0 -> res
-    | n	-> let n = pred n in aux (Ints.add n res) n
-  in { bottom with cp = aux Ints.empty i }
-
-let cp_singleton i =
-  { bottom with cp = Ints.singleton i }
-
-let block_singleton tag content =
-  { bottom with blocks = Tagm.singleton tag ( Intm.singleton ( Array.length content) ( Array.map Ids.singleton content) ) }
-
-let has_cp v d = Ints.mem v d.cp
-let is_one_cp d env =
-  Ints.cardinal d.cp = 1 &&
-  is_bottom env { d with cp = bottom.cp }
-
-let restrict_cp ?v d =
-  match v with
-    Some v -> cp_singleton v
-  | None -> { bottom with cp = d.cp }
-
-let restrict_block ?tag ?has_field ?size d =
-  let restrict_tag_size im =
-    match has_field with
-    | None -> im
-    | Some f -> Intm.filter (fun k _ -> k > f) im
-  in
-  let restrict_tag im =
-    match size with
-    | None -> restrict_tag_size im
-    | Some s -> Intm.singleton s ( Intm.find s im)
-  in
-  { bottom with blocks =
-      match tag with
-      | None -> Tagm.map restrict_tag d.blocks
-      | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d.blocks))
-  }
-
-let has_tag t d = Tagm.mem t d.blocks
-let is_one_tag d env =
-  Tagm.cardinal d.blocks = 1 &&
-  is_bottom env { d with blocks = bottom.blocks }
 
 let set_a i v a =
   let a = Array.copy a in
   a.(i) <- v;
   a
-
-let set_field i v b =
-  let b = restrict_block ~has_field:i b in
-  { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
-
-
-let get_field i b =
-  Tagm.fold
-    (fun _ b acc ->
-      Intm.fold
-	(fun s a acc ->
-	  if s > i
-	  then Ids.union acc a.(i)
-	  else acc
-	) b acc
-    ) b.blocks Ids.empty
-
-(* booleans *)
-let booleans = (cp_any 2)
-
-let restrict_bool x =
-  { bottom with cp = Ints.inter x.cp booleans.cp }
-
-let not_bool x =
-  { bottom with cp =
-      Ints.fold
-	(fun i res ->
-	  match i with
-	  | 0 -> Ints.add 1 res
-	  | 1 -> Ints.add 0 res
-	  | _ -> res ) x.cp Ints.empty;
-  }
 
 (* expressions *)
 
