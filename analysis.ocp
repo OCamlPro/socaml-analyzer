@@ -20,7 +20,11 @@ end
 
 begin library "data"
  dirname = "src/data"
- files = [ "int_interv.ml" "data.ml" ]
+ files =
+  [
+    "int_interv.ml" "data.ml"
+    "ints.ml" "blocks.ml" "cps.ml" "bools.ml" "exprs.ml"
+  ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 

@@ -46,6 +46,11 @@ type data =
     expr : hinfo list;
   }
 
+(* The environment *)
+type environment =
+  | Bottom
+  | Env of data Idm.t
+
 let simple_bottom = Constants Constants.empty
 
 let bottom =
@@ -80,19 +85,7 @@ let is_bottom env { top; int; float; string; floata; i32;
   is_bottom_simple inat &&
   Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
 
-
-(* Environment management *)
-
-type environment =
-  | Bottom
-  | Env of data Idm.t
-
-let is_bottom_env = function
-  | Bottom -> true
-  | _ -> false
- 
-let bottom_env = Bottom
-let empty_env = Env Idm.empty
+(* basic env management *)
 
 let set_env id data = function
   | Bottom ->
@@ -115,56 +108,16 @@ let mem_env id = function
   | Bottom -> false
   | Env m -> Idm.mem id m
 
+
+
 (* simple functions and values *)
 
-(* ints *)
-
-let restrict_intcp x = { bottom with int = x.int; cp = x.cp; }
-
-let restrict_not_intcp x =
-  { x with int = bottom.int; cp = bottom.cp; }
-
-let int_singleton const =
-  { bottom with
-    int = Int_interv.cst const;
-  }
-let any_int =
-  { bottom with int = Int_interv.top;  }
-
-let int_add x y =
-  { bottom with int = Int_interv.add x.int y.int }
-
-let int_op1 ( f : Int_interv.t -> Int_interv.t) x =
-  { bottom with int = f x.int }
-
-let int_op2 ( f : Int_interv.t -> Int_interv.t -> Int_interv.t) x y =
-  { bottom with int = f x.int y.int }
-
-let int_comp c x y =
-  begin
-    match Int_interv.comp c x.int y.int with
-    | Some true -> { bottom with cp = Ints.singleton 1 }
-    | Some false -> { bottom with cp = Ints.singleton 0 }
-    | None -> { bottom with cp = Ints.add 1 ( Ints.singleton 0 ) }
-  end,
-    restrict_int x,
-    restrict_int y
-
-let int_make_comp c x y =
-  let xi, yi = Int_interv.make_comp c x.int y.int in
-  { x with int = xi }, { y with int = yi }
 
 
 let set_a i v a =
   let a = Array.copy a in
   a.(i) <- v;
   a
-
-(* expressions *)
-
-let set_expression d e = { d with expr = [e]; }
-let set_expressions d l = { d with expr = l; }
-let add_expressions d e = { d with expr = e :: d.expr; }
 
 (* Union *)
 
@@ -404,81 +357,4 @@ let intersect_noncommut env a b =
       f;
       expr = [];
     }
-  
-(* Environment joining *)
 
-let join_env e1 e2 =
-  match e1, e2 with
-  | Bottom, e | e, Bottom -> e
-  | Env i1, Env i2 ->
-    Env
-      ( Idm.merge
-	    ( fun _ v1 v2 ->
-	      match v1, v2 with
-	      | None, v | v, None -> v
-	      | Some v1, Some v2 ->
-		Some (union v1 v2)
-	    ) i1 i2
-      )
-
-(* Environment comparison *)
-
-let is_leq_env e1 e2 =
-  match e1, e2 with
-  | Bottom, _ -> true
-  | _, Bottom -> false
-  | Env e1, Env e2 ->
-    Idm.for_all (fun id d -> try is_leq d ( Idm.find id e2) with Not_found -> false ) e1
-
-(* Garbage collection *)
-
-let gc_env roots env =
-  let dep_blocks b res =
-    Tagm.fold (fun _ t res ->
-      Intm.fold
-	(fun _ a res ->
-	  Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
-	) t res
-    ) b res
-  and dep_funs f res =
-    Fm.fold (fun _ a res ->
-      Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
-    ) f res
-  and dep_expr l res =
-    let rec aux res = function
-      | [] -> res
-      | e :: tl ->
-        begin
-	  match e with
-   | Var x
-   | Lazyforce x -> aux (x::res) tl
-   | App ( x, y )
-   | Send ( x, y ) -> aux ( x :: y :: res ) tl
-   | Constraint _
-   | Const _ -> aux res tl
-   | Prim ( _, l )
-   | Ccall ( _, l )->
-     aux ( List.rev_append l res ) tl
-        end
-    in aux res l
-
-  in
-  let dependancies id idm =
-    let d = Idm.find id idm in
-    dep_blocks d.blocks ( dep_funs d.f ( dep_expr d.expr [] ) )
-  in
-  let rec add_with_dependants id idm res =
-    if mem_env id res
-    then res
-    else
-      let res = set_env id (Idm.find id idm) res in
-      aux res idm (dependancies id idm)
-  and aux res idm = function
-    | [] -> res
-    | id :: tl ->
-      aux ( add_with_dependants id idm res ) idm tl
-  in
-  match env with
-    Bottom -> Bottom
-  | Env m -> aux empty_env m roots
-    
