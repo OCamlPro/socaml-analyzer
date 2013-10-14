@@ -1,3 +1,4 @@
+open Common_types
 open Data
 
 (* Environment management *)
@@ -87,5 +88,5 @@ let gc roots env =
   in
   match env with
     Bottom -> Bottom
-  | Env m -> aux empty_env m roots
+  | Env m -> aux empty m roots
     

@@ -24,13 +24,16 @@ let restrict ?tag ?has_field ?size d =
 let fieldn_map f n b =
   { b with
     blocks =
-      Tagm.map
+      Tagm.mapi
         (fun t sizes ->
-           Intm.map
+           Intm.mapi
              (fun s a ->
                 let a' = Array.copy a in
-                a'.(n) <- Ids.map f t s a.(n);
-                a
+                a'.(n) <-
+                  Ids.fold
+                    (fun e -> Ids.add (f t s e))
+                    a.(n) Ids.empty;
+                a'
              ) sizes
         ) b.blocks;
   }
@@ -42,7 +45,7 @@ let is_one_tag d env =
 
 
 let set_field i v b =
-  let b = restrict_block ~has_field:i b in
+  let b = restrict ~has_field:i b in
   { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
 
 

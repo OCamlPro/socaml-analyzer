@@ -57,7 +57,7 @@ let meet x y =
 
 let cst c = Some (c,c)
 
-let addcst x c =
+let addcst c x =
   match x with
   | None -> x
   | Some ( a, b) ->

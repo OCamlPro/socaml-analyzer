@@ -1,7 +1,7 @@
 (* The atomic types *)
-
 open Utils
 open Common_types
+
 (* use generative applications to have a new type each time *)
 
 module Constant = MakeId(struct end)

@@ -40,21 +40,21 @@ let list_of_one f = function
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
   let l = d.expr in
-  if has_cp cp d
+  if Cps.has cp d
   then
-    if Cp.is_one d env
+    if Cps.is_one d env
     then env
     else
       begin
 	constraint_env_cp_list l cp env
-	|> set_env id (Cp.restrict ~v:cp d)
+	|> set_env id (Cps.restrict ~v:cp d)
       end
-  else bottom_env
+  else Envs.bottom
 
 and constraint_env_cp_list l cp env =
   List.fold_left
-    (fun e expr -> join_env e ( constraint_env_cp expr cp env ) )
-    bottom_env l
+    (fun e expr -> Envs.join e ( constraint_env_cp expr cp env ) )
+    Envs.bottom l
 
 and constraint_env_cp expr cp env =
   match expr with
@@ -64,58 +64,58 @@ and constraint_env_cp expr cp env =
       match p, l with
       | TPintcomp c, [x;y]  ->
 	if cp > 1
-	then bottom_env
+	then Envs.bottom
 	else
 	  let c = may_rev_comp c cp in
 	  let x' = get_env x env
 	  and y' = get_env y env in
-	  let (x',y') = int_make_comp c x' y' in
+	  let (x',y') = Int.make_comp c x' y' in
 	  set_env x x' env
       |> set_env y y'
       | TPsetfield _, _::_::[]
       | TPsetfloatfield _, _::_::[]
 	  when cp = 0 -> env
       | TPfield i, [b] ->
-	let ids = Block.get_field i (get_env b env) in
+	let ids = Blocks.get_field i (get_env b env) in
 	Ids.fold
 	    (fun id acc ->
-	      join_env acc
+	      Envs.join acc
 		( constraint_env_cp_var id cp env)
-	    ) ids bottom_env
+	    ) ids Envs.bottom
       | TPnot, [x] when cp < 2 ->
 	constraint_env_cp_var x (1-cp) env
       | TPisint, [x] when cp = 0 ->
-	set_env x ( restrict_not_intcp (get_env x env) ) env
+	set_env x ( Int.restrict_not_intcp (get_env x env) ) env
       | TPisint, [x] when cp = 1 ->
-	set_env x ( restrict_intcp (get_env x env) ) env
+	set_env x ( Int.restrict_intcp (get_env x env) ) env
       | TPisout, [x] when cp = 0 -> failwith "TODO: isout"
       | TPisout, [x] when cp = 1 -> failwith "TODO: isout"
       | TPbittest, [x] when cp = 0 -> failwith "TODO: bittest"
       | TPbittest, [x] when cp = 1 -> failwith "TODO: bittest"
-      | TPctconst Lambda.Word_size, [] -> bottom_env
+      | TPctconst Lambda.Word_size, [] -> Envs.bottom
       | TPctconst _, [] when cp < 2 -> env (* to correct ? *)
-      | _, _ -> bottom_env
+      | _, _ -> Envs.bottom
     end
   | _ -> env
 
 let rec constraint_env_tag_var id tag env =
   let d = get_env id env in
   let l = d.expr in
-  if Block.has_tag tag d
+  if Blocks.has_tag tag d
   then
-    if Block.is_one_tag d env
+    if Blocks.is_one_tag d env
     then env
     else
       begin
 	constraint_env_tag_list l tag env
-	|> set_env id (Block.restrict ~tag d)
+	|> set_env id (Blocks.restrict ~tag d)
       end
-  else bottom_env
+  else Envs.bottom
 
 and constraint_env_tag_list l tag env =
   List.fold_left
-    (fun e expr -> join_env e ( constraint_env_tag expr tag env ) )
-    bottom_env l
+    (fun e expr -> Envs.join e ( constraint_env_tag expr tag env ) )
+    Envs.bottom l
 
 and constraint_env_tag expr tag env =
   match expr with
@@ -134,13 +134,13 @@ and constraint_env_tag expr tag env =
 	  let b = get_env b env in
 	  Ids.fold
 	    (fun id acc ->
-	      join_env acc
+	      Envs.join acc
 		( constraint_env_tag_var id tag env)
-	    ) ( Block.get_field i b) bottom_env
+	    ) ( Blocks.get_field i b) Envs.bottom
 	) l
       | TPduprecord _ when tag = 0 ->
 	list_of_one (fun b -> constraint_env_tag_var b tag env ) l
-      | _ -> bottom_env
+      | _ -> Envs.bottom
     end
   | Constraint _ -> assert false
 
@@ -169,11 +169,11 @@ struct
   type vertex = v
   type abstract = e
 
-  let bottom _ = bottom_env
-  let is_bottom _ = is_bottom_env
-  let is_leq _ = is_leq_env
-  let join_list _ = List.fold_left join_env bottom_env
-  let abstract_init v = if v = E.inv then empty_env else bottom_env
+  let bottom _ = Envs.bottom
+  let is_bottom _ = Envs.is_bottom
+  let is_leq _ = Envs.is_leq
+  let join_list _ = List.fold_left Envs.join Envs.bottom
+  let abstract_init v = if v = E.inv then Envs.empty else Envs.bottom
 
   type hedge_attribute = ha
   type vertex_attribute = unit
@@ -200,7 +200,7 @@ struct
       let set x = set_env id x env
       and get x = get_env x env
       (* and vunit = Cp.singleton 0 *)
-      and act d = set_expression d action
+      and act d = Exprs.set d action
       in
       match action with
       | App _ -> assert false
@@ -212,13 +212,13 @@ struct
 	  (* Operations on heap blocks *)
 	  | TPmakeblock ( tag, _), _ ->
 	    let a = Array.of_list l in
-	    set ( act ( Block.singleton tag a ))
+	    set ( act ( Blocks.singleton tag a ))
 	  | TPfield i, [b] ->
 	    let env =
 	      set_env b
-	        ( Block.restrict ~has_field:i ( get b))
+	        ( Blocks.restrict ~has_field:i ( get b))
 	        env in
-	    let ids = Block.get_field i ( get_env b env) in
+	    let ids = Blocks.get_field i ( get_env b env) in
 	    set_env id
 	      ( act
 		  ( Ids.fold
@@ -228,7 +228,7 @@ struct
 	      env
    (*
 | TPsetfield ( i, _), [b;v] ->
-let env = set_env b ( Block.set_field i v ( get b)) env in
+let env = set_env b ( Blocks.set_field i v ( get b)) env in
 set_env id vunit env *)
 	  | TPfloatfield i, [b] -> failwith "TODO: floatfield"
 	  | TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
@@ -236,7 +236,7 @@ set_env id vunit env *)
 	  (* Force lazy values *)
 	  | TPnot, [i] -> set ( Bools.notb ( get i))
 	  (* Integer operations *)
-	  | TPnegint, [i] -> set ( act ( int_op1 Int_interv.uminus ( get i)) )
+	  | TPnegint, [i] -> set ( act ( Int.op1 Int_interv.uminus ( get i)) )
 	  | TPaddint, [x;y]
 	  | TPsubint, [x;y]
 	  | TPmulint, [x;y]
@@ -247,17 +247,18 @@ set_env id vunit env *)
 	  | TPxorint, [x;y]
 	  | TPlslint, [x;y]
 	  | TPlsrint, [x;y]
-	  | TPasrint, [x;y] -> set ( act ( int_op2 ( intop2_of_prim p) (get x) (get y)))
+	  | TPasrint, [x;y] -> set ( act ( Int.op2 ( intop2_of_prim p) (get x) (get y)))
           | TPintcomp c, [x;y] -> 
-	    let res, x', y' = int_comp c ( get x) ( get y) in
+	    let res, x', y' = Int.comp c ( get x) ( get y) in
 	    set ( act res)
 	    |> set_env x x'
 	    |> set_env y y'
-          | TPoffsetint i, [x] -> set ( act ( int_op1 (Int_interv.addcst i) ( get x) ) )
+          | TPoffsetint i, [x] ->
+            set ( act ( Int.op1 (Int_interv.addcst i) ( get x) ) )
           | TPoffsetref i, [x] ->
             let b = get x in
-            let b = Block.restrict ~tag:0 ~size:1 in
-            set ( Block.fieldn_map (fun _ _ v -> failwith "TODO: offsetref") 0 b )
+            let b = Blocks.restrict ~tag:0 ~size:1 b in
+            set ( Blocks.fieldn_map (fun _ _ v -> failwith "TODO: offsetref") 0 b )
             (*
 (* Float operations *)
 | TPintoffloat | TPfloatofint
@@ -336,7 +337,7 @@ set_env id vunit env *)
       | Send (_, _) -> set ( act Data.top )
 
     in	
-    let env = Array.fold_left join_env bottom_env envs in
+    let env = Array.fold_left Envs.join Envs.bottom envs in
     let rec aux e l =
       match l with
       | [] -> e
@@ -344,7 +345,7 @@ set_env id vunit env *)
     in 
     match l with
     | [ id, ( App ( f, x ) as a ) ] ->
-      ( [| set_env id (set_expression (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
+      ( [| set_env id (Exprs.set (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
     | _ -> [|aux env l|], []
 
 end

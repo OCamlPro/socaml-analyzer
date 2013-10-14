@@ -15,7 +15,7 @@ val print : Format.formatter -> t -> unit
 
 val meet : t -> t -> t
 val cst : int -> t
-val addcst : t -> int -> t
+val addcst : int -> t -> t
 
 val uminus : t -> t
 val add : t -> t -> t

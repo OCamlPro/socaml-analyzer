@@ -1,4 +1,6 @@
-let booleans = (any 2)
+open Data
+
+let booleans = (Cps.any 2)
 
 let restrict x =
   { bottom with cp = Ints.inter x.cp booleans.cp }

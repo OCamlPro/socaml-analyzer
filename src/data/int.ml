@@ -1,3 +1,5 @@
+open Data
+
 (* ints *)
 
 let restrict_intcp x = { bottom with int = x.int; cp = x.cp; }
@@ -28,8 +30,8 @@ let comp c x y =
     | Some false -> { bottom with cp = Ints.singleton 0 }
     | None -> { bottom with cp = Ints.add 1 ( Ints.singleton 0 ) }
   end,
-    restrict_int x,
-    restrict_int y
+    restrict_intcp x,
+    restrict_intcp y
 
 let make_comp c x y =
   let xi, yi = Int_interv.make_comp c x.int y.int in
