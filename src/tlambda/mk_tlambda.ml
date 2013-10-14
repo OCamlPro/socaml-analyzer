@@ -136,12 +136,12 @@ let s_insert a b = function
 
 let globals_tbl : (id, id) Hashtbl.t = Hashtbl.create 128
 let register_global = Hashtbl.add globals_tbl
-let get_global id = Hashtbl.get globals_tbl id
+let get_global = Hashtbl.find globals_tbl
 
 
 let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
 
-  let mk = mk_id
+  let mk = mk_id in
 
   let tlet ?(k = Strict) ?(id = mk ()) te_lam te_in =
     Tlet { te_kind = k; te_id = id; te_lam; te_in; }

@@ -1,24 +1,36 @@
-
+open Common_types
 
 let lambdas = Mk_lambda.mk_lambdas Sys.argv
 
-let ir = ref (Tt_restore.last_ident ())
+let ir = ref (Mk_lambda.last_id () )
 let mk_id () = 
   incr ir;
   Ident.({ name = ""; stamp = !ir; flags = 0 })
 
-let funs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 1024
+let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
 let tlambdas =
   Array.map
     ( Mk_tlambda.lambda_to_tlambda
       ~mk_id ~mk_fid:Common_types.F.create ~funs )
     lambdas
- 
-let ( g, inv, outv, exnv, funs, arg_id, return_id, exn_id ) = Tlambda_to_hgraph.mk_graph
-  ~last_id
-  ~funs
-  tlambda
+
+let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~last_id:!ir funs
+
+let subgs =
+  Array.map
+    ( Tlambda_to_hgraph.mk_subgraph ~g ~exn_id )
+    tlambdas
+
+let inv,outv,exnv,return_id =
+  Tlambda_to_hgraph.merge_graphs ~g subgs
+
+
+(* let ( g, inv, outv, exnv, funs, arg_id, return_id, exn_id ) = *)
+(*   Tlambda_to_hgraph.mk_graph *)
+(*     ~last_id:!ir *)
+(*     ~funs *)
+(*     tlambda *)
 
 module E =
 struct
@@ -30,8 +42,6 @@ struct
   let mk_vertex = Tlambda_to_hgraph.Vertex.mk
   let mk_hedge = Tlambda_to_hgraph.Hedge.mk
   let return_id = return_id
-  let arg_id = arg_id
-  let exn_id = exn_id
 end
 
 module Manager = Tlambda_analysis.M ( E )
