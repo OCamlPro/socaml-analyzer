@@ -72,3 +72,5 @@ let merge_lambdas ( lambdas : Lambda.lambda array ) =
 let mk_lambda files = 
   let l = merge_lambdas ( mk_lambdas files ) in
   ( l, Tt_restore.last_ident () )
+
+let last_id = Tt_restore.last_ident

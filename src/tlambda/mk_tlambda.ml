@@ -134,29 +134,30 @@ let s_insert a b = function
     (i,b) :: (a,c) :: tl
   | _ -> assert false
 
-let lambda_to_tlambda last_id code =
+let globals_tbl : (id, id) Hashtbl.t = Hashtbl.create 128
+let register_global = Hashtbl.add globals_tbl
+let get_global = Hashtbl.find globals_tbl
 
-  let ir = ref last_id in
-  let mk () =
-    incr ir;
-    Ident.({ name = ""; stamp = !ir; flags = 0 })
-  in
+
+let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
+
+  let mk = mk_id in
 
   let tlet ?(k = Strict) ?(id = mk ()) te_lam te_in =
     Tlet { te_kind = k; te_id = id; te_lam; te_in; }
   in
 
-  let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in
+  (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
   
   let register_function tlam fv =
-    let i = F.create () in
+    let i = (* F.create () *) mk_fid () in
     let tlam, _ =
       Idm.fold (fun _ id (tlam,n) ->
           tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [] ) ) tlam, succ n
         )
         fv ( tlam, 0 )
     in
-    Hashtbl.add funcs i tlam;
+    Hashtbl.add funs i tlam;
     i
   in
   
@@ -410,6 +411,14 @@ let lambda_to_tlambda last_id code =
       fv, tlet ~id tc lam
     | [] -> assert false
 
+  and mk_no_tlet rv nfv fv stack =
+    match stack with
+    | [ _, cont ] ->
+      tlambda rv nfv fv cont
+    | (_,cont) :: stack ->
+      tcontrol rv nfv fv stack cont
+    | [] -> assert false
+
   and prim_handle rv nfv fv stack p l =
     let tlet = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
@@ -420,8 +429,13 @@ let lambda_to_tlambda last_id code =
     | Pdirapply loc, f::x::tl ->
       tcontrol rv nfv fv stack
         ( Lapply ( Lvar f, lvars (x::tl), loc ) )
-    | Pgetglobal i, [] -> tlet ( Tprim ( TPbuiltin, [i] ) )
-    | Psetglobal _, _ -> assert false
+    | Pgetglobal i, [] ->
+      if builtin i
+      then tlet ( Tprim ( TPbuiltin, [i] ) )
+      else tlet ( Tvar ( get_global i ) )
+    | Psetglobal ig, [ir] ->
+      register_global ig ir;
+      mk_no_tlet rv nfv fv stack
     | Plazyforce, [a] ->
       tlet ( Tlazyforce a )
     | Praise, [e] ->
@@ -619,4 +633,4 @@ let lambda_to_tlambda last_id code =
 
   let fv, lam =  tlambda Ids.empty Ids.empty Idm.empty code in
   assert ( Idm.is_empty fv );
-  !ir, funcs, lam
+  lam
