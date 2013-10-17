@@ -69,6 +69,14 @@ type fun_desc =
     f_exn : id;
   }
 
+type mod_desc =
+  {
+    m_in : Vertex.t;
+    m_out : Vertex.t;
+    m_exn : Vertex.t;
+    m_return : id;
+  }
+
 type hg = ( unit, ( id * hinfo ) list, unit ) graph
 
 let ctrue = Constraint (Ccp 1)
@@ -339,6 +347,20 @@ let mk_subgraph ~g ~exn_id main =
   let inv = nv g and outv = nv g and exnv = nv g in
   let ret_id = mk_id "$ret" in
   tlambda ~g ~inv  ~outv ~exnv ~ret_id ~exn_id main;
-  ( inv, outv, exnv, ret_id )
+  { m_in = inv; m_out = outv; m_exn = exnv; m_return = ret_id; }
 
-let merge_graphs ~g _ = failwith "TODO: merge graphs !"
+
+
+let merge_graphs ~g subs =
+  let mv = vertex_merge g (fun () () -> ()) in
+  let l = Array.length subs in
+  let first = subs.(0)
+  and last = subs.(pred l) in
+  for i = 1 to l - 1 do
+    mv subs.(pred i).m_out subs.(i).m_in;
+    mv subs.(0).m_exn subs.(i).m_exn
+  done;
+  ( first.m_in,
+    last.m_out,
+    first.m_exn,
+    last.m_return )

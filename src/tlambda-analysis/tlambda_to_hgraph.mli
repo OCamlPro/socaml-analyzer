@@ -43,6 +43,8 @@ type fun_desc =
     f_exn : id;
   }
 
+type mod_desc
+
 type hg = ( unit, ( id * hinfo ) list, unit ) G.graph
 
 (* val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * id * id * id *)
@@ -59,13 +61,11 @@ val init :
    returns the graph, the fun descriptors and a exn_id
  *)
 
-val mk_subgraph :
-  g : hg -> exn_id : id -> Tlambda.tlambda ->
-  ( Vertex.t * Vertex.t * Vertex.t * id )
+val mk_subgraph : g : hg -> exn_id : id -> Tlambda.tlambda -> mod_desc
 
 (* returns a inv, a outv, a exnv and a return id *)
 
 val merge_graphs :
   g : hg ->
-  ( Vertex.t * Vertex.t * Vertex.t * id ) array ->
+  mod_desc array ->
   ( Vertex.t * Vertex.t * Vertex.t * id )
