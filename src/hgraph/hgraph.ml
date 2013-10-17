@@ -79,6 +79,9 @@ module type Hgraph = sig
   val vertex_attrib : ('a, _, _) graph -> T.vertex -> 'a
   val hedge_attrib : (_, 'b, _) graph -> T.hedge -> 'b
 
+  val vertex_merge : ('a,_,_) graph -> ('a -> 'a -> 'a) -> T.vertex -> T.vertex -> unit
+    (* vertex_merge g f v1 v2 merges v2 into v1, new attrib is f (vertex_attrib v1) (vertex_attrib v2) *)
+
   (* utils *)
 
   type subgraph = {
@@ -261,6 +264,28 @@ module Make(T:T) : Hgraph
   let import_hedge g1 g2 h attr =
     let hedge_n = hedge_n g1 h in
     add_hedge g2 h attr ~pred:hedge_n.h_pred ~succ:hedge_n.h_succ
+
+  let vertex_merge g f v1 v2 =
+    let v1n = vertex_n g v1
+    and v2n = vertex_n g v2
+    in
+    let v_pred =
+      HISet.fold (fun (i,h) set ->
+          let hn = hedge_n g h in
+          hn.h_succ.(i) <- v1;
+          HISet.add (i,h) set) v2n.v_pred v1n.v_pred
+    in
+    let v_succ =
+      HISet.fold (fun (i,h) set ->
+          let hn = hedge_n g h in
+          hn.h_pred.(i) <- v1;
+          HISet.add (i,h) set) v2n.v_succ v1n.v_succ
+    in
+    VTbl.remove g.vertex v2;
+    VTbl.remove g.vertex v1;
+    add_vertex_node g v1
+      { v_attr = f v1n.v_attr v2n.v_attr;
+        v_pred; v_succ; }
 
   let import_subgraph g1 g2 vl hl fv fh =
     let import_vertex v = add_vertex g2 v (fv v) in
