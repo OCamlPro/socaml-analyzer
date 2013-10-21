@@ -1,6 +1,6 @@
 open Common_types
 
-let lambdas = Mk_lambda.mk_lambdas Sys.argv
+let lambdas = Mk_lambda.mk_lambdas (Array.sub Sys.argv 1 ( pred (Array.length Sys.argv)) )
 
 let ir = ref (Mk_lambda.last_id () )
 let mk_id () = 
