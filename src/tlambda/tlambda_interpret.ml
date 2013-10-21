@@ -4,7 +4,7 @@ open Asttypes
 open Tlambda
 open Common_types
 
-module Idm = Map.Make ( struct type t = Ident.t let compare = compare end )
+module Idm = Map.Make ( struct type t = tid let compare = compare end )
 
 type v =
 | Int of int
@@ -15,8 +15,8 @@ type v =
 | Floata of float array
 | String of string
 | Cp of int
-| Block of int * id ref list
-| Fun of F.t * id list
+| Block of int * tid ref list
+| Fun of F.t * tid list
 | Unknown
 
 type env = v Idm.t
@@ -27,8 +27,8 @@ let (env_empty:env) = Idm.empty
 exception Staticraise of int * v list
 exception Exn of v
 
-let id_fun = { stamp = max_int; name = "#switch_f"; flags = 0}
-let id_arg = { stamp = pred ( pred max_int); name = "#arg_f"; flags = 0}
+let id_fun = "", { stamp = max_int; name = "#switch_f"; flags = 0}
+let id_arg = "", { stamp = pred ( pred max_int); name = "#arg_f"; flags = 0}
 
 let get_env env i = Idm.find i env
 let set_env env i v = Idm.add i v env

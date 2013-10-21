@@ -149,11 +149,11 @@ sig
   val inv : v
   val outv : v
   val exnv : v
-  val g : ( unit, ( id * hinfo ) list, unit ) G.graph 
+  val g : ( unit, ( tid * hinfo ) list, unit ) G.graph 
   val funs : ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
-  val return_id : Ident.t
+  val return_id : tid
 end
 
 module M : functor ( E : Entry ) ->

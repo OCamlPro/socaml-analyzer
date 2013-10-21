@@ -33,39 +33,39 @@ open G
 
 type fun_desc =
   {
-    f_graph : ( unit, (id * hinfo) list, unit ) G.graph;
+    f_graph : ( unit, ( tid * hinfo ) list, unit ) G.graph;
     f_in : Vertex.t array;
     f_out : Vertex.t array;
     f_vertex : VertexSet.t;
     f_hedge : HedgeSet.t;
-    f_arg : id;
-    f_return : id;
-    f_exn : id;
+    f_arg : tid;
+    f_return : tid;
+    f_exn : tid;
   }
 
 type mod_desc
 
-type hg = ( unit, ( id * hinfo ) list, unit ) G.graph
+type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
 
-(* val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( id * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * id * id * id *)
-(* (\* the graph, the in, out and exn vectors, the functions, the arg, return and exn ids *\) *)
+(* val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( tid * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * tid * tid * tid *)
+(* (\* the graph, the in, out and exn vectors, the functions, the arg, return and exn tids *\) *)
 
 
 val init :
   last_id:int ->
   ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
-  hg * ( Data.f, fun_desc ) Hashtbl.t * id
+  hg * ( Data.f, fun_desc ) Hashtbl.t * tid
 
 (*
-   takes the last id number and the fun hashtbl
+   takes the last tid number and the fun hashtbl
    returns the graph, the fun descriptors and a exn_id
  *)
 
-val mk_subgraph : g : hg -> exn_id : id -> Tlambda.tlambda -> mod_desc
+val mk_subgraph : g : hg -> exn_id : tid -> Tlambda.tlambda -> mod_desc
 
-(* returns a inv, a outv, a exnv and a return id *)
+(* returns a inv, a outv, a exnv and a return tid *)
 
 val merge_graphs :
   g : hg ->
   mod_desc array ->
-  ( Vertex.t * Vertex.t * Vertex.t * id )
+  ( Vertex.t * Vertex.t * Vertex.t * tid )

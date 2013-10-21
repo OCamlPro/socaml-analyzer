@@ -11,8 +11,9 @@ let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
 let tlambdas =
   Array.map
-    ( Mk_tlambda.lambda_to_tlambda
-      ~mk_id ~mk_fid:Common_types.F.create ~funs )
+    (fun (lam, modname) ->
+       Mk_tlambda.lambda_to_tlambda
+         ~mk_id ~mk_fid:Common_types.F.create ~modname ~funs lam )
     lambdas
 
 let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~last_id:!ir funs

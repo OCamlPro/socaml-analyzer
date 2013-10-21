@@ -6,7 +6,7 @@ open Common_types
 
 module Constant = MakeId(struct end)
 
-type id = Id.t
+type id = tid
 
 type constant = Constant.t
 
@@ -101,7 +101,7 @@ let get_env id = function
     with Not_found -> bottom
 
 let reg_env data env =
-  let i = Id.create () in
+  let i = TId.create () in
   ( set_env i data env, i)
 
 let mem_env id = function

@@ -1,10 +1,5 @@
 open Common_types
 
-type tid = string * id
-(* a tlambda id is a module * an id *)
-(* empty module means builtin or special *)
-(* "Module", { 0; "#self"; 0 } means a global module *)
-
 type tlambda =
 | Tlet of tlet
 | Trec of trec

@@ -139,12 +139,14 @@ let register_global = Hashtbl.add globals_tbl
 let get_global = Hashtbl.find globals_tbl
 
 
-let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
+let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
 
-  let mk = mk_id in
+  let mk : unit -> id = mk_id in
 
-  let tlet ?(k = Strict) ?(id = mk ()) te_lam te_in =
-    Tlet { te_kind = k; te_id = id; te_lam; te_in; }
+  let tid i : tid = modname,i in
+
+  let tlet ?(k = Strict) ~id te_lam te_in =
+    Tlet { te_kind = k; te_id = tid id; te_lam; te_in; }
   in
 
   (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
@@ -184,7 +186,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
   let rec tlambda rv nfv fv = function
     | Lvar v ->
       let fv,v = check rv nfv fv v in
-      ( fv , Tend v )
+      ( fv , Tend (tid v) )
     | Lconst _
     | Lapply _
     | Lfunction _
@@ -248,12 +250,12 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
   and tcontrol rv nfv fv stack = function
     | Lvar v ->
       let fv,v = check rv nfv fv v in
-      mk_tlet rv nfv fv stack ( Tvar v )
+      mk_tlet rv nfv fv stack ( Tvar (tid v) )
     | Lconst c -> mk_tlet rv nfv fv stack ( Tconst c )
     | Lapply ( Lvar f, [Lvar x], _ ) ->
       let fv, f = check rv nfv fv f in
       let fv, x = check rv nfv fv x in
-      mk_tlet rv nfv fv stack ( Tapply ( f, x ) )
+      mk_tlet rv nfv fv stack ( Tapply ( tid f, tid x ) )
     | Lapply ( Lvar _ as f, [x], loc ) ->
       let ix = mk () in
       tcontrol rv (Ids.add ix nfv) fv
@@ -269,7 +271,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
         ( Lapply ( Lapply ( f, [arg], loc ), args, loc ))
     | Lfunction ( _, [arg], body ) ->
       let fv, f, l = fun_create Ids.empty nfv fv arg body in
-      mk_tlet rv nfv fv stack ( Tprim ( f, l ) )
+      mk_tlet rv nfv fv stack ( Tprim ( f, List.map tid l ) )
     | Lfunction ( k, arg::args, body ) ->
       tcontrol rv nfv fv stack
         ( Lfunction ( k, [arg], Lfunction (k,args,body) ) )
@@ -302,7 +304,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
       in
       mk_tlet rv nfv fv stack     
         ( Tswitch
-            ( v,
+            ( tid v,
               {
                 t_numconsts = s.sw_numconsts;
                 t_numblocks = s.sw_numblocks;
@@ -318,7 +320,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
         (fun l -> Lstaticraise ( i, l ) )
         (fun l ->
            let fv, l = lcheck rv nfv fv l in
-           mk_tlet rv nfv fv stack ( Tstaticraise ( i, l ))
+           mk_tlet rv nfv fv stack ( Tstaticraise ( i, List.map tid l ))
         )
         l
     | Lstaticcatch ( lam, args, lam2 ) ->
@@ -328,17 +330,17 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
           (fun nfv v -> Ids.add v nfv)
           nfv (snd args) in
       let fv, tlam2 = tlambda rv nfv fv lam2 in
-      mk_tlet rv nfv fv stack ( Tstaticcatch ( tlam, args, tlam2 ) )
+      mk_tlet rv nfv fv stack ( Tstaticcatch ( tlam, (fst args, List.map tid (snd args)), tlam2 ) )
     | Ltrywith ( lam, i, lam2 ) ->
       let fv, tlam = tlambda rv nfv fv lam in
       let nfv = Ids.add i nfv in
       let fv, tlam2 = tlambda rv nfv fv lam2 in
-      mk_tlet rv nfv fv stack ( Ttrywith ( tlam, i, tlam2 ) )
+      mk_tlet rv nfv fv stack ( Ttrywith ( tlam, tid i, tlam2 ) )
     | Lifthenelse ( Lvar v, t, e ) ->
       let fv, v = check rv nfv fv v in
       let fv, t = tlambda rv nfv fv t in
       let fv, e = tlambda rv nfv fv e in
-      mk_tlet rv nfv fv stack ( Tifthenelse ( v, t, e) )
+      mk_tlet rv nfv fv stack ( Tifthenelse ( tid v, t, e) )
     | Lifthenelse ( c, t, e ) ->
       let i = mk () in
       tcontrol rv (Ids.add i nfv) fv
@@ -358,7 +360,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
       let nfv = Ids.add i nfv in
       let fv, b = tlambda rv nfv fv b in
       mk_tlet rv nfv fv stack
-        ( Tfor ( i, s, e, d, b ) )
+        ( Tfor ( tid i, tid s, tid e, d, b ) )
     | Lfor ( i, s, e, d, b ) ->
       let is = mk () in
       let ie = mk () in
@@ -371,7 +373,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
       let fv, o = check rv nfv fv o in
       let fv, m = check rv nfv fv m in
       mk_tlet rv nfv fv stack
-        ( Tsend ( k, o, m ) )
+        ( Tsend ( k, tid o, tid m ) )
     | Lsend ( k, ( Lvar _ as o ), m, [], loc ) ->
       let im = mk () in
       tcontrol rv nfv fv
@@ -403,7 +405,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
 
   and mk_tlet rv nfv fv stack tc =
     match stack with
-    | [ id, cont ] ->
+    | [ ( id ), cont ] ->
       let fv, cont = tlambda rv (Ids.add id nfv) fv cont in
       fv, tlet ~id tc cont
     | (id,cont) :: stack ->
@@ -423,7 +425,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
     let tlet = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
     match p, l with
-    | Pidentity, [a] -> tlet ( Tvar a )
+    | Pidentity, [a] -> tlet ( Tvar (tid a) )
     | Pignore, [a] -> tlet ( Tconst ( Const_pointer 0 ) )
     | Prevapply loc, x::f::tl
     | Pdirapply loc, f::x::tl ->
@@ -431,16 +433,16 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
         ( Lapply ( Lvar f, lvars (x::tl), loc ) )
     | Pgetglobal i, [] ->
       if builtin i
-      then tlet ( Tprim ( TPbuiltin, [i] ) )
-      else tlet ( Tvar ( get_global i ) )
+      then tlet ( Tprim ( TPbuiltin, [tid i] ) )
+      else tlet ( Tvar  ( tid ( get_global i ) ) )
     | Psetglobal ig, [ir] ->
       register_global ig ir;
       mk_no_tlet rv nfv fv stack
     | Plazyforce, [a] ->
-      tlet ( Tlazyforce a )
+      tlet ( Tlazyforce ( tid a ) )
     | Praise, [e] ->
-      tlet ( Traise e )
-    | Pccall c, _ -> tlet ( Tccall ( c, l ) )
+      tlet ( Traise (tid e) )
+    | Pccall c, _ -> tlet ( Tccall ( c, List.map tid l ) )
     | Pdivint, [a;b]
     | Pmodint, [a;b] ->
       let lb = Lvar b in
@@ -451,9 +453,9 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
              ldiv_by_zero )
         )
     | Pdivint, [a;b;_] -> (* yup, that's a hack *)
-      tlet ( Tprim ( TPdivint, [a;b]))
+      tlet ( Tprim ( TPdivint, [tid a;tid b]))
     | Pmodint, [a;b;_] ->
-      tlet ( Tprim ( TPmodint, [a;b]))
+      tlet ( Tprim ( TPmodint, [tid a;tid b]))
     | Pstringrefs, [a;b] ->
       let la = Lvar a in
       let lb = Lvar b in
@@ -500,11 +502,11 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
              ldiv_by_zero )
         )
     | Pdivbint k, [a;b;_] -> (* yup, that's a hack *)
-      tlet ( Tprim ( TPdivbint k, [a;b]))
+      tlet ( Tprim ( TPdivbint k, [tid a;tid b]))
     | Pmodbint k, [a;b;_] ->
-      tlet ( Tprim ( TPmodbint k, [a;b]))
+      tlet ( Tprim ( TPmodbint k, [tid a;tid b]))
     | p, l ->
-      tlet ( Tprim ( prim_translate p, l ) )
+      tlet ( Tprim ( prim_translate p, List.map tid l ) )
 
   and promote_rec vars promoted expelled i lam =
     let p_l vars promoted expelled =
@@ -547,10 +549,10 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
           | Lprim ( p, l ) ->
             let fv, l = lcheck rv nfv fv ( get_vars l) in
             let p = prim_translate p in
-            fv, ( i, p, l )
+            fv, ( tid i, p, List.map tid l )
           | Lfunction ( _, [arg], body ) ->
             let fv, f, l = fun_create rv nfv fv arg body in
-            fv, ( i, f, l)
+            fv, ( tid i, f, List.map tid l)
           | _ -> assert false
         end in
       mk_tletrec rv nfv fv (x::res) tl
@@ -599,7 +601,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~funs code =
         fv, Idm.find v fv
       with
         Not_found ->
-        let i = mk () in
+        let i:id = mk () in
         Idm.add v i fv, i
 
   and lcheck rv nfv fv l =

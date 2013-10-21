@@ -23,6 +23,27 @@ module F = MakeId(struct end)
 
 type id = Id.t
 
+type tid = string * id
+(* a tlambda id is a module * an id *)
+(* empty module means builtin or special *)
+(* "Module", { 0; "#self"; 0 } means a global module *)
+
+module TId =
+struct
+  open Ident
+  type t = tid
+  let compare = compare
+  let name (m,x) = Some ( m ^ x.name )
+  let to_string (m,x) = Printf.sprintf "%s.%s/%d" m x.name x.stamp
+  let output o (m,x) = Printf.fprintf o "%s.%s/%d" m x.name x.stamp
+  let print = print
+  let idref = ref 0
+  let create ?(name="") () =
+    decr idref;
+    ( "", { stamp = !idref; name = ( "$$" ^ name ); flags = 0; } )
+end
+
+
 type comparison = Lambda.comparison
 and array_kind = Lambda.array_kind
 and boxed_integer = Lambda.boxed_integer
@@ -118,12 +139,12 @@ type primitive =
 
 
 type hinfo =
-| Var of id
+| Var of tid
 | Const of Lambda.structured_constant
-| Prim of primitive * id list
+| Prim of primitive * tid list
 | Constraint of constr
-| App of id * id (* function, argument *)
-| Lazyforce of id
-| Ccall of Primitive.description * id list
-| Send of id * id
+| App of tid * tid (* function, argument *)
+| Lazyforce of tid
+| Ccall of Primitive.description * tid list
+| Send of tid * tid
 and constr = Ccp of int | Ctag of int

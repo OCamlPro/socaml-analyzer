@@ -20,8 +20,9 @@ let add_file result file =
   else raise Bad_file
 
 let tt_to_lambda ( name, tree ) =
-  Translmod.transl_implementation name
-    ( tree, Typedtree.Tcoerce_none)
+  ( Translmod.transl_implementation name
+    ( tree, Typedtree.Tcoerce_none),
+    name )
 
 let mk_lambdas ( files : string array ) =
   let result = Queue.create () in
@@ -49,13 +50,13 @@ end
   let rec aux i =
     if i = pred (Array.length lambdas)
     then
-      match m#lambda lambdas.(i) with
+      match m#lambda (fst lambdas.(i)) with
       | Lprim (Psetglobal id, ( [lam]) ) ->
 	m#register_global id lam;
 	lam
       | _ -> assert false
     else
-      let l = m#lambda lambdas.(i) in
+      let l = m#lambda (fst lambdas.(i)) in
       match l with
       | Lprim (Psetglobal id, [lam]) ->
 	m#register_global id lam;
@@ -64,7 +65,7 @@ end
   in
   aux 0
 
-let merge_lambdas ( lambdas : Lambda.lambda array ) =
+let merge_lambdas ( lambdas : ( Lambda.lambda * string ) array ) =
   if lambdas = [| |]
   then raise No_implementation
   else unglobalize lambdas

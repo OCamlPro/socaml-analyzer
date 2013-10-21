@@ -1,7 +1,5 @@
 open Common_types
 
-type id = Ident.t
-
 module type E =
 sig
   type t
@@ -59,14 +57,14 @@ open G
 
 type fun_desc =
   {
-    f_graph : ( unit, (id * hinfo) list, unit ) G.graph;
+    f_graph : ( unit, (tid * hinfo) list, unit ) G.graph;
     f_in : Vertex.t array;
     f_out : Vertex.t array;
     f_vertex : VertexSet.t;
     f_hedge : HedgeSet.t;
-    f_arg : id;
-    f_return : id;
-    f_exn : id;
+    f_arg : tid;
+    f_return : tid;
+    f_exn : tid;
   }
 
 type mod_desc =
@@ -74,10 +72,10 @@ type mod_desc =
     m_in : Vertex.t;
     m_out : Vertex.t;
     m_exn : Vertex.t;
-    m_return : id;
+    m_return : tid;
   }
 
-type hg = ( unit, ( id * hinfo ) list, unit ) graph
+type hg = ( unit, ( tid * hinfo ) list, unit ) graph
 
 let ctrue = Constraint (Ccp 1)
 let cfalse = Constraint (Ccp 0)
@@ -92,7 +90,7 @@ let stampr = ref 0
 
 let mk_id s =
   incr stampr;
-  Ident.({ stamp = !stampr; name = s; flags = 0; })
+  ("",Ident.({ stamp = !stampr; name = s; flags = 0; }))
 
 let nv g =
   let v = Vertex.mk () in
@@ -102,7 +100,7 @@ let nv g =
 let simpleh g id v ~inv ~outv =
   add_hedge g ( Hedge.mk ()) [id,v] ~pred:[|inv|] ~succ:[|outv|]
  
-let statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32
+let statics : ( int, Vertex.t * tid list ) Hashtbl.t = Hashtbl.create 32
 
 
 let rec tlambda ~g ~outv ~ret_id ~exn_id ~inv ~exnv code =
