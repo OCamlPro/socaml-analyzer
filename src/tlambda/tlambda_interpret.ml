@@ -53,7 +53,7 @@ let val_unit = Cp 0
 let match_failure = Exn val_unit (* This is indeed false *) (* TODO *)
 
 let rec tlambda (funs:fun_table) (env:env) = function
-  | Tend i -> get_env env i
+  | Tend i -> get_env env i, env
   | Tlet { te_id; te_lam; te_in }-> 
     let v = tcontrol funs env te_lam in
     let env = set_env env te_id v in
@@ -101,7 +101,7 @@ and tcontrol funs env = function
 	    | Some b -> b
 	    | None -> raise match_failure)
       in
-      tlambda funs env b
+      fst ( tlambda funs env b )
     in
     begin
       match get_env env i with
@@ -112,25 +112,27 @@ and tcontrol funs env = function
   | Tstaticraise ( i, l) -> raise ( Staticraise ( i, List.map (get_env env) l))
   | Tstaticcatch ( lam, (i,l), lam2) ->
     begin
-      try tlambda funs env lam with
+      try fst ( tlambda funs env lam ) with
       | Staticraise ( i2, l2) when i2 = i ->
 	let env = assign_list env l l2 in
-	tlambda funs env lam2
+	fst ( tlambda funs env lam2 )
     end
   | Traise i -> raise ( Exn ( get_env env i))
   | Ttrywith ( lam, i, lam2) ->
       begin
-	try tlambda funs env lam with
+	try fst (tlambda funs env lam) with
 	  Exn v ->
 	    let env = set_env env i v in
-	    tlambda funs env lam2
+	    fst ( tlambda funs env lam2 )
       end
   | Tifthenelse ( i, l1, l2) ->
-    if val_to_bool ( get_env env i)
-    then tlambda funs env l1
-    else tlambda funs env l2
+    fst (
+      if val_to_bool ( get_env env i)
+      then tlambda funs env l1
+      else tlambda funs env l2
+    )
   | Twhile ( cond, body) ->
-    while ( val_to_bool ( tlambda funs env cond))
+    while ( val_to_bool ( fst ( tlambda funs env cond )))
     do ignore ( tlambda funs env body) done;
     val_unit
   | Tfor ( id, start, stop, direction, body) ->
@@ -161,7 +163,7 @@ and call_fun funs f x =
  |> Idm.add id_fun f
  |> Idm.add id_arg x
       in
-      tlambda funs e body
+      fst ( tlambda funs e body )
     end
   | _ -> assert false
 

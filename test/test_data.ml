@@ -93,7 +93,7 @@ module Env = struct
     env_v (Data.set_env id value env)
 
   let set_int env dst cst =
-    set_env dst (int_singleton cst) env
+    set_env dst (Int.singleton cst) env
 
   let add_int env ~src1 ~src2 ~dst =
     env
@@ -108,8 +108,8 @@ module Env = struct
     { env with prepared_call = Some {closure = Ids.singleton closure;
                                      param = Ids.singleton param} }
 
-  let bottom = env_v bottom_env
-  let empty = env_v empty_env
+  let bottom = env_v Envs.bottom
+  let empty = env_v Envs.empty
   let join e1 e2 =
     let prepared_call =
       match e1.prepared_call, e2.prepared_call with
@@ -119,11 +119,11 @@ module Env = struct
       | Some p1, Some p2 ->
         Some { closure = Data.Ids.union p1.closure p2.closure;
                param = Data.Ids.union p1.param p2.param } in
-    { env = (join_env e1.env e2.env);
+    { env = (Envs.join e1.env e2.env);
       prepared_call }
 
-  let is_bottom_env e = is_bottom_env e.env
-  let is_leq e1 e2 = is_leq_env e1.env e2.env
+  let is_bottom_env e = Envs.is_bottom e.env
+  let is_leq e1 e2 = Envs.is_leq e1.env e2.env
 
   let call abs =
     match abs.env with

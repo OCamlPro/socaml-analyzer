@@ -1,10 +1,21 @@
-let lambda, last_id = Mk_lambda.mk_lambda ( Array.sub Sys.argv 1 ( pred ( Array.length Sys.argv ) ) )
+let lambdas = Mk_lambda.mk_lambdas ( Array.sub Sys.argv 1 ( pred ( Array.length Sys.argv ) ) )
 
-let () =  print_endline "Got lambda !"
+let () =  print_endline "Got lambdas !"
 
-let last_id, funs, tlambda =
-  Mk_tlambda.lambda_to_tlambda last_id lambda
+let ir = ref (Mk_lambda.last_id () )
+let mk_id () = 
+  incr ir;
+  Ident.({ name = ""; stamp = !ir; flags = 0 })
 
-let () =  print_endline "Got Tlambda !"
+let funs : ( Common_types.F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
-let _ = Tlambda_interpret.tlambda funs Tlambda_interpret.env_empty tlambda
+let tlambdas =
+  Array.map
+    ( Mk_tlambda.lambda_to_tlambda
+      ~mk_id ~mk_fid:Common_types.F.create ~funs )
+    lambdas
+
+let () =  print_endline "Got Tlambdas !"
+
+let _ = Array.fold_left (fun (_,env) -> Tlambda_interpret.tlambda funs env )
+ (Tlambda_interpret.val_unit, Tlambda_interpret.env_empty) tlambdas
