@@ -11,8 +11,9 @@ let funs : ( Common_types.F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
 let tlambdas =
   Array.map
-    ( Mk_tlambda.lambda_to_tlambda
-      ~mk_id ~mk_fid:Common_types.F.create ~funs )
+    (fun ( lam, modname ) ->
+       Mk_tlambda.lambda_to_tlambda
+         ~mk_id ~mk_fid:Common_types.F.create ~modname ~funs lam )
     lambdas
 
 let () =  print_endline "Got Tlambdas !"

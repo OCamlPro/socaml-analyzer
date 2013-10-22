@@ -23,8 +23,8 @@ module Intm = Map.Make (struct type t = int let compare = compare end)
 
 module Tagm = Map.Make (struct type t = tag let compare = compare end)
 
-module Idm = Map.Make (struct type t = id let compare = compare end)
-module Ids = Set.Make (struct type t = id let compare = compare end)
+module Idm = Map.Make (struct type t = tid let compare = compare end)
+module Ids = Set.Make (struct type t = tid let compare = compare end)
 
 module Fm = Map.Make (struct type t = f let compare = compare end)
 

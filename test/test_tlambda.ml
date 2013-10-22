@@ -10,7 +10,7 @@ let tlet te_id te_lam te_in =
 let last_id = ref (-1)
 let mk_id s =
   incr last_id;
-  { stamp = !last_id; name = s; flags = 0 }
+  ( "", { stamp = !last_id; name = s; flags = 0 } )
 
 let ret_id = mk_id "return"
 

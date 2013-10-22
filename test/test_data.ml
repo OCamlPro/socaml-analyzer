@@ -13,13 +13,13 @@ module Vertex = struct
 end
 
 type hedge_attr =
-  | Set_int of Id.t * int
-  | Set_closure of Id.t * F.t * Id.t array
-  | Prepare_call of Id.t * Id.t
+  | Set_int of tid * int
+  | Set_closure of tid * F.t * tid array
+  | Prepare_call of tid * tid
   | Call
-  | Access_closure of Id.t * F.t * int
-  | Access_param of Id.t
-  | Add_int of Id.t * Id.t * Id.t
+  | Access_closure of tid * F.t * int
+  | Access_param of tid
+  | Add_int of tid * tid * tid
   | Ignore
 
 let hedge_attr_to_string = function
@@ -171,11 +171,13 @@ end
 
 let g = H.create ()
 
-let a_id = Id.create ~name:"a" ()
-let b_id = Id.create ~name:"b" ()
-let c_id = Id.create ~name:"c" ()
-let f_id = Id.create ~name:"f" ()
-let closure_id = Id.create ~name:"f" ()
+let tid s = ( "", ( Id.create ~name:s () ) )
+
+let a_id = tid "a"
+let b_id = tid "b"
+let c_id = tid "c"
+let f_id = tid "f"
+let closure_id = tid "f"
 
 (* let n_cst = Constant.create ~name:"n" () *)
 (* let m_cst = Constant.create ~name:"m" () *)
@@ -310,7 +312,7 @@ let print_env ppf attr =
   | Bottom -> fprintf ppf "Bottom"
   | Env env ->
     fprintf ppf "{@[ ";
-    Idm.iter (fun id _ -> fprintf ppf "%a " Id.print id) env;
+    Idm.iter (fun (_,id) _ -> fprintf ppf "%a " Id.print id) env;
     fprintf ppf "@]}"
 
 let print_attrvertex ppf vertex attr =
