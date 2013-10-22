@@ -30,7 +30,11 @@ exception Exn of v
 let id_fun = "", { stamp = max_int; name = "#switch_f"; flags = 0}
 let id_arg = "", { stamp = pred ( pred max_int); name = "#arg_f"; flags = 0}
 
-let get_env env i = Idm.find i env
+let get_env env i =
+  try Idm.find i env with
+  Not_found ->
+    TId.output stdout i;
+    assert false
 let set_env env i v = Idm.add i v env
 
 let rec assign_list e l1 l2 =

@@ -413,36 +413,68 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
       fv, tlet ~id tc lam
     | [] -> assert false
 
-  and mk_no_tlet rv nfv fv stack =
-    match stack with
-    | [ _, cont ] ->
-      tlambda rv nfv fv cont
-    | (_,cont) :: stack ->
-      tcontrol rv nfv fv stack cont
-    | [] -> assert false
+  (* and mk_no_tlet rv nfv fv stack = *)
+  (*   match stack with *)
+  (*   | [ _, cont ] -> *)
+  (*     tlambda rv nfv fv cont *)
+  (*   | (_,cont) :: stack -> *)
+  (*     tcontrol rv nfv fv stack cont *)
+  (*   | [] -> assert false *)
 
   and prim_handle rv nfv fv stack p l =
-    let tlet = mk_tlet rv nfv fv stack in
+    let tl = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
     match p, l with
-    | Pidentity, [a] -> tlet ( Tvar (tid a) )
-    | Pignore, [a] -> tlet ( Tconst ( Const_pointer 0 ) )
+    | Pidentity, [a] -> tl ( Tvar (tid a) )
+    | Pignore, [a] -> tl ( Tconst ( Const_pointer 0 ) )
     | Prevapply loc, x::f::tl
     | Pdirapply loc, f::x::tl ->
       tcontrol rv nfv fv stack
         ( Lapply ( Lvar f, lvars (x::tl), loc ) )
     | Pgetglobal i, [] ->
       if builtin i
-      then tlet ( Tprim ( TPbuiltin, [tid i] ) )
-      else tlet ( Tvar  ( tid ( get_global i ) ) )
+      then tl ( Tprim ( TPbuiltin, [tid i] ) )
+      else tl ( Tvar ( "", i ) )
     | Psetglobal ig, [ir] ->
-      register_global ig ir;
-      mk_no_tlet rv nfv fv stack
+      let fv, cont =
+        tcontrol rv nfv fv stack
+          ( Lconst ( Const_pointer 0))
+      in
+      fv, Tlet {
+        te_id = ("",ig);
+        te_lam = Tvar (tid ir);
+        te_kind = Alias;
+        te_in = cont;
+      }
+
+      (* let i, ( fv, cont ) = *)
+      (*   match stack with *)
+      (*   | [i,cont] -> *)
+      (*     i, tlambda rv (Ids.add id nfv) fv cont *)
+      (*   | (i,cont)::stack -> *)
+      (*     i, ( tcontrol rv (Ids.add id nfv) fv stack cont ) *)
+      (* in *)
+      (* fv, { *)
+      (*   te_id: ("",ig); *)
+      (*   te_lam: Tvar (tid ir); *)
+      (*   te_kind: Alias; *)
+      (*   te_cont: cont *)
+      (* } *)
+
+
+
+
+
+
+
+
+
+
     | Plazyforce, [a] ->
-      tlet ( Tlazyforce ( tid a ) )
+      tl ( Tlazyforce ( tid a ) )
     | Praise, [e] ->
-      tlet ( Traise (tid e) )
-    | Pccall c, _ -> tlet ( Tccall ( c, List.map tid l ) )
+      tl ( Traise (tid e) )
+    | Pccall c, _ -> tl ( Tccall ( c, List.map tid l ) )
     | Pdivint, [a;b]
     | Pmodint, [a;b] ->
       let lb = Lvar b in
@@ -453,9 +485,9 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
              ldiv_by_zero )
         )
     | Pdivint, [a;b;_] -> (* yup, that's a hack *)
-      tlet ( Tprim ( TPdivint, [tid a;tid b]))
+      tl ( Tprim ( TPdivint, [tid a;tid b]))
     | Pmodint, [a;b;_] ->
-      tlet ( Tprim ( TPmodint, [tid a;tid b]))
+      tl ( Tprim ( TPmodint, [tid a;tid b]))
     | Pstringrefs, [a;b] ->
       let la = Lvar a in
       let lb = Lvar b in
@@ -502,11 +534,11 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
              ldiv_by_zero )
         )
     | Pdivbint k, [a;b;_] -> (* yup, that's a hack *)
-      tlet ( Tprim ( TPdivbint k, [tid a;tid b]))
+      tl ( Tprim ( TPdivbint k, [tid a;tid b]))
     | Pmodbint k, [a;b;_] ->
-      tlet ( Tprim ( TPmodbint k, [tid a;tid b]))
+      tl ( Tprim ( TPmodbint k, [tid a;tid b]))
     | p, l ->
-      tlet ( Tprim ( prim_translate p, List.map tid l ) )
+      tl ( Tprim ( prim_translate p, List.map tid l ) )
 
   and promote_rec vars promoted expelled i lam =
     let p_l vars promoted expelled =
