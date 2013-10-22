@@ -69,5 +69,10 @@ begin test "ttoolchain"
  files = [ "test/test_toolchain.ml" ]
  requires = [ "common" "lambda" "tlambda" ]
  test_dir = "test/samples"
- test_args = [ "myper.ml" ]
+ tests =
+ [
+  "simple" ( test_args = [ "myper.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "a.ml" ] )
+  "pervasives" ( test_args = [ "pervasives.ml" ] )
+ ]
 end
