@@ -139,7 +139,7 @@ let register_global = Hashtbl.add globals_tbl
 let get_global = Hashtbl.find globals_tbl
 
 
-let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
+let lambda_to_tlambda ~mk_id ~modname ~funs code =
 
   let mk : unit -> id = mk_id in
 
@@ -152,7 +152,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
   (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
   
   let register_function tlam fv =
-    let i = (* F.create () *) mk_fid () in
+    let i = F.create ~name:modname ()  in
     let tlam, _ =
       Idm.fold (fun _ id (tlam,n) ->
           tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [] ) ) tlam, succ n

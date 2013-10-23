@@ -30,7 +30,7 @@ end
 
 begin library "hgraph"
  dirname = "src/hgraph"
- files = [ "hgraph.ml" ]
+ files = [ "hgraph.ml" "export.ml" ]
 end
 
 begin library "lambda-analysis"

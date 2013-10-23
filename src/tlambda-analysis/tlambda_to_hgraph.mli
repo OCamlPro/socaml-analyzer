@@ -47,12 +47,18 @@ type mod_desc
 
 type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
 
-(* val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( tid * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * tid * tid * tid *)
-(* (\* the graph, the in, out and exn vectors, the functions, the arg, return and exn tids *\) *)
+ val mk_graph :
+   mk_tid : ( string -> tid ) ->
+   ( F.t, Tlambda.tlambda ) Hashtbl.t ->
+   Tlambda.tlambda ->
+   ( hg * ( F.t, fun_desc ) Hashtbl.t *
+       Vertex.t * Vertex.t * Vertex.t *
+       tid * tid )
+(* the graph, the in, out and exn vectors, the functions, the exn and return tids *)
 
 
 val init :
-  last_id:int ->
+  mk_tid : ( string -> tid ) ->
   ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
   hg * ( Data.f, fun_desc ) Hashtbl.t * tid
 
@@ -61,7 +67,7 @@ val init :
    returns the graph, the fun descriptors and a exn_id
  *)
 
-val mk_subgraph : g : hg -> exn_id : tid -> Tlambda.tlambda -> mod_desc
+val mk_subgraph : g : hg -> mk_tid : ( string -> tid ) -> exn_id : tid -> Tlambda.tlambda -> mod_desc
 
 (* returns a inv, a outv, a exnv and a return tid *)
 
