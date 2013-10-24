@@ -70,8 +70,16 @@ let merge_lambdas ( lambdas : ( Lambda.lambda * string ) array ) =
   then raise No_implementation
   else unglobalize lambdas
 
-let mk_lambda files = 
-  let l = merge_lambdas ( mk_lambdas files ) in
-  ( l, Tt_restore.last_ident () )
+let mk_lambda file =
+  let tt =
+    let c = Filename.check_suffix file in
+    if c ".cmt"
+    then Tt_restore.load_and_restore file
+    else if c ".ml"
+    then Tt_restore.load_ml file
+    else assert false
+  in
+  
+  tt_to_lambda tt 
 
 let last_id = Tt_restore.last_ident

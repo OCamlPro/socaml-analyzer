@@ -45,6 +45,13 @@ begin program "main"
  requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
+begin program "bigraphc"
+ dirname = "src/driver"
+ files = [ "bgraphc" ]
+ requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
+end
+
+
 begin test "tgraph"
  test_byte = false
  files = [ "test/test_graph.ml" ]

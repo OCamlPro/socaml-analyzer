@@ -11,15 +11,15 @@ sig
 end
 
 (* exporting and importing of Hgraph as bigraphs *)
-module Store ( H : Hgraph.Hgraph ) ( I : Ginfo ) =
+module Store (T : Hgraph.T) ( H : Hgraph.Hgraph with module T := T ) ( I : Ginfo ) =
 struct
   type g = ( I.vattr, I.hattr, unit ) H.graph
 
-  type vext = H.T.vertex * I.vattr
-  type hext = H.T.hedge * I.hattr * H.T.vertex array * H.T.vertex array
+  type vext = T.vertex * I.vattr
+  type hext = T.hedge * I.hattr * T.vertex array * T.vertex array
 
   type gext = vext list * hext list
-              * H.T.vertex * H.T.vertex * H.T.vertex
+              * T.vertex * T.vertex * T.vertex
 
 
   type fdescr =
@@ -35,7 +35,7 @@ struct
 
   type fun_mapper =
     ( I.fid -> g ->
-      H.T.vertex -> H.T.vertex -> H.T.vertex ->
+      T.vertex -> T.vertex -> T.vertex ->
       I.tid -> I.tid -> I.tid ->
       fdescr ) ->
     I.fun_table ->
@@ -44,7 +44,7 @@ struct
   type fun_adder =
       I.fun_table ->
       I.fid -> g ->
-      H.T.vertex -> H.T.vertex -> H.T.vertex ->
+      T.vertex -> T.vertex -> T.vertex ->
       I.tid -> I.tid -> I.tid ->
       unit
 
