@@ -13,7 +13,7 @@ let tlambdas =
   Array.map
     (fun (lam, modname) ->
        Mk_tlambda.lambda_to_tlambda
-         ~mk_id ~modname ~funs lam )
+         ~modname ~funs lam )
     lambdas
 
 let mk_tid n = ( "", mk_id ~n () ) (* won't work *)

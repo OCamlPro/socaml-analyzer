@@ -344,7 +344,8 @@ let mk_subgraph ~g ~mk_tid ~exn_id main =
   tlambda ~g ~mk_tid ~inv ~outv ~exnv ~ret_id ~exn_id main;
   { m_in = inv; m_out = outv; m_exn = exnv; m_return = ret_id; }
 
-let mk_graph ~mk_tid funs tlam =
+let mk_graph ~modulename funs tlam =
+  let mk_tid name = ( modulename, Id.create ~name () ) in
   let ( g, fun_descs, exn_id ) = init ~mk_tid funs in
   let inv = nv g and outv = nv g and exnv = nv g in
   let ret_id = mk_tid "$ret" in

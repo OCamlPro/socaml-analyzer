@@ -1,60 +1,73 @@
 open Common_types
 
-module GI =
-struct
-  type vattr = unit
-  type hattr = ( tid * hinfo ) list
-  type fid = F.t
-  type tid = Common_types.tid
-  type fun_table = ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
 
-  let vattr_merge () () = ()
-end
 
-module Exp =
-  Export.Store
-    (Tlambda_to_hgraph.T)
-    ( Tlambda_to_hgraph.G )
-    ( GI )
+let ml_file ppf sourcefile outputprefix =
+
+  Location.input_name := sourcefile;
+  Compmisc.init_path true;
+  let modulename =
+    String.capitalize(Filename.basename(Misc.chop_extension_if_any sourcefile)) in
+  (* check_unit_name ppf sourcefile modulename; *)
+  Env.set_unit_name modulename;
+  let inputfile = Pparse.preprocess sourcefile in
+  let env = Compmisc.initial_env() in
+  Compilenv.reset ?packname:!Clflags.for_package modulename;
+  let lam =
+    Pparse.file ppf inputfile Parse.implementation Config.ast_impl_magic_number
+    |> Typemod.type_implementation sourcefile outputprefix modulename env
+    |> Translmod.transl_implementation modulename
+  in
+  Pparse.remove_preprocessed inputfile;
+  lam
+
+
+
+let cmt_file ppf sourcefile outputprefix =
+  let open Cmt_format in
+  let cmtf = read_cmt sourcefile in
+  let modulename = cmtf.cmt_modname in
+  let cmtf = Cmt_specifics.restore_cmt_env cmtf in
+  match cmtf.cmt_annots with
+  | Implementation s ->
+    Translmod.transl_implementation modulename (s,Typedtree.Tcoerce_none) (* Should be changed someday *)
+  | _ -> failwith (Printf.sprintf "Bad cmt file: %s" sourcefile)
+
 
 
 let () =
 
-  assert ( Array.length Sys.argv = 2 );
+  let ppf = Format.std_formatter in
 
-  let fn = Sys.argv.(1) in
+  for i = 1 to pred ( Array.length Sys.argv ) do
+    let sourcefile = Sys.argv.(i) in
+    let outputprefix = Filename.chop_extension sourcefile in
+    let modulename = String.capitalize (Filename.basename outputprefix) in
 
-  let (lambda,modname) = Mk_lambda.mk_lambda (fn) in
-  let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t =
-    Hashtbl.create 256 in
+    let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t =
+      Hashtbl.create 1024 in
 
-  let ir = ref (Mk_lambda.last_id () ) in
-  let mk_id ?(n="") () = 
-    incr ir;
-    Ident.({ name = n; stamp = !ir; flags = 0 })
-  in
 
-  let tlambda =
-    Mk_tlambda.lambda_to_tlambda
-      ~mk_id ~modname ~funs lambda
-  in
-  
-  let mk_tid n = ( modname, mk_id ~n () ) in
+    let lambda =
+      if Filename.check_suffix sourcefile ".ml"
+      then ml_file ppf sourcefile outputprefix
+      else if Filename.check_suffix sourcefile ".cmt"
+      then cmt_file ppf sourcefile outputprefix
+      else assert false
+    in
 
-  let (g,funtbl,vin,vout,vexn,exn_id,return_id) =
-    Tlambda_to_hgraph.mk_graph ~mk_tid funs tlambda
-  in
 
-  let map_fun f tbl =
-    let open Tlambda_to_hgraph in
-    Hashtbl.fold
-      (fun fid fd l ->
-         (f fid fd.f_graph
-            fd.f_in.(0) fd.f_out.(0) fd.f_out.(1)
-            fd.f_arg fd.f_return fd.f_exn)
-         :: l ) tbl []
-  in
+    let tlambda =
+      Mk_tlambda.lambda_to_tlambda
+        ~modname:modulename ~funs
+        lambda
+    in
+      
+    let (g,funtbl,vin,vout,vexn,exn_id,return_id) =
+      Tlambda_to_hgraph.mk_graph ~modulename funs tlambda
+    in
 
-  Exp.export ~g ~funtbl ~map_fun ~vin ~vout ~vexn
-    ~file:((Filename.chop_extension fn) ^ ".cmb")
+    Cmb.export g funtbl vin vout vexn outputprefix
+
+  done  
     

@@ -48,7 +48,7 @@ type mod_desc
 type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
 
  val mk_graph :
-   mk_tid : ( string -> tid ) ->
+   modulename : string ->
    ( F.t, Tlambda.tlambda ) Hashtbl.t ->
    Tlambda.tlambda ->
    ( hg * ( F.t, fun_desc ) Hashtbl.t *

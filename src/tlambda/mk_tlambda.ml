@@ -139,9 +139,9 @@ let register_global = Hashtbl.add globals_tbl
 let get_global = Hashtbl.find globals_tbl
 
 
-let lambda_to_tlambda ~mk_id ~modname ~funs code =
+let lambda_to_tlambda ~modname ~funs code =
 
-  let mk : unit -> id = mk_id in
+  let mk : unit -> id = Id.create in
 
   let tid i : tid = modname,i in
 

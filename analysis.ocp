@@ -47,8 +47,12 @@ end
 
 begin program "bigraphc"
  dirname = "src/driver"
- files = [ "bgraphc" ]
- requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
+ files = [ "cmt_specifics.ml" "cmb.ml" "bgraphc" ]
+ requires =
+  [
+    "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"
+    "common" "lambda" "tlambda" "hgraph" "lambda-analysis"
+  ]
 end
 
 
