@@ -434,7 +434,9 @@ let lambda_to_tlambda ~mk_id ~modname ~funs code =
     | Pgetglobal i, [] ->
       if builtin i
       then tl ( Tprim ( TPbuiltin, [tid i] ) )
-      else tl ( Tvar ( "", i ) )
+      else
+      let fv, i = check rv nfv fv i in
+      mk_tlet rv nfv fv stack ( Tvar ( tid i ) )
     | Psetglobal ig, [ir] ->
       let fv, cont =
         tcontrol rv nfv fv stack
@@ -666,5 +668,11 @@ let lambda_to_tlambda ~mk_id ~modname ~funs code =
   in
 
   let fv, lam =  tlambda Ids.empty Ids.empty Idm.empty code in
-  assert ( Idm.is_empty fv );
+  let lam =
+    Idm.fold (fun _ id lam ->
+        assert ( id.Ident.stamp = 0 );
+        tlet ~k:Alias ~id ( Tvar ( "",id ) ) lam
+      )
+      fv lam
+  in
   lam
