@@ -303,13 +303,14 @@ let init ~mk_tid funs =
   Hashtbl.iter
     begin
       fun i flam ->
+        let g = create () in
         let f_arg = mk_tid "$x" in
         let f_return = mk_tid "$ans" in
         let f_exn = mk_tid "$exn" in
-        let f_graph = create () in
+        let f_graph = g in
         let f_in = [| nv g |]
         and f_out = [| nv g; nv g |] in
-        tlambda ~g:f_graph
+        tlambda ~g
           ~mk_tid
           ~inv:f_in.(0)
           ~outv:f_out.(0)

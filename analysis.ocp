@@ -55,6 +55,15 @@ begin program "bigraphc"
   ]
 end
 
+begin program "analyzer"
+ dirname = "src/driver"
+ files = [ "cmb.ml" "bgrapha.ml" ]
+ requires =
+  [
+    "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"
+    "common" "tlambda" "hgraph" "lambda-analysis"
+  ]
+end
 
 begin test "tgraph"
  test_byte = false
@@ -91,4 +100,31 @@ begin test "ttoolchain"
   "chain" ( test_args = [ "myper.ml" "a.ml" ] )
   "pervasives" ( test_args = [ "pervasives.ml" ] )
  ]
+end
+
+begin test "tbg"
+ files = [ ]
+ requires = [ "bigraphc" ]
+ test_dir = "test/samples"
+ test_byte = false
+ tests =
+ [
+  "simple" ( test_args = [ "myper.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
+  "pervasives" ( test_args = [ "pervasives.ml" ] )
+ ]
+end
+
+begin test "tba"
+ files = [ ]
+ requires = [ "analyzer" ]
+ test_dir = "test/samples"
+ test_byte = false
+ tests =
+ [
+  "simple" ( test_args = [ "myper.cmb" ] )
+  "chain" ( test_args = [ "myper.cmb" "a.cmb" ] )
+  "pervasives" ( test_args = [ "pervasives.cmb" ] )
+ ]
+
 end
