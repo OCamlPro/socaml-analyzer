@@ -23,7 +23,7 @@ begin library "data"
  files =
   [
     "int_interv.ml" "data.ml" "envs.ml"
-     "int.ml" "blocks.ml" "cps.ml" "bools.ml" "exprs.ml"
+     "int.ml" "blocks.ml" "cps.ml" "bools.ml" "funs.ml" "exprs.ml"
   ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end

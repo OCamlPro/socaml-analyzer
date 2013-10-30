@@ -124,8 +124,10 @@ let tlambda ~g ~mk_tid ~outv ~ret_id ~exn_id ~inv ~exnv code =
     | Tconst c -> simpleh g id ( Const c) ~inv ~outv
 
     | Tapply ( f, x) ->
-      add_hedge g ( Hedge.mk ()) [ id, App ( f, x ) ]
-        ~pred:[|inv|] ~succ:[| outv; exnv |]
+      let retv = nv g in
+      simpleh g id (  App ( f, x ) ) ~inv ~outv:retv;
+      add_hedge g ( Hedge.mk ()) [ id, Return f; exn_id, Retexn f]
+        ~pred:[|retv|] ~succ:[| outv; exnv |]
 
     | Tprim ( p, args) ->
       simpleh g id ( Prim ( p, args ) ) ~inv ~outv
@@ -302,11 +304,8 @@ let init ~mk_tid funs =
 
   Hashtbl.iter
     begin
-      fun i flam ->
+      fun i (flam, f_arg, f_return, f_exn) ->
         let g = create () in
-        let f_arg = mk_tid "$x" in
-        let f_return = mk_tid "$ans" in
-        let f_exn = mk_tid "$exn" in
         let f_graph = g in
         let f_in = [| nv g |]
         and f_out = [| nv g; nv g |] in

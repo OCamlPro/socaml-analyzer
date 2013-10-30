@@ -37,6 +37,13 @@ let list_of_one f = function
   | [x] -> f x
   | _ -> assert false
 
+let assemble_fun getter d env =
+  Fm.fold
+    (fun i _ ret ->
+       Data.union ret
+         ( get_env ( getter i) env )
+    ) d.f Data.bottom
+
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
   let l = d.expr in
@@ -122,6 +129,7 @@ and constraint_env_tag expr tag env =
   | Var x -> constraint_env_tag_var x tag env
   | Const _
   | App ( _, _ )
+  | Return _| Retexn _
   | Lazyforce _
   | Ccall (_, _)
   | Send (_, _) -> env
@@ -190,9 +198,20 @@ struct
       sg_hedge = f.f_hedge;
     }
 
+  let get_f_return fid =
+    let f = Hashtbl.find E.funs fid in
+    f.Tlambda_to_hgraph.f_return
+  let get_f_exn fid =
+    let f = Hashtbl.find E.funs fid in
+    f.Tlambda_to_hgraph.f_exn
+
   let clone_vertex _ = E.mk_vertex ()
   let clone_hedge _ = E.mk_hedge ()
 
+  let fun_tid = TId.create ()
+  let ret_tid = TId.create ()
+  let exn_tid = TId.create ()
+  let arg_tid = TId.create ()
 
   let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
     let constant _ = failwith "TODO: constant !" in
@@ -202,8 +221,9 @@ struct
       (* and vunit = Cp.singleton 0 *)
       and act d = Exprs.set d action
       in
+      let sa x = set ( act x ) in
       match action with
-      | App _ -> assert false
+      | App _ | Return _ | Retexn _ -> assert false
       | Var i -> set ( act (get i) )
       | Const c -> set ( act (constant c) )
       | Prim ( p, l ) ->
@@ -212,7 +232,7 @@ struct
 	  (* Operations on heap blocks *)
 	  | TPmakeblock ( tag, _), _ ->
 	    let a = Array.of_list l in
-	    set ( act ( Blocks.singleton tag a ))
+	    sa ( Blocks.singleton tag a )
 	  | TPfield i, [b] ->
 	    let env =
 	      set_env b
@@ -236,7 +256,7 @@ set_env id vunit env *)
 	  (* Force lazy values *)
 	  | TPnot, [i] -> set ( Bools.notb ( get i))
 	  (* Integer operations *)
-	  | TPnegint, [i] -> set ( act ( Int.op1 Int_interv.uminus ( get i)) )
+	  | TPnegint, [i] -> sa ( Int.op1 Int_interv.uminus ( get i))
 	  | TPaddint, [x;y]
 	  | TPsubint, [x;y]
 	  | TPmulint, [x;y]
@@ -247,14 +267,14 @@ set_env id vunit env *)
 	  | TPxorint, [x;y]
 	  | TPlslint, [x;y]
 	  | TPlsrint, [x;y]
-	  | TPasrint, [x;y] -> set ( act ( Int.op2 ( intop2_of_prim p) (get x) (get y)))
+	  | TPasrint, [x;y] -> sa ( Int.op2 ( intop2_of_prim p) (get x) (get y))
           | TPintcomp c, [x;y] -> 
 	    let res, x', y' = Int.comp c ( get x) ( get y) in
-	    set ( act res)
+	    sa res
 	    |> set_env x x'
 	    |> set_env y y'
           | TPoffsetint i, [x] ->
-            set ( act ( Int.op1 (Int_interv.addcst i) ( get x) ) )
+            sa ( Int.op1 (Int_interv.addcst i) ( get x) )
           | TPoffsetref i, [x] ->
             let b = get x in
             let b = Blocks.restrict ~tag:0 ~size:1 b in
@@ -326,8 +346,12 @@ set_env id vunit env *)
 *)	      
           | TPfunfield i, [f] ->
             (* at this point, f is unique *)
-            let fd = get f in
-            
+            let x = Funs.field i (get f) env in
+            sa x
+
+          | TPgetfun fid, [] -> sa ( Funs.fid fid (get fun_tid ) )
+          | TPfun fid, _ -> sa ( Funs.mk fid l )
+          | TPgetarg, [] -> sa ( get arg_tid )
 	  | _ -> failwith "TODO: primitives !"
         end
       | Constraint c ->
@@ -348,8 +372,16 @@ set_env id vunit env *)
       | h :: t -> aux (in_apply h e) t
     in 
     match l with
-    | [ id, ( App ( f, x ) as a ) ] ->
-      ( [| set_env id (Exprs.set (get_env E.return_id env) a) env; env |], ( fun_ids f env ) )
+    | [ _, App ( f, x ) ] ->
+      let env =
+        env
+        |> set_env fun_tid ( get_env f env )
+        |> set_env arg_tid ( get_env x env )
+      in
+      ( [| env |], ( fun_ids f env ) )
+    | [ id, Return f; eid, Retexn f2 ] ->
+      [| set_env id (assemble_fun get_f_return (get_env f env) env) env;
+         set_env eid (assemble_fun get_f_exn (get_env f2 env) env) env |], []
     | _ -> [|aux env l|], []
 
 end

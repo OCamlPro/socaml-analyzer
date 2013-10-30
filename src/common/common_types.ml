@@ -137,6 +137,7 @@ type primitive =
 | TPfun of F.t
 | TPgetfun of F.t
 | TPfunfield of int
+| TPgetarg
 
 
 type hinfo =
@@ -145,6 +146,7 @@ type hinfo =
 | Prim of primitive * tid list
 | Constraint of constr
 | App of tid * tid (* function, argument *)
+| Return of tid | Retexn of tid (* the function exit *)
 | Lazyforce of tid
 | Ccall of Primitive.description * tid list
 | Send of tid * tid

@@ -49,7 +49,7 @@ type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
 
  val mk_graph :
    modulename : string ->
-   ( F.t, Tlambda.tlambda ) Hashtbl.t ->
+   ( F.t, Tlambda.tlambda * tid * tid * tid ) Hashtbl.t ->
    Tlambda.tlambda ->
    ( hg * ( F.t, fun_desc ) Hashtbl.t *
        Vertex.t * Vertex.t * Vertex.t *
@@ -59,7 +59,7 @@ type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
 
 val init :
   mk_tid : ( string -> tid ) ->
-  ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
+  ( Data.f, Tlambda.tlambda * tid * tid * tid ) Hashtbl.t ->
   hg * ( Data.f, fun_desc ) Hashtbl.t * tid
 
 (*
