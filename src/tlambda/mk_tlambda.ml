@@ -153,13 +153,14 @@ let lambda_to_tlambda ~modname ~funs code =
   
   let register_function tlam fv =
     let i = F.create ~name:modname ()  in
+    let idf = tid ( mk ()) in
     let tlam, _ =
       Idm.fold (fun _ id (tlam,n) ->
-          tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [] ) ) tlam, succ n
+          tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [idf] ) ) tlam, succ n
         )
         fv ( tlam, 0 )
     in
-    Hashtbl.add funs i tlam;
+    Hashtbl.add funs i ( Tlet { te_kind = k; te_id = idf; te_lam = (Tprim ( TPgetfun i, [] )); te_in = tlam; } )
     i
   in
   

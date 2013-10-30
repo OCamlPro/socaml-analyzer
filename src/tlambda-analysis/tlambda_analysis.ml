@@ -324,6 +324,10 @@ set_env id vunit env *)
 | TPbbswap of boxed_integer
 (* method call *)
 *)	      
+          | TPfunfield i, [f] ->
+            (* at this point, f is unique *)
+            let fd = get f in
+            
 	  | _ -> failwith "TODO: primitives !"
         end
       | Constraint c ->

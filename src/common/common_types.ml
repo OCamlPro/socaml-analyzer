@@ -135,6 +135,7 @@ type primitive =
 | TPbbswap of boxed_integer
 (* function operations *)
 | TPfun of F.t
+| TPgetfun of F.t
 | TPfunfield of int
 
 
