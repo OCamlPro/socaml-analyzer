@@ -23,7 +23,7 @@ let map_fun f tbl =
     (fun fid fd l ->
        (f fid fd.f_graph
           fd.f_in.(0) fd.f_out.(0) fd.f_out.(1)
-          fd.f_arg fd.f_return fd.f_exn)
+       )
        :: l ) tbl []
 
 
@@ -31,7 +31,7 @@ let export g funtbl vin vout vexn outputprefix =
   Exp.export ~g ~funtbl ~map_fun ~vin ~vout ~vexn
     ~file:( outputprefix ^ ".cmb")
 
-let ext_fun funtbl fid f_graph vin vout vexn f_arg f_return f_exn =
+let ext_fun funtbl fid f_graph vin vout vexn =
   let open Tlambda_to_hgraph in
   let open G in
   Hashtbl.add funtbl fid
@@ -49,7 +49,6 @@ let ext_fun funtbl fid f_graph vin vout vexn f_arg f_return f_exn =
           (fun s v -> HedgeSet.add v s)
           HedgeSet.empty
           (list_hedge f_graph);
-      f_arg; f_return; f_exn;
     }
 
 let import a =

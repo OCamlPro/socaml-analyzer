@@ -62,9 +62,9 @@ type fun_desc =
     f_out : Vertex.t array;
     f_vertex : VertexSet.t;
     f_hedge : HedgeSet.t;
-    f_arg : tid;
-    f_return : tid;
-    f_exn : tid;
+    (* f_arg : tid; *)
+    (* f_return : tid; *)
+    (* f_exn : tid; *)
   }
 
 type mod_desc =
@@ -304,11 +304,17 @@ let init ~mk_tid funs =
 
   Hashtbl.iter
     begin
-      fun i (flam, f_arg, f_return, f_exn) ->
+      fun i flam ->
         let g = create () in
         let f_graph = g in
         let f_in = [| nv g |]
         and f_out = [| nv g; nv g |] in
+        let f_return = mk_tid "#$return" and f_exn = mk_tid "#$exn" in
+        let outv = nv g and exnv = nv g in
+        add_hedge g (Hedge.mk () ) [ f_return, Return f_return ]
+        ~pred:[|outv|] ~succ:[|f_out.(0)|];
+        add_hedge g (Hedge.mk () ) [ f_exn, Retexn f_exn ]
+        ~pred:[|exnv|] ~succ:[|f_out.(1)|];
         tlambda ~g
           ~mk_tid
           ~inv:f_in.(0)
@@ -319,7 +325,7 @@ let init ~mk_tid funs =
         Hashtbl.add fun_descs i
           {
             f_graph; f_in; f_out;
-            f_arg; f_return; f_exn;
+            (* f_arg; f_return; f_exn; *)
             f_vertex =
               VertexSet.remove f_in.(0) (
                 VertexSet.remove f_out.(0) (

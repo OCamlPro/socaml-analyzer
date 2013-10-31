@@ -12,8 +12,6 @@ sig
   val funs : ( Data.f, fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
-  val return_id : tid
-
 end
 
 module M : functor ( E : Entry ) ->

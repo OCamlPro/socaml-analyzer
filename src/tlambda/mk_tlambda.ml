@@ -151,12 +151,10 @@ let lambda_to_tlambda ~modname ~funs code =
 
   (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
   
-  let register_function tlam arg ret_id exn_id fv =
+  let register_function tlam arg fv =
     let i = F.create ~name:modname ()  in
     let idf = tid ( mk ()) in
     let targ = tid arg in
-    (* let ret_id = mk () in *)
-    (* let exn_id = mk () in *)
     let tlam, _ =
       Idm.fold (fun _ id (tlam,n) ->
           tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [idf] ) ) tlam, succ n
@@ -174,7 +172,7 @@ let lambda_to_tlambda ~modname ~funs code =
                      te_lam = (Tprim ( TPgetarg, [] ));
                      te_in = tlam; };
           }
-      ), targ, tid ret_id, tid exn_id );
+      ) );
       i
   in
   
@@ -668,16 +666,8 @@ let lambda_to_tlambda ~modname ~funs code =
     let nfv = Ids.add arg nfv in
     let nfv2 = Ids.singleton arg in
     let fv2 = Idm.empty in
-    let ret_id = mk () in
-    let exn_id = mk () in
-    let body =
-      Llet ( Strict, ret_id, body, Lvar (ret_id) )
-    in
-    let body =
-      Ltrywith ( body, exn_id, Lprim ( Praise, [Lvar exn_id] ) )
-    in
     let fv2, lam = tlambda rv nfv2 fv2 body in
-    let i = register_function lam arg ret_id exn_id fv2 in
+    let i = register_function lam arg fv2 in
     let fv, l = Idm.fold
         (fun i _ (fv,l) ->
            let fv,i = check rv nfv fv i in

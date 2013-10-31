@@ -36,7 +36,7 @@ let handle_file ppf sourcefile =
   let outputprefix = Filename.chop_extension sourcefile in
   let modulename = String.capitalize (Filename.basename outputprefix) in
 
-  let funs : ( F.t, Tlambda.tlambda * tid * tid * tid ) Hashtbl.t =
+  let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t =
     Hashtbl.create 1024 in
 
   let lambda =

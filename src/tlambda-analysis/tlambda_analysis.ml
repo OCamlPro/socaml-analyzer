@@ -37,12 +37,6 @@ let list_of_one f = function
   | [x] -> f x
   | _ -> assert false
 
-let assemble_fun getter d env =
-  Fm.fold
-    (fun i _ ret ->
-       Data.union ret
-         ( get_env ( getter i) env )
-    ) d.f Data.bottom
 
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
@@ -161,7 +155,6 @@ sig
   val funs : ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
-  val return_id : tid
 end
 
 module M : functor ( E : Entry ) ->
@@ -198,13 +191,6 @@ struct
       sg_hedge = f.f_hedge;
     }
 
-  let get_f_return fid =
-    let f = Hashtbl.find E.funs fid in
-    f.Tlambda_to_hgraph.f_return
-  let get_f_exn fid =
-    let f = Hashtbl.find E.funs fid in
-    f.Tlambda_to_hgraph.f_exn
-
   let clone_vertex _ = E.mk_vertex ()
   let clone_hedge _ = E.mk_hedge ()
 
@@ -223,7 +209,7 @@ struct
       in
       let sa x = set ( act x ) in
       match action with
-      | App _ | Return _ | Retexn _ -> assert false
+      | App _ -> assert false
       | Var i -> set ( act (get i) )
       | Const c -> set ( act (constant c) )
       | Prim ( p, l ) ->
@@ -363,7 +349,8 @@ set_env id vunit env *)
       | Lazyforce _
       | Ccall (_, _)
       | Send (_, _) -> set ( act Data.top )
-
+      | Return id -> set_env ret_tid ( get_env id env ) env
+      | Retexn id -> set_env exn_tid ( get_env id env ) env
     in	
     let env = Array.fold_left Envs.join Envs.bottom envs in
     let rec aux e l =
@@ -379,9 +366,6 @@ set_env id vunit env *)
         |> set_env arg_tid ( get_env x env )
       in
       ( [| env |], ( fun_ids f env ) )
-    | [ id, Return f; eid, Retexn f2 ] ->
-      [| set_env id (assemble_fun get_f_return (get_env f env) env) env;
-         set_env eid (assemble_fun get_f_exn (get_env f2 env) env) env |], []
     | _ -> [|aux env l|], []
 
 end

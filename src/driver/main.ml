@@ -7,7 +7,7 @@ let mk_id ?(n = "") () =
   incr ir;
   Ident.({ name = n; stamp = !ir; flags = 0 })
 
-let funs : ( F.t, Tlambda.tlambda * tid * tid * tid ) Hashtbl.t = Hashtbl.create 1024
+let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
 let tlambdas =
   Array.map

@@ -26,9 +26,6 @@ struct
   {
     f_id : I.fid;
     f_graph : gext;
-    f_arg : I.tid;
-    f_return : I.tid;
-    f_exn : I.tid;
   }
 
   type funs = fdescr list
@@ -36,7 +33,6 @@ struct
   type fun_mapper =
     ( I.fid -> g ->
       T.vertex -> T.vertex -> T.vertex ->
-      I.tid -> I.tid -> I.tid ->
       fdescr ) ->
     I.fun_table ->
     funs
@@ -45,7 +41,6 @@ struct
       I.fun_table ->
       I.fid -> g ->
       T.vertex -> T.vertex -> T.vertex ->
-      I.tid -> I.tid -> I.tid ->
       unit
 
   let store_low (g:gext) (f:funs) file =
@@ -93,13 +88,10 @@ struct
     H.vertex_merge g I.vattr_merge vexn veexn;
     veout
     
-  let f_to_fdescr fid fg vin vout vexn idarg idret idexn =
+  let f_to_fdescr fid fg vin vout vexn =
   {
     f_id = fid;
     f_graph = g_to_gext ~g:fg ~vin ~vout ~vexn;
-    f_arg = idarg;
-    f_return = idret;
-    f_exn = idexn;
   }
 
   let export ~g ~funtbl ~( map_fun : fun_mapper ) ~vin ~vout ~vexn ~file =
@@ -118,7 +110,6 @@ struct
          let (_,_,vin,vout,vexn) = fd.f_graph in
          ext_fun funtbl
            fd.f_id g vin vout vexn
-           fd.f_arg fd.f_return fd.f_exn
       ) funext;
     vout
 end
