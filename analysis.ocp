@@ -83,6 +83,12 @@ begin test "tdata"
  requires = [ "common" "hgraph" "data" ]
 end
 
+begin test "thgraph"
+ test_byte = false
+ files = [ "test/test_hgraph.ml" ]
+ requires = [ "common" "hgraph" "data" ]
+end
+
 begin test "ttlambda"
  test_byte = false
  files = [ "test/test_tlambda.ml" ]
