@@ -199,8 +199,28 @@ struct
   let exn_tid = TId.create ()
   let arg_tid = TId.create ()
 
+    let rec constant = function
+      | Const_base c ->
+        begin
+          match c with
+          | Const_int i -> Ints.singleton i
+          | Const_char c -> Ints.singleton (Char.code c)
+          | Const_string s -> Data.singleton_string s
+          | Const_float _ -> failwith "float_of_string"
+          | Const_int32 _ -> failwith "int32"
+          | Const_int64 _ -> failwith "int64"
+          | Const_nativeint _ -> failwith "nativeint"
+        end
+      | Const_pointer i -> Cps.singleton i
+      | Const_block (t,l) ->
+        let a = Array.map constant ( Array.of_list l ) in
+        Blocks.singleton t a
+      | Const_float_array l ->
+        failwith "float array"
+      | Const_immstring s -> Data.singleton_string s
+
+
   let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
-    let constant _ = failwith "TODO: constant !" in
     let in_apply ( id, action) env =
       let set x = set_env id x env
       and get x = get_env x env

@@ -358,3 +358,5 @@ let intersect_noncommut env a b =
       expr = [];
     }
 
+let singleton_string s =
+  { bottom with string = s; }
