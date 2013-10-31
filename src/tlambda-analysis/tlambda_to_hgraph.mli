@@ -45,7 +45,10 @@ type fun_desc =
 
 type mod_desc
 
-type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
+type vattr = unit
+type hattr = ( tid * hinfo ) list
+type gattr = unit
+type hg = ( vattr, hattr, gattr ) G.graph
 
  val mk_graph :
    modulename : string ->

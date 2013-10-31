@@ -9,7 +9,7 @@ open Data
 type v = Vertex.t
 type h = Hedge.t
 type e = environment
-type ha = ( id * hinfo ) list
+type ha = hattr
 
 let intop2_of_prim o =
   let open Int_interv in
@@ -151,140 +151,159 @@ sig
   val inv : v
   val outv : v
   val exnv : v
-  val g : ( unit, ( tid * hinfo ) list, unit ) G.graph 
+  val g : hg
   val funs : ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
 end
 
 module M : functor ( E : Entry ) ->
-  Hgraph.Manager with module T := T and module H = G =
-			functor ( E : Entry ) ->
-struct
+  Hgraph.Manager
+  with module T := T
+   and module H = G 
+   and type hedge_attribute = hattr
+   and type vertex_attribute = vattr
+   and type graph_attribute = gattr
+   = functor ( E : Entry ) ->
+   struct
 
-  module H = Tlambda_to_hgraph.G
+     module H = Tlambda_to_hgraph.G
 
-  open H
+     open H
 
-  type hedge = h
-  type vertex = v
-  type abstract = e
+     type hedge = h
+     type vertex = v
+     type abstract = e
 
-  let bottom _ = Envs.bottom
-  let is_bottom _ = Envs.is_bottom
-  let is_leq _ = Envs.is_leq
-  let join_list _ = List.fold_left Envs.join Envs.bottom
-  let abstract_init v = if v = E.inv then Envs.empty else Envs.bottom
+     let bottom _ = Envs.bottom
+     let is_bottom _ = Envs.is_bottom
+     let is_leq _ = Envs.is_leq
+     let join_list _ = List.fold_left Envs.join Envs.bottom
+     let abstract_init v = if v = E.inv then Envs.empty else Envs.bottom
 
-  type hedge_attribute = ha
-  type vertex_attribute = unit
-  type graph_attribute = unit
+     type hedge_attribute = hattr
+     type vertex_attribute = vattr
+     type graph_attribute = gattr
 
-  type function_id = F.t
-  module Function_id = F
-  let find_function fid =
-    let f = Hashtbl.find E.funs fid in
-    f.f_graph, {
-      sg_input = f.f_in;
-      sg_output = f.f_out;
-      sg_vertex = f.f_vertex;
-      sg_hedge = f.f_hedge;
-    }
+     type function_id = F.t
+     module Function_id = F
+     let find_function fid =
+       let f = Hashtbl.find E.funs fid in
+       f.f_graph, {
+         sg_input = f.f_in;
+         sg_output = f.f_out;
+         sg_vertex = f.f_vertex;
+         sg_hedge = f.f_hedge;
+       }
 
-  let clone_vertex _ = E.mk_vertex ()
-  let clone_hedge _ = E.mk_hedge ()
+     let clone_vertex _ = E.mk_vertex ()
+     let clone_hedge _ = E.mk_hedge ()
 
-  let fun_tid = TId.create ()
-  let ret_tid = TId.create ()
-  let exn_tid = TId.create ()
-  let arg_tid = TId.create ()
+     let fun_tid = TId.create ()
+     let ret_tid = TId.create ()
+     let exn_tid = TId.create ()
+     let arg_tid = TId.create ()
 
-    let rec constant = function
-      | Const_base c ->
-        begin
-          match c with
-          | Const_int i -> Ints.singleton i
-          | Const_char c -> Ints.singleton (Char.code c)
-          | Const_string s -> Data.singleton_string s
-          | Const_float _ -> failwith "float_of_string"
-          | Const_int32 _ -> failwith "int32"
-          | Const_int64 _ -> failwith "int64"
-          | Const_nativeint _ -> failwith "nativeint"
-        end
-      | Const_pointer i -> Cps.singleton i
-      | Const_block (t,l) ->
-        let a = Array.map constant ( Array.of_list l ) in
-        Blocks.singleton t a
-      | Const_float_array l ->
-        failwith "float array"
-      | Const_immstring s -> Data.singleton_string s
+     let rec constant env = function
+       | Const_base c ->
+         let open Asttypes in
+         env,
+         begin
+           match c with
+           | Const_int i -> Int.singleton i
+           | Const_char c -> Int.singleton (Char.code c)
+           | Const_string s -> failwith "string"
+           (* Data.singleton_string s *)
+           | Const_float _ -> failwith "float_of_string"
+           | Const_int32 _ -> failwith "int32"
+           | Const_int64 _ -> failwith "int64"
+           | Const_nativeint _ -> failwith "nativeint"
+         end
+       | Const_pointer i -> env, Cps.singleton i
+       | Const_block (t,l) ->
+         let (env, ids) =
+           List.fold_left
+             (fun (env,ids) c ->
+                let env,d = constant env c in
+                let env,i = reg_env d env in
+                env,i::ids )
+             (env,[]) l
+         in
+         let a = Array.of_list (List.rev ids) in
+         env, ( Blocks.singleton t a )
+       | Const_float_array l ->
+         failwith "float array"
+       | Const_immstring s -> failwith "immstring"
+     (* Data.singleton_string s *)
 
 
-  let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
-    let in_apply ( id, action) env =
-      let set x = set_env id x env
-      and get x = get_env x env
-      (* and vunit = Cp.singleton 0 *)
-      and act d = Exprs.set d action
-      in
-      let sa x = set ( act x ) in
-      match action with
-      | App _ -> assert false
-      | Var i -> set ( act (get i) )
-      | Const c -> set ( act (constant c) )
-      | Prim ( p, l ) ->
-        begin
-	  match p, l with
-	  (* Operations on heap blocks *)
-	  | TPmakeblock ( tag, _), _ ->
-	    let a = Array.of_list l in
-	    sa ( Blocks.singleton tag a )
-	  | TPfield i, [b] ->
-	    let env =
-	      set_env b
-	        ( Blocks.restrict ~has_field:i ( get b))
-	        env in
-	    let ids = Blocks.get_field i ( get_env b env) in
-	    set_env id
-	      ( act
-		  ( Ids.fold
-		      (fun id d -> union (get_env id env) d )
-		      ids Data.bottom )
-	      )
-	      env
+     let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
+       let in_apply ( id, action) env =
+         let set x = set_env id x env
+         and get x = get_env x env
+         (* and vunit = Cp.singleton 0 *)
+         and act d = Exprs.set d action
+         in
+         let sa x = set ( act x ) in
+         match action with
+         | App _ -> assert false
+         | Var i -> set ( act (get i) )
+         | Const c ->
+           let env,d = constant env c in
+           set_env id ( act d ) env
+         | Prim ( p, l ) ->
+           begin
+	     match p, l with
+	     (* Operations on heap blocks *)
+	     | TPmakeblock ( tag, _), _ ->
+	       let a = Array.of_list l in
+	       sa ( Blocks.singleton tag a )
+	     | TPfield i, [b] ->
+	       let env =
+	         set_env b
+	           ( Blocks.restrict ~has_field:i ( get b))
+	           env in
+	       let ids = Blocks.get_field i ( get_env b env) in
+	       set_env id
+	         ( act
+		     ( Ids.fold
+		         (fun id d -> union (get_env id env) d )
+		         ids Data.bottom )
+	         )
+	         env
    (*
 | TPsetfield ( i, _), [b;v] ->
 let env = set_env b ( Blocks.set_field i v ( get b)) env in
 set_env id vunit env *)
-	  | TPfloatfield i, [b] -> failwith "TODO: floatfield"
-	  | TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
-	  | TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
-	  (* Force lazy values *)
-	  | TPnot, [i] -> set ( Bools.notb ( get i))
-	  (* Integer operations *)
-	  | TPnegint, [i] -> sa ( Int.op1 Int_interv.uminus ( get i))
-	  | TPaddint, [x;y]
-	  | TPsubint, [x;y]
-	  | TPmulint, [x;y]
-	  | TPdivint, [x;y]
-	  | TPmodint, [x;y]
-	  | TPandint, [x;y]
-	  | TPorint, [x;y]
-	  | TPxorint, [x;y]
-	  | TPlslint, [x;y]
-	  | TPlsrint, [x;y]
-	  | TPasrint, [x;y] -> sa ( Int.op2 ( intop2_of_prim p) (get x) (get y))
-          | TPintcomp c, [x;y] -> 
-	    let res, x', y' = Int.comp c ( get x) ( get y) in
-	    sa res
-	    |> set_env x x'
-	    |> set_env y y'
-          | TPoffsetint i, [x] ->
-            sa ( Int.op1 (Int_interv.addcst i) ( get x) )
-          | TPoffsetref i, [x] ->
-            let b = get x in
-            let b = Blocks.restrict ~tag:0 ~size:1 b in
-            set ( Blocks.fieldn_map (fun _ _ v -> failwith "TODO: offsetref") 0 b )
+	     | TPfloatfield i, [b] -> failwith "TODO: floatfield"
+	     | TPsetfloatfield i, [b;v] -> failwith "TODO: setfloatfield"
+	     | TPduprecord (trepr,i), [r] -> failwith "TODO: duprecord"
+	     (* Force lazy values *)
+	     | TPnot, [i] -> set ( Bools.notb ( get i))
+	     (* Integer operations *)
+	     | TPnegint, [i] -> sa ( Int.op1 Int_interv.uminus ( get i))
+	     | TPaddint, [x;y]
+	     | TPsubint, [x;y]
+	     | TPmulint, [x;y]
+	     | TPdivint, [x;y]
+	     | TPmodint, [x;y]
+	     | TPandint, [x;y]
+	     | TPorint, [x;y]
+	     | TPxorint, [x;y]
+	     | TPlslint, [x;y]
+	     | TPlsrint, [x;y]
+	     | TPasrint, [x;y] -> sa ( Int.op2 ( intop2_of_prim p) (get x) (get y))
+             | TPintcomp c, [x;y] -> 
+	       let res, x', y' = Int.comp c ( get x) ( get y) in
+	       sa res
+	       |> set_env x x'
+	       |> set_env y y'
+             | TPoffsetint i, [x] ->
+               sa ( Int.op1 (Int_interv.addcst i) ( get x) )
+             | TPoffsetref i, [x] ->
+               let b = get x in
+               let b = Blocks.restrict ~tag:0 ~size:1 b in
+               set ( Blocks.fieldn_map (fun _ _ v -> failwith "TODO: offsetref") 0 b )
             (*
 (* Float operations *)
 | TPintoffloat | TPfloatofint
@@ -350,42 +369,42 @@ set_env id vunit env *)
 | TPbbswap of boxed_integer
 (* method call *)
 *)	      
-          | TPfunfield i, [f] ->
-            (* at this point, f is unique *)
-            let x = Funs.field i (get f) env in
-            sa x
+             | TPfunfield i, [f] ->
+               (* at this point, f is unique *)
+               let x = Funs.field i (get f) env in
+               sa x
 
-          | TPgetfun fid, [] -> sa ( Funs.fid fid (get fun_tid ) )
-          | TPfun fid, _ -> sa ( Funs.mk fid l )
-          | TPgetarg, [] -> sa ( get arg_tid )
-	  | _ -> failwith "TODO: primitives !"
-        end
-      | Constraint c ->
-        begin
-	  match c with
-	  | Ccp cp  -> constraint_env_cp_var id cp env
-	  | Ctag tag -> constraint_env_tag_var id tag env
-        end
-      | Lazyforce _
-      | Ccall (_, _)
-      | Send (_, _) -> set ( act Data.top )
-      | Return id -> set_env ret_tid ( get_env id env ) env
-      | Retexn id -> set_env exn_tid ( get_env id env ) env
-    in	
-    let env = Array.fold_left Envs.join Envs.bottom envs in
-    let rec aux e l =
-      match l with
-      | [] -> e
-      | h :: t -> aux (in_apply h e) t
-    in 
-    match l with
-    | [ _, App ( f, x ) ] ->
-      let env =
-        env
-        |> set_env fun_tid ( get_env f env )
-        |> set_env arg_tid ( get_env x env )
-      in
-      ( [| env |], ( fun_ids f env ) )
-    | _ -> [|aux env l|], []
+             | TPgetfun fid, [] -> sa ( Funs.fid fid (get fun_tid ) )
+             | TPfun fid, _ -> sa ( Funs.mk fid l )
+             | TPgetarg, [] -> sa ( get arg_tid )
+	     | _ -> failwith "TODO: primitives !"
+           end
+         | Constraint c ->
+           begin
+	     match c with
+	     | Ccp cp  -> constraint_env_cp_var id cp env
+	     | Ctag tag -> constraint_env_tag_var id tag env
+           end
+         | Lazyforce _
+         | Ccall (_, _)
+         | Send (_, _) -> set ( act Data.top )
+         | Return id -> set_env ret_tid ( get_env id env ) env
+         | Retexn id -> set_env exn_tid ( get_env id env ) env
+       in	
+       let env = Array.fold_left Envs.join Envs.bottom envs in
+       let rec aux e l =
+         match l with
+         | [] -> e
+         | h :: t -> aux (in_apply h e) t
+       in 
+       match l with
+       | [ _, App ( f, x ) ] ->
+         let env =
+           env
+           |> set_env fun_tid ( get_env f env )
+           |> set_env arg_tid ( get_env x env )
+         in
+         ( [| env |], ( fun_ids f env ) )
+       | _ -> [|aux env l|], []
 
-end
+   end

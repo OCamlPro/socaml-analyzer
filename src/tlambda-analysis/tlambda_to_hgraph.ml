@@ -75,7 +75,10 @@ type mod_desc =
     m_return : tid;
   }
 
-type hg = ( unit, ( tid * hinfo ) list, unit ) graph
+type vattr = unit
+type hattr = ( tid * hinfo ) list
+type gattr = unit
+type hg = ( vattr, hattr, gattr ) G.graph
 
 let ctrue = Constraint (Ccp 1)
 let cfalse = Constraint (Ccp 0)

@@ -14,6 +14,9 @@ let () =
   end
   in
   let module Manager = Tlambda_analysis.M ( E ) in
+  let module F = Hgraph.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
+  let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
+  ignore result;
   print_endline "That's all for now"
     
   

@@ -2,8 +2,8 @@ open Common_types
 
 module GI =
 struct
-  type vattr = unit
-  type hattr = ( tid * hinfo ) list
+  type vattr = Tlambda_to_hgraph.vattr
+  type hattr = Tlambda_to_hgraph.hattr
   type fid = F.t
   type tid = Common_types.tid
   type fun_table = ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
