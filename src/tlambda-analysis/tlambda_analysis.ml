@@ -246,7 +246,7 @@ module M : functor ( E : Entry ) ->
          in
          let sa x = set ( act x ) in
          match action with
-         | App _ -> assert false
+         | App _ | Lazyforce _ | Ccall _ | Send _ -> assert false
          | Var i -> set ( act (get i) )
          | Const c ->
            let env,d = constant env c in
@@ -385,9 +385,6 @@ set_env id vunit env *)
 	     | Ccp cp  -> constraint_env_cp_var id cp env
 	     | Ctag tag -> constraint_env_tag_var id tag env
            end
-         | Lazyforce _
-         | Ccall (_, _)
-         | Send (_, _) -> set ( act Data.top )
          | Return id -> set_env ret_tid ( get_env id env ) env
          | Retexn id -> set_env exn_tid ( get_env id env ) env
        in	
@@ -404,7 +401,11 @@ set_env id vunit env *)
            |> set_env fun_tid ( get_env f env )
            |> set_env arg_tid ( get_env x env )
          in
-         ( [| env |], ( fun_ids f env ) )
+         ( [| env; env |], ( fun_ids f env ) )
+       | [ id, ( Lazyforce _ as a )]
+       | [ id, ( Ccall (_, _) as a ) ]
+       | [ id, ( Send (_, _) as a ) ] ->
+         [|set_env id ( Exprs.set Data.top a ) env; env |], []
        | _ -> [|aux env l|], []
 
    end
