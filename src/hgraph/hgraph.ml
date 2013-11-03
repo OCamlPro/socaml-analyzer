@@ -315,11 +315,21 @@ module Make(T:T) : Hgraph
     if Array.length output <> Array.length subgraph.sg_output
     then raise (Invalid_argument "clone_subgraph: output and sg_output of different length");
 
-    let check_member v =
+    let check_member_vertex s v =
       if not (VTbl.mem in_graph.vertex v)
-      then raise (Invalid_argument "clone_subgraph: vertex of sg_input and sg_output are not in in_graph") in
-    Array.iter check_member subgraph.sg_input;
-    Array.iter check_member subgraph.sg_output;
+      then raise (Invalid_argument
+                    (Format.asprintf "clone_subgraph: vertex %a of %s is not in in_graph"
+                       Vertex.print v s)) in
+    Array.iter (check_member_vertex "sg_input") subgraph.sg_input;
+    Array.iter (check_member_vertex "sg_output") subgraph.sg_output;
+    VSet.iter (check_member_vertex "sg_vertex") subgraph.sg_vertex;
+
+    let check_member_hedge h =
+      if not (HTbl.mem in_graph.hedge h)
+      then raise (Invalid_argument (Format.asprintf
+                                      "clone_subgraph: hedge %a is not in in_graph"
+                                      Hedge.print h)) in
+    HSet.iter check_member_hedge subgraph.sg_hedge;
 
     let sg_input = Array.fold_right VSet.add subgraph.sg_input VSet.empty in
     let sg_output = Array.fold_right VSet.add subgraph.sg_output VSet.empty in
@@ -355,7 +365,7 @@ module Make(T:T) : Hgraph
         let new_vertex = clone_vertex v in
         VTbl.add vertex_mapping v new_vertex;
         let v_node = vertex_n in_graph v in
-        if not (HSet.subset (hset_of_hiset v_node.v_pred) subgraph.sg_hedge) &&
+        if not (HSet.subset (hset_of_hiset v_node.v_pred) subgraph.sg_hedge) ||
            not (HSet.subset (hset_of_hiset v_node.v_succ) subgraph.sg_hedge)
         then raise (Invalid_argument "clone_subgraph: not independent subgraph");
         let new_node =
