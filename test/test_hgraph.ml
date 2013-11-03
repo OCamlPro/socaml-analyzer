@@ -218,8 +218,10 @@ let v12 = "v12"
 let v13 = "v13"
 let v_out = "v.out"
 
+let in_vert = [v7; v8; v9; v10; v11; v12; v13] 
+
 let () =
-  let vert = [v_in; v_out; v7; v8; v9; v10; v11; v12; v13] in
+  let vert = [v_in; v_out] @ in_vert in
   List.iter (fun v -> H.add_vertex g_func v ()) vert;
   H.add_hedge g_func "6.7" (Access_closure (a_id, func, 0)) ~pred:[|v_in|] ~succ:[|v7|];
   H.add_hedge g_func "7.8" (Access_param b_id) ~pred:[|v7|] ~succ:[|v8|];
@@ -242,8 +244,8 @@ let hset_list l = List.fold_right H.HedgeSet.add l H.HedgeSet.empty
 let func_subgraph =
   { H.sg_input = [|v_in|];
     H.sg_output = [|v_out|];
-    H.sg_vertex = vset_list [v7;v8;v9;v10;v11;v12];
-    H.sg_hedge = hset_list ["6.7";"7.8";"8.9";"9.10";"10.11";"11.12";"12.13";"9.12"] }
+    H.sg_vertex = vset_list in_vert;
+    H.sg_hedge = hset_list ["6.7";"7.8";"8.9";"9.10";"10.11";"11.12";"12.13";"13.14";"9.13"] }
 
 module Manager = struct
   module H = H
