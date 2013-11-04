@@ -10,17 +10,17 @@ sig
   val print : Format.formatter -> t -> unit
 end
 
-module Vertex : E =
+module Vertex =
 struct
-  type t = int
-  let compare (x:int) y = compare x y
-  let equal (x:int) y = x = y
-  let hash (x:int) = Hashtbl.hash x
+  type t = string * int
+  let compare = compare
+  let equal = (=)
+  let hash x = Hashtbl.hash x
 
   let c = ref (-1)
 
-  let print = Format.pp_print_int
-  let mk () = incr c; !c
+  let print ppf (s,i) = Format.pp_print_string ppf s; Format.pp_print_string ppf "/"; Format.pp_print_int ppf i
+  let mk ?(modulename="") () = incr c; modulename, !c
 end
 
 module Hedge : E =
@@ -89,8 +89,8 @@ module Is = Set.Make ( struct type t = int let compare (a:int) b = compare a b e
 
 open Tlambda
 
-let nv g =
-  let v = Vertex.mk () in
+let nv ?(modulename="") g =
+  let v = Vertex.mk ~modulename () in
   add_vertex g v ();
   v
 
@@ -100,7 +100,8 @@ let simpleh g id v ~inv ~outv =
 let statics : ( int, Vertex.t * tid list ) Hashtbl.t = Hashtbl.create 32
 
 
-let tlambda ~g ~mk_tid ~outv ~ret_id ~exn_id ~inv ~exnv code =
+let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
+  let nv = nv ~modulename in
 
   let rec tlambda ~g ~outv ~ret_id ~exn_id ~inv ~exnv code =
     match code with
@@ -296,7 +297,7 @@ let tlambda ~g ~mk_tid ~outv ~ret_id ~exn_id ~inv ~exnv code =
 
 
 
-let init ~mk_tid funs =
+let init ~mk_tid ~modulename funs =
   let g = create () in
   let nf = Hashtbl.length funs in
   let exn_id = mk_tid "$exn" in
@@ -320,6 +321,7 @@ let init ~mk_tid funs =
         ~pred:[|exnv|] ~succ:[|f_out.(1)|];
         tlambda ~g
           ~mk_tid
+          ~modulename
           ~inv:f_in.(0)
           ~outv:f_out.(0)
           ~exnv:f_out.(1)
@@ -347,18 +349,18 @@ let init ~mk_tid funs =
     funs;
   ( g, fun_descs, exn_id )
 
-let mk_subgraph ~g ~mk_tid ~exn_id main =
+let mk_subgraph ~g ~mk_tid ~modulename ~exn_id main =
   let inv = nv g and outv = nv g and exnv = nv g in
   let ret_id = mk_tid "$ret" in
-  tlambda ~g ~mk_tid ~inv ~outv ~exnv ~ret_id ~exn_id main;
+  tlambda ~g ~mk_tid ~modulename ~inv ~outv ~exnv ~ret_id ~exn_id main;
   { m_in = inv; m_out = outv; m_exn = exnv; m_return = ret_id; }
 
 let mk_graph ~modulename funs tlam =
   let mk_tid name = ( modulename, Id.create ~name () ) in
-  let ( g, fun_descs, exn_id ) = init ~mk_tid funs in
+  let ( g, fun_descs, exn_id ) = init ~mk_tid ~modulename funs in
   let inv = nv g and outv = nv g and exnv = nv g in
   let ret_id = mk_tid "$ret" in
-  tlambda ~g ~mk_tid ~inv ~outv ~exnv ~ret_id ~exn_id tlam;
+  tlambda ~g ~mk_tid ~modulename ~inv ~outv ~exnv ~ret_id ~exn_id tlam;
   ( g, fun_descs, inv, outv, exnv, exn_id, ret_id )
   
 

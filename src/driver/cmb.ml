@@ -8,6 +8,9 @@ struct
   type tid = Common_types.tid
   type fun_table = ( F.t, Tlambda_to_hgraph.fun_desc ) Hashtbl.t
 
+  type h = Tlambda_to_hgraph.Hedge.t
+  let mkh = Tlambda_to_hgraph.Hedge.mk
+
   let vattr_merge () () = ()
 end
 

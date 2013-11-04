@@ -8,15 +8,19 @@ sig
 
   val vattr_merge : vattr -> vattr -> vattr
 
+  type h
+
+  val mkh : unit -> h
+
 end
 
 (* exporting and importing of Hgraph as bigraphs *)
-module Store (T : Hgraph.T) ( H : Hgraph.Hgraph with module T := T ) ( I : Ginfo ) =
+module Store (T : Hgraph.T) ( H : Hgraph.Hgraph with module T := T ) ( I : Ginfo with type h = T.hedge ) =
 struct
   type g = ( I.vattr, I.hattr, unit ) H.graph
 
   type vext = T.vertex * I.vattr
-  type hext = T.hedge * I.hattr * T.vertex array * T.vertex array
+  type hext = I.hattr * T.vertex array * T.vertex array
 
   type gext = vext list * hext list
               * T.vertex * T.vertex * T.vertex
@@ -61,7 +65,7 @@ struct
     ),
     ( List.rev_map
         (fun h ->
-           h, H.hedge_attrib g h,
+           H.hedge_attrib g h,
            H.hedge_pred' g h, H.hedge_succ' g h )
         ( H.list_hedge g )
     ), vin, vout, vexn
@@ -76,8 +80,8 @@ struct
     in
     let rec export_hedge = function
       | [] -> ()
-      | (h,a,pred,succ) :: hl ->
-        H.add_hedge g h a ~pred ~succ;
+      | (a,pred,succ) :: hl ->
+        H.add_hedge g (I.mkh ()) a ~pred ~succ;
         export_hedge hl
     in
     export_vertex vl;

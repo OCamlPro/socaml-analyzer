@@ -4,15 +4,11 @@ open Common_types
 
 (* use generative applications to have a new type each time *)
 
-module Constant = MakeId(struct end)
-
 type id = tid
 
-type constant = Constant.t
+type constant = Constants.t
 
-module Constants = Set.Make (struct type t = constant let compare = compare end)
-
-type simple = Top | Constants of Constants.t
+open Constants
 
 type tag = int
 

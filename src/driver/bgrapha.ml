@@ -9,7 +9,7 @@ let () =
     let exnv = exnv
     let g = g
     let funs = funs
-    let mk_vertex = Tlambda_to_hgraph.Vertex.mk
+    let mk_vertex = Tlambda_to_hgraph.Vertex.mk ~modulename:""
     let mk_hedge = Tlambda_to_hgraph.Hedge.mk
   end
   in

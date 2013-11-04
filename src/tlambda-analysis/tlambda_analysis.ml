@@ -387,8 +387,10 @@ set_env id vunit env *)
            end
          | Return id -> set_env ret_tid ( get_env id env ) env
          | Retexn id -> set_env exn_tid ( get_env id env ) env
-       in	
-       let env = Array.fold_left Envs.join Envs.bottom envs in
+       in
+       assert ( Array.length envs = 1 );
+       let env = envs.(0) in
+       (* Array.fold_left Envs.join Envs.bottom envs in *)
        let rec aux e l =
          match l with
          | [] -> e

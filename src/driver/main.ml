@@ -18,11 +18,11 @@ let tlambdas =
 
 let mk_tid n = ( "", mk_id ~n () ) (* won't work *)
 
-let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~mk_tid funs
+let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~mk_tid ~modulename:"" funs
 
 let subgs =
   Array.map
-    ( Tlambda_to_hgraph.mk_subgraph ~g ~mk_tid ~exn_id )
+    ( Tlambda_to_hgraph.mk_subgraph ~g ~mk_tid ~modulename:"" ~exn_id )
     tlambdas
 
 let inv,outv,exnv,return_id =
@@ -42,7 +42,7 @@ struct
   let exnv = exnv
   let g = g
   let funs = funs
-  let mk_vertex = Tlambda_to_hgraph.Vertex.mk
+  let mk_vertex = Tlambda_to_hgraph.Vertex.mk ~modulename:""
   let mk_hedge = Tlambda_to_hgraph.Hedge.mk
   let return_id = return_id
 end

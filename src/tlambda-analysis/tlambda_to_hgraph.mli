@@ -3,7 +3,7 @@ open Common_types
 module Vertex :
 sig
   include Hgraph.OrderedHashedType
-  val mk : unit -> t
+  val mk : ?modulename : string -> unit -> t
 end
 module Hedge :
 sig
@@ -62,6 +62,7 @@ type hg = ( vattr, hattr, gattr ) G.graph
 
 val init :
   mk_tid : ( string -> tid ) ->
+  modulename : string ->
   ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
   hg * ( Data.f, fun_desc ) Hashtbl.t * tid
 
@@ -70,7 +71,13 @@ val init :
    returns the graph, the fun descriptors and a exn_id
  *)
 
-val mk_subgraph : g : hg -> mk_tid : ( string -> tid ) -> exn_id : tid -> Tlambda.tlambda -> mod_desc
+val mk_subgraph :
+  g : hg ->
+  mk_tid : ( string -> tid ) ->
+  modulename : string ->
+  exn_id : tid ->
+  Tlambda.tlambda ->
+  mod_desc
 
 (* returns a inv, a outv, a exnv and a return tid *)
 
