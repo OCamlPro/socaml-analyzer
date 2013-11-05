@@ -34,7 +34,7 @@ begin library "hgraph"
 end
 
 begin library "lambda-analysis"
- dirname = "src/tlambda-analysis"
+ dirname = "src/analysis"
  files = [ "tlambda_to_hgraph.ml" "tlambda_analysis.ml" ]
  requires = [ "common" "tlambda" "hgraph" "data" ]
 end
