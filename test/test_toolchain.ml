@@ -13,7 +13,7 @@ let tlambdas =
   Array.map
     (fun ( lam, modname ) ->
        Mk_tlambda.lambda_to_tlambda
-         ~mk_id ~mk_fid:Common_types.F.create ~modname ~funs lam )
+         (* ~mk_id ~mk_fid:Common_types.F.create *) ~modname ~funs lam )
     lambdas
 
 let () =  print_endline "Got Tlambdas !"
