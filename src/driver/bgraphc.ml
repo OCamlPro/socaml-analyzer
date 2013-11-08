@@ -73,6 +73,7 @@ let arg_parser =
 let () =
 
   Clflags.nopervasives := true;
+  Clflags.no_std_include := true;
 
   let ppf = Format.std_formatter in
 

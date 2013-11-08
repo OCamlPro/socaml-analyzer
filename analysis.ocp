@@ -1,4 +1,5 @@
 comp += [ "-g" ]
+link += [ "-g" ]
 
 begin library "common"
  dirname = "src/common"
@@ -97,7 +98,7 @@ end
 
 begin test "ttoolchain"
  files = [ "test/test_toolchain.ml" ]
- requires = [ "common" "lambda" "tlambda" ]
+ requires = [ "common" "lambda" "tlambda" "compiler-libs" "compiler-libs.common" ]
  test_dir = "test/samples"
  test_byte = false
  tests =

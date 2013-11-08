@@ -1,3 +1,7 @@
+let () =
+  Clflags.nopervasives := true;
+  Clflags.no_std_include := true
+
 let lambdas = Mk_lambda.mk_lambdas ( Array.sub Sys.argv 1 ( pred ( Array.length Sys.argv ) ) )
 
 let () =  print_endline "Got lambdas !"
