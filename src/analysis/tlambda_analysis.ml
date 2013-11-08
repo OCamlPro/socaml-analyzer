@@ -212,12 +212,12 @@ module M : functor ( E : Entry ) ->
            match c with
            | Const_int i -> Int.singleton i
            | Const_char c -> Int.singleton (Char.code c)
-           | Const_string s -> failwith "string"
+           | Const_string s -> Strings.singleton s
            (* Data.singleton_string s *)
            | Const_float _ -> failwith "float_of_string"
-           | Const_int32 _ -> failwith "int32"
-           | Const_int64 _ -> failwith "int64"
-           | Const_nativeint _ -> failwith "nativeint"
+           | Const_int32 i -> Otherints.( singleton I32 i )
+           | Const_int64 i -> Otherints.( singleton I64 i )
+           | Const_nativeint i -> Otherints.( singleton IN i )
          end
        | Const_pointer i -> env, Cps.singleton i
        | Const_block (t,l) ->
@@ -233,7 +233,7 @@ module M : functor ( E : Entry ) ->
          env, ( Blocks.singleton t a )
        | Const_float_array l ->
          failwith "float array"
-       | Const_immstring s -> failwith "immstring"
+       | Const_immstring s -> env, Strings.singleton s
      (* Data.singleton_string s *)
 
 
