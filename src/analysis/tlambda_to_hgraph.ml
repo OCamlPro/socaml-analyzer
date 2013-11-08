@@ -125,7 +125,7 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
   and trec g entry outv exnv ret_id exn_id d =
     (* at this point, there are only primitives *)
     let in_out = nv g in
-    add_hedge g ( Hedge.mk ()) ( List.rev_map (fun ( id, p, args ) -> id, Prim ( p, args ) ) d.tr_decls ) ~pred:[|entry|] ~succ:[|outv;exnv|];
+    add_hedge g ( Hedge.mk ()) ( List.rev_map (fun ( id, p, args ) -> id, Prim ( p, args ) ) d.tr_decls ) ~pred:[|entry|] ~succ:[|outv|];
     tlambda ~g ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.tr_in
 
   and tcontrol g inv outv exnv id ret_id exn_id c =
