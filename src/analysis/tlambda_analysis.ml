@@ -214,7 +214,7 @@ module M : functor ( E : Entry ) ->
            | Const_char c -> Int.singleton (Char.code c)
            | Const_string s -> Strings.singleton s
            (* Data.singleton_string s *)
-           | Const_float _ -> failwith "float_of_string"
+           | Const_float s -> Floats.singleton s
            | Const_int32 i -> Otherints.( singleton I32 i )
            | Const_int64 i -> Otherints.( singleton I64 i )
            | Const_nativeint i -> Otherints.( singleton IN i )
@@ -231,8 +231,7 @@ module M : functor ( E : Entry ) ->
          in
          let a = Array.of_list (List.rev ids) in
          env, ( Blocks.singleton t a )
-       | Const_float_array l ->
-         failwith "float array"
+       | Const_float_array l -> env, Floats.array l
        | Const_immstring s -> env, Strings.singleton s
      (* Data.singleton_string s *)
 
