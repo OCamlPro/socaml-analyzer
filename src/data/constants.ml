@@ -15,3 +15,6 @@ let mk s =
   let c = Constant.create () in
   Hashtbl.add tbl c s;
   c
+
+let singleton s =
+  Constants ( Constants.singleton ( mk s ) )

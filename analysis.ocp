@@ -23,7 +23,7 @@ begin library "data"
  files =
   [
     "int_interv.ml" "constants.ml" "data.ml" "envs.ml"
-     "int.ml" "blocks.ml" "cps.ml" "bools.ml" "funs.ml" "exprs.ml"
+     "int.ml" "otherints.ml" "blocks.ml" "cps.ml" "bools.ml" "strings.ml" "funs.ml" "exprs.ml"
   ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
@@ -119,6 +119,7 @@ begin test "tbg"
   "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
   "pervasives" ( test_args = [ "pervasives.ml" ] )
   "simplest" ( test_args = [ "simpler.ml" ] )
+  "pervasives2" ( test_args = [ "pervasives2.ml" ] )
  ]
 end
 
@@ -133,6 +134,7 @@ begin test "tba"
   "chain" ( test_args = [ "myper.cmb" "a.cmb" ] )
   "pervasives" ( test_args = [ "pervasives.cmb" ] )
   "simplest" ( test_args = [ "simpler.cmb" ] )
+  "pervasives2" ( test_args = [ "pervasives2.cmb" ] )
  ]
 
 end
