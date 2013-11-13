@@ -89,8 +89,8 @@ and constraint_env_cp expr cp env =
 	set_env x ( Int.restrict_not_intcp (get_env x env) ) env
       | TPisint, [x] when cp = 1 ->
 	set_env x ( Int.restrict_intcp (get_env x env) ) env
-      | TPisout, [x] when cp = 0 -> failwith "TODO: isout"
-      | TPisout, [x] when cp = 1 -> failwith "TODO: isout"
+      | TPisout, [x;y;z] when cp = 0 -> failwith "TODO: isout"
+      | TPisout, [x;y;z] when cp = 1 -> failwith "TODO: isout"
       | TPbittest, [x] when cp = 0 -> failwith "TODO: bittest"
       | TPbittest, [x] when cp = 1 -> failwith "TODO: bittest"
       | TPctconst Lambda.Word_size, [] -> Envs.bottom
@@ -310,15 +310,18 @@ set_env id vunit env *)
 | TPaddfloat | TPsubfloat | TPmulfloat | TPdivfloat
 | TPfloatcomp of comparison
 (* String operations *)
-| TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets
-(* Array operations *)
-| TPmakearray of array_kind
-| TParraylength of array_kind
-| TParrayrefu of array_kind
-| TParraysetu of array_kind
-| TParrayrefs of array_kind
-| TParraysets of array_kind
-*)
+| TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets *)
+             (* Array operations *)
+             | TPmakearray Pfloatarray, _ ->
+               sa ( { bottom with floata = Top }
+             | TParraylength Pfloatarray, _ ->
+               sa ( Int.any )
+             | TParrayrefu Pfloatarray, _ -> Data.top
+             | TPmakearray _, l ->
+               sa ( Blocks.singleton 0 (Array.of_list l) )
+             | TParraylength k, [a] -> sa ( Block.sizes ~tag:0 (get a) )
+             | TParrayrefu k, [a;i] -> sa ( Block.field )
+             | TParraysetu k, [a;i;x] ->
 (* Test if the argument is a block or an immediate integer *)
              | TPisint, [x] -> sa ( Int.is_int env (get x) )
 (* Test if the (integer) argument is outside an interval *)

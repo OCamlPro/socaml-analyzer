@@ -11,8 +11,12 @@ let singleton const =
   { bottom with
     int = Int_interv.cst const;
   }
+
 let any =
   { bottom with int = Int_interv.top;  }
+
+let join x y =
+  { bottom with int = Int_interv.join x.int y.int; }
 
 let add x y =
   { bottom with int = Int_interv.add x.int y.int }
