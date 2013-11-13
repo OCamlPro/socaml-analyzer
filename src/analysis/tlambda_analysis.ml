@@ -318,10 +318,12 @@ set_env id vunit env *)
 | TParraysetu of array_kind
 | TParrayrefs of array_kind
 | TParraysets of array_kind
+*)
 (* Test if the argument is a block or an immediate integer *)
-| TPisint
+             | TPisint, [x] -> sa ( Int.is_int env (get x) )
 (* Test if the (integer) argument is outside an interval *)
-| TPisout
+             | TPisout, [x;y;z] -> sa ( Int.is_out (get x) (get y) (get z) )
+(*
 (* Bitvect operations *)
 | TPbittest
 (* Operations on boxed integers (Nativeint.t, Int32.t, Int64.t) *)
@@ -360,13 +362,22 @@ set_env id vunit env *)
 | TPbigstring_load_64 of bool
 | TPbigstring_set_16 of bool
 | TPbigstring_set_32 of bool
-| TPbigstring_set_64 of bool
+| TPbigstring_set_64 of bool *)
 (* Compile time constants *)
-| TPctconst of compile_time_constant
+             | TPctconst c, [] ->
+               let open Lambda in
+               begin
+                 match c with
+                 | Big_endian -> sa ( Bools.of_bool Sys.big_endian )
+                 | Word_size -> sa ( Int.singleton Sys.word_size )
+                 | Ostype_unix -> sa ( Bools.of_bool Sys.unix )
+                 | Ostype_win32 -> sa ( Bools.of_bool Sys.win32 )
+                 | Ostype_cygwin -> sa ( Bools.of_bool Sys.cygwin )
+               end
+(*
 (* byte swap *)
 | TPbswap16
 | TPbbswap of boxed_integer
-(* method call *)
 *)	      
              | TPfunfield i, [f] ->
                (* at this point, f is unique *)

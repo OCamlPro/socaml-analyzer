@@ -14,3 +14,11 @@ let notb x =
 	  | 1 -> Ints.add 0 res
 	  | _ -> res ) x.cp Ints.empty;
   }
+
+let of_bool b =
+  Cps.singleton
+    (
+      if b
+      then 1
+      else 0
+    )
