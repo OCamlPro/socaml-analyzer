@@ -51,7 +51,6 @@ begin program "bigraphc"
  files = [ "cmb.ml" "bgraphc" ]
  requires =
   [
-    "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"
     "common" "lambda" "tlambda" "hgraph" "lambda-analysis"
   ]
 end
