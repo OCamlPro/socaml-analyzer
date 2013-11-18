@@ -175,16 +175,6 @@ let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_
 let fun_ids i env =
   Fm.fold (fun i _ l -> i::l ) (get_env i env).f []
 
-(* simple access *)
-
-(* let get_field f b env = *)
-(*   Tagm.fold (fun _ sizes res -> *)
-(*     Intm.fold (fun i vals res -> *)
-(*       if i > f *)
-(*       then union_id env (union_ids env vals.(f)) res *)
-(*       else res) sizes res *)
-(*   ) b.blocks bottom *)
-
 (* Inclusion test *)
 
 let included_simple a b = match a, b with

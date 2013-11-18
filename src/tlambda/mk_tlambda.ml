@@ -109,17 +109,6 @@ let prim_translate = function
   (* byte swap *)
   | Pbswap16 -> TPbswap16
   | Pbbswap k -> TPbbswap k
-  (* | Pidentity -> assert false *)
-  (* | Pignore -> assert false *)
-  (* | Prevapply _ *)
-  (* | Pdirapply _ -> assert false *)
-  (* | Pgetglobal _ -> assert false *)
-  (* | Psetglobal _ -> assert false *)
-  (* | Plazyforce -> assert false *)
-  (* | Pccall _ -> assert false *)
-  (* | Praise -> assert false *)
-  (* | Psequand | Psequor -> assert false *)
-  (* | Parrayrefs _ | Parraysets _ | Pstringrefs | Pstringsets -> assert false *)
   | _ -> assert false
 
 let cp i = Lconst ( Const_pointer i )
@@ -426,14 +415,6 @@ let lambda_to_tlambda ~modname ~funs code =
       fv, tlet ~id tc lam
     | [] -> assert false
 
-  (* and mk_no_tlet rv nfv fv stack = *)
-  (*   match stack with *)
-  (*   | [ _, cont ] -> *)
-  (*     tlambda rv nfv fv cont *)
-  (*   | (_,cont) :: stack -> *)
-  (*     tcontrol rv nfv fv stack cont *)
-  (*   | [] -> assert false *)
-
   and prim_handle rv nfv fv stack p l =
     let tl = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
@@ -461,30 +442,6 @@ let lambda_to_tlambda ~modname ~funs code =
         te_kind = Alias;
         te_in = cont;
       }
-
-      (* let i, ( fv, cont ) = *)
-      (*   match stack with *)
-      (*   | [i,cont] -> *)
-      (*     i, tlambda rv (Ids.add id nfv) fv cont *)
-      (*   | (i,cont)::stack -> *)
-      (*     i, ( tcontrol rv (Ids.add id nfv) fv stack cont ) *)
-      (* in *)
-      (* fv, { *)
-      (*   te_id: ("",ig); *)
-      (*   te_lam: Tvar (tid ir); *)
-      (*   te_kind: Alias; *)
-      (*   te_cont: cont *)
-      (* } *)
-
-
-
-
-
-
-
-
-
-
     | Plazyforce, [a] ->
       tl ( Tlazyforce ( tid a ) )
     | Praise, [e] ->

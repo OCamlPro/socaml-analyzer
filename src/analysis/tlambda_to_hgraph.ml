@@ -26,7 +26,6 @@ struct
 
   let mk ?(modulename="") () = 
     incr c;
-    (* Printf.printf "Creating %s/%d\n" modulename !c; *)
     modulename, !c
 end
 
@@ -50,11 +49,6 @@ struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  (* module VertexSet = Set.Make (Vertex) *)
-  (* module HedgeSet = Set.Make (Hedge) *)
-  (* module VertexTbl = Hashtbl.Make (Vertex) *)
-  (* module HedgeTbl = Hashtbl.Make (Hedge) *)
-
   let print_vertex _ _ = () 		(* TODO *)
   let print_hedge _ _ = ()
 end
@@ -69,9 +63,6 @@ type fun_desc =
     f_out : Vertex.t array;
     f_vertex : VertexSet.t;
     f_hedge : HedgeSet.t;
-    (* f_arg : tid; *)
-    (* f_return : tid; *)
-    (* f_exn : tid; *)
   }
 
 type mod_desc =
@@ -117,7 +108,6 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
     | Tend id -> simpleh g ret_id ( Var id) ~inv ~outv
 
   and tlet g inv outv exnv ret_id exn_id d =
-    (* add_vertex g d.te_id (); *)
     let in_out = nv g in
     tcontrol g inv in_out exnv d.te_id ret_id exn_id d.te_lam;
     tlambda ~g ~outv ~ret_id ~inv:in_out ~exnv ~exn_id d.te_in
@@ -235,74 +225,6 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
   
   tlambda ~g ~outv ~ret_id ~exn_id ~inv ~exnv code
 
-(* let mk_graph ~last_id ~funs main = *)
-  
-(*   let open G in *)
-(*   let g = create () in *)
-
-  
-
-(*   let nv g = *)
-(*     let v = Vertex.mk () in *)
-(*     add_vertex g v (); v in *)
-(*   let nf = Hashtbl.length funs in *)
-(* (\*  let fun_id = mk_tid "$f" in *\) *)
-(*   let f_arg_id = mk_tid "$x" in *)
-(*   let f_ret_id = mk_tid "$ans" in *)
-(*   let f_exn_id = mk_tid "$exn" in *)
-(*   let fun_descs = Hashtbl.create nf *)
-(*   and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in *)
-
-(*   Hashtbl.iter *)
-(*     (fun i _ -> *)
-(*       let f_graph = create () in *)
-(*       let f_in = [| nv g |] *)
-(*       and f_out = [| nv g; nv g |] in *)
-(*       let f_vertex = VertexSet.empty *)
-(*       and f_hedge = HedgeSet.empty in *)
-(*       Hashtbl.add fun_descs i { f_graph; f_in; f_out; f_vertex; f_hedge; } *)
-(*     ) *)
-(*     funs; *)
-
-(*   (\* let dummy = nv () in *\) *)
-(*   let one_id = mk_tid "$1" in *)
-
-  
-(*   let exn_id = mk_tid "$exn" in *)
-(*   let ret_id = mk_tid "$ret" in *)
-(*   Hashtbl.iter (fun i f -> *)
-(*     tlambda ~g:f.f_graph *)
-(*       ~inv:f.f_in.(0) *)
-(*       ~outv:f.f_out.(0) *)
-(*       ~exnv:f.f_out.(1) *)
-(*       ~ret_id ~exn_id *)
-(*       ( Hashtbl.find funs i ); *)
-(*     Hashtbl.replace fun_descs i *)
-(*       { f with *)
-(* 	f_vertex = *)
-(* 	  VertexSet.remove f.f_in.(0) ( *)
-(* 	      VertexSet.remove f.f_out.(0) ( *)
-(* 		VertexSet.remove f.f_out.(1) ( *)
-(* 		  ( List.fold_left *)
-(* 		      (fun vs v -> VertexSet.add v vs ) *)
-(* 		      VertexSet.empty *)
-(* 		      ( list_vertex f.f_graph ) *)
-(* 		  )))); *)
-(* 	f_hedge = *)
-(* 	  List.fold_left *)
-(* 	    (fun hs h -> HedgeSet.add h hs ) *)
-(* 	    HedgeSet.empty *)
-(* 	    ( list_hedge f.f_graph ) *)
-(*       } *)
-(*   ) fun_descs; *)
-(*   let inv = nv g and outv = nv g and exnv = nv g in *)
-(*   tlambda ~g ~inv ~outv ~exnv ~ret_id ~exn_id main; *)
-(*   ( g, inv, outv, exnv, fun_descs, f_arg_id, f_ret_id, f_exn_id ) *)
-
-
-
-
-
 
 let init ~modulename funs =
   let nv = nv ~modulename in
@@ -311,9 +233,7 @@ let init ~modulename funs =
   let nf = Hashtbl.length funs in
   let exn_id = mk_tid "$exn" in
   
-  (*  let fun_id = mk_tid "$f" in *)
   let fun_descs = Hashtbl.create nf in
-  (* and statics : ( int, Vertex.t * id list ) Hashtbl.t = Hashtbl.create 32 in *)
 
   Hashtbl.iter
     begin
@@ -339,7 +259,6 @@ let init ~modulename funs =
         Hashtbl.add fun_descs i
           {
             f_graph; f_in; f_out;
-            (* f_arg; f_return; f_exn; *)
             f_vertex =
               VertexSet.remove f_in.(0) (
                 VertexSet.remove f_out.(0) (

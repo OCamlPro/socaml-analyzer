@@ -25,13 +25,6 @@ let subgs =
 let inv,outv,exnv,return_id =
   Tlambda_to_hgraph.merge_graphs ~g subgs
 
-
-(* let ( g, inv, outv, exnv, funs, arg_id, return_id, exn_id ) = *)
-(*   Tlambda_to_hgraph.mk_graph *)
-(*     ~last_id:!ir *)
-(*     ~funs *)
-(*     tlambda *)
-
 module E =
 struct
   let inv = inv
