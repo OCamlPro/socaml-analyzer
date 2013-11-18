@@ -70,42 +70,42 @@ let mk_lambda ppf sourcefile =
 let mk_lambdas ppf ( files : string array ) =
   Array.map ( mk_lambda ppf ) files
 
-let unglobalize lambdas =
-  let open Lambda in
-  let m =
-object (self)
-  inherit Lmapper.mapper as super
+(* let unglobalize lambdas = *)
+(*   let open Lambda in *)
+(*   let m = *)
+(* object (self) *)
+(*   inherit Lmapper.mapper as super *)
 
-  val mutable globals = ([] : ( Ident.t * lambda ) list )
-  method register_global i ll =
-    globals <- (i,ll) :: globals
+(*   val mutable globals = ([] : ( Ident.t * lambda ) list ) *)
+(*   method register_global i ll = *)
+(*     globals <- (i,ll) :: globals *)
 
-  method! prim p l =
-    match p with
-    | Pgetglobal id when not ( Common_types.builtin id ) -> self#var id
-    | _ -> super#prim p l
-end
-  in
-  let rec aux i =
-    if i = pred (Array.length lambdas)
-    then
-      match m#lambda (fst lambdas.(i)) with
-      | Lprim (Psetglobal id, ( [lam]) ) ->
-	m#register_global id lam;
-	lam
-      | _ -> assert false
-    else
-      let l = m#lambda (fst lambdas.(i)) in
-      match l with
-      | Lprim (Psetglobal id, [lam]) ->
-	m#register_global id lam;
-	Llet ( Alias, id, lam, aux (succ i))
-      | _ -> assert false
-  in
-  aux 0
+(*   method! prim p l = *)
+(*     match p with *)
+(*     | Pgetglobal id when not ( Common_types.builtin id ) -> self#var id *)
+(*     | _ -> super#prim p l *)
+(* end *)
+(*   in *)
+(*   let rec aux i = *)
+(*     if i = pred (Array.length lambdas) *)
+(*     then *)
+(*       match m#lambda (fst lambdas.(i)) with *)
+(*       | Lprim (Psetglobal id, ( [lam]) ) -> *)
+(* 	m#register_global id lam; *)
+(* 	lam *)
+(*       | _ -> assert false *)
+(*     else *)
+(*       let l = m#lambda (fst lambdas.(i)) in *)
+(*       match l with *)
+(*       | Lprim (Psetglobal id, [lam]) -> *)
+(* 	m#register_global id lam; *)
+(* 	Llet ( Alias, id, lam, aux (succ i)) *)
+(*       | _ -> assert false *)
+(*   in *)
+(*   aux 0 *)
 
-let merge_lambdas ( lambdas : ( Lambda.lambda * string ) array ) =
-  if lambdas = [| |]
-  then raise No_implementation
-  else unglobalize lambdas
+(* let merge_lambdas ( lambdas : ( Lambda.lambda * string ) array ) = *)
+(*   if lambdas = [| |] *)
+(*   then raise No_implementation *)
+(*   else unglobalize lambdas *)
 

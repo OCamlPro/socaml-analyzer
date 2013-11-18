@@ -9,7 +9,7 @@ end
 
 begin library "lambda"
  dirname = "src/lambda"
- files = [ "tt_mapper.ml" "identer.ml" "tt_restore.ml" "lmapper.ml" "cmt_specifics.ml" "mk_lambda.ml" ]
+ files = [ "cmt_specifics.ml" "mk_lambda.ml" ]
  requires = [ "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp" "common" ]
 end
 
