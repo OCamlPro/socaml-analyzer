@@ -1,11 +1,10 @@
+
 open Common_types
 
-let lambdas = Mk_lambda.mk_lambdas (Array.sub Sys.argv 1 ( pred (Array.length Sys.argv)) )
-
-let ir = ref (Mk_lambda.last_id () )
-let mk_id ?(n = "") () = 
-  incr ir;
-  Ident.({ name = n; stamp = !ir; flags = 0 })
+let lambdas =
+  Mk_lambda.mk_lambdas
+    Format.std_formatter
+    (Array.sub Sys.argv 1 ( pred (Array.length Sys.argv)) )
 
 let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
 
@@ -16,13 +15,11 @@ let tlambdas =
          ~modname ~funs lam )
     lambdas
 
-let mk_tid n = ( "", mk_id ~n () ) (* won't work *)
-
-let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~mk_tid ~modulename:"" funs
+let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~modulename:"" funs
 
 let subgs =
   Array.map
-    ( Tlambda_to_hgraph.mk_subgraph ~g ~mk_tid ~modulename:"" ~exn_id )
+    ( Tlambda_to_hgraph.mk_subgraph ~g ~modulename:"" ~exn_id )
     tlambdas
 
 let inv,outv,exnv,return_id =

@@ -313,15 +313,15 @@ set_env id vunit env *)
 | TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets *)
              (* Array operations *)
              | TPmakearray Pfloatarray, _ ->
-               sa ( { bottom with floata = Top }
+               sa { Data.bottom with floata = Constants.Top }
              | TParraylength Pfloatarray, _ ->
                sa ( Int.any )
-             | TParrayrefu Pfloatarray, _ -> Data.top
+             | TParrayrefu Pfloatarray, _ -> sa Data.top
              | TPmakearray _, l ->
                sa ( Blocks.singleton 0 (Array.of_list l) )
-             | TParraylength k, [a] -> sa ( Block.sizes ~tag:0 (get a) )
-             | TParrayrefu k, [a;i] -> sa ( Block.field )
-             | TParraysetu k, [a;i;x] ->
+             | TParraylength k, [a] -> sa ( Blocks.sizes ~tag:0 (get a) )
+             | TParrayrefu k, [a;i] -> (* sa ( Blocks.field ) *) failwith "Array ref"
+             | TParraysetu k, [a;i;x] -> failwith "Array set"
 (* Test if the argument is a block or an immediate integer *)
              | TPisint, [x] -> sa ( Int.is_int env (get x) )
 (* Test if the (integer) argument is outside an interval *)

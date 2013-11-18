@@ -304,8 +304,9 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
 
 
 
-let init ~mk_tid ~modulename funs =
-  let nv = nv ~modulename in 
+let init ~modulename funs =
+  let nv = nv ~modulename in
+  let mk_tid name = ( modulename, Id.create ~name () ) in
   let g = create () in
   let nf = Hashtbl.length funs in
   let exn_id = mk_tid "$exn" in
@@ -357,9 +358,10 @@ let init ~mk_tid ~modulename funs =
     funs;
   ( g, fun_descs, exn_id )
 
-let mk_subgraph ~g ~mk_tid ~modulename ~exn_id main =
+let mk_subgraph ~g ~modulename ~exn_id main =
   let nv = nv ~modulename in
   let inv = nv g and outv = nv g and exnv = nv g in
+  let mk_tid name = ( modulename, Id.create ~name () ) in
   let ret_id = mk_tid "$ret" in
   tlambda ~g ~mk_tid ~modulename ~inv ~outv ~exnv ~ret_id ~exn_id main;
   { m_in = inv; m_out = outv; m_exn = exnv; m_return = ret_id; }
@@ -367,7 +369,7 @@ let mk_subgraph ~g ~mk_tid ~modulename ~exn_id main =
 let mk_graph ~modulename funs tlam =
   let nv = nv ~modulename in
   let mk_tid name = ( modulename, Id.create ~name () ) in
-  let ( g, fun_descs, exn_id ) = init ~mk_tid ~modulename funs in
+  let ( g, fun_descs, exn_id ) = init ~modulename funs in
   let inv = nv g and outv = nv g and exnv = nv g in
   let ret_id = mk_tid "$ret" in
   tlambda ~g ~mk_tid ~modulename ~inv ~outv ~exnv ~ret_id ~exn_id tlam;

@@ -9,8 +9,8 @@ end
 
 begin library "lambda"
  dirname = "src/lambda"
- files = [ "tt_mapper.ml" "identer.ml" "tt_restore.ml" "lmapper.ml" "mk_lambda.ml" ]
- requires = [ "compiler-libs" "compiler-libs.common" "common" ]
+ files = [ "tt_mapper.ml" "identer.ml" "tt_restore.ml" "lmapper.ml" "cmt_specifics.ml" "mk_lambda.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp" "common" ]
 end
 
 begin library "tlambda"
@@ -48,7 +48,7 @@ end
 
 begin program "bigraphc"
  dirname = "src/driver"
- files = [ "cmt_specifics.ml" "cmb.ml" "bgraphc" ]
+ files = [ "cmb.ml" "bgraphc" ]
  requires =
   [
     "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"

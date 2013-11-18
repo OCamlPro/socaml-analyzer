@@ -61,7 +61,6 @@ type hg = ( vattr, hattr, gattr ) G.graph
 
 
 val init :
-  mk_tid : ( string -> tid ) ->
   modulename : string ->
   ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
   hg * ( Data.f, fun_desc ) Hashtbl.t * tid
@@ -73,7 +72,6 @@ val init :
 
 val mk_subgraph :
   g : hg ->
-  mk_tid : ( string -> tid ) ->
   modulename : string ->
   exn_id : tid ->
   Tlambda.tlambda ->
