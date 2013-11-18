@@ -25,18 +25,11 @@ let arg_parser =
   let open Arg in
   [
     ( "-open",
-     String
-       (fun s ->
-          Compenv.implicit_modules := 
-            s :: !Compenv.implicit_modules
-       ),
-     "Add an implicitly opened module" )
+      String Mk_lambda.open_module,
+      "Add an implicitly opened module" )
   ]
 
 let () =
-
-  Clflags.nopervasives := true;
-  Clflags.no_std_include := true;
 
   let ppf = Format.std_formatter in
 

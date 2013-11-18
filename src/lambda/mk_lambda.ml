@@ -37,6 +37,10 @@ let cmt_file ppf sourcefile outputprefix =
       , modulename )
   | _ -> failwith (Printf.sprintf "Bad cmt file: %s" sourcefile)
 
+let open_module s =
+  Compenv.implicit_modules := 
+    s :: !Compenv.implicit_modules
+
 let mk_lambda ppf sourcefile =
   let outputprefix = Filename.chop_extension sourcefile in
   let c = Filename.check_suffix sourcefile in
