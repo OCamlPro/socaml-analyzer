@@ -4,15 +4,11 @@ open Common_types
 
 (* use generative applications to have a new type each time *)
 
-module Constant = MakeId(struct end)
-
 type id = tid
 
-type constant = Constant.t
+type constant = Constants.t
 
-module Constants = Set.Make (struct type t = constant let compare = compare end)
-
-type simple = Top | Constants of Constants.t
+open Constants
 
 type tag = int
 
@@ -178,16 +174,6 @@ let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_
 
 let fun_ids i env =
   Fm.fold (fun i _ l -> i::l ) (get_env i env).f []
-
-(* simple access *)
-
-(* let get_field f b env = *)
-(*   Tagm.fold (fun _ sizes res -> *)
-(*     Intm.fold (fun i vals res -> *)
-(*       if i > f *)
-(*       then union_id env (union_ids env vals.(f)) res *)
-(*       else res) sizes res *)
-(*   ) b.blocks bottom *)
 
 (* Inclusion test *)
 
@@ -357,4 +343,3 @@ let intersect_noncommut env a b =
       f;
       expr = [];
     }
-

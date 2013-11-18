@@ -1,4 +1,5 @@
 comp += [ "-g" ]
+link += [ "-g" ]
 
 begin library "common"
  dirname = "src/common"
@@ -8,8 +9,8 @@ end
 
 begin library "lambda"
  dirname = "src/lambda"
- files = [ "tt_mapper.ml" "identer.ml" "tt_restore.ml" "lmapper.ml" "mk_lambda.ml" ]
- requires = [ "compiler-libs" "compiler-libs.common" "common" ]
+ files = [ "cmt_specifics.ml" "mk_lambda.ml" ]
+ requires = [ "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp" "common" ]
 end
 
 begin library "tlambda"
@@ -22,19 +23,19 @@ begin library "data"
  dirname = "src/data"
  files =
   [
-    "int_interv.ml" "data.ml" "envs.ml"
-     "int.ml" "blocks.ml" "cps.ml" "bools.ml" "exprs.ml"
+    "int_interv.ml" "constants.ml" "data.ml" "envs.ml"
+     "int.ml" "otherints.ml" "blocks.ml" "cps.ml" "bools.ml" "strings.ml" "floats.ml" "funs.ml" "exprs.ml"
   ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 
 begin library "hgraph"
  dirname = "src/hgraph"
- files = [ "hgraph.ml" ]
+ files = [ "hgraph.ml" "export.ml" ]
 end
 
 begin library "lambda-analysis"
- dirname = "src/tlambda-analysis"
+ dirname = "src/analysis"
  files = [ "tlambda_to_hgraph.ml" "tlambda_analysis.ml" ]
  requires = [ "common" "tlambda" "hgraph" "data" ]
 end
@@ -45,29 +46,95 @@ begin program "main"
  requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
+begin program "bigraphc"
+ dirname = "src/driver"
+ files = [ "cmb.ml" "bgraphc" ]
+ requires =
+  [
+    "common" "lambda" "tlambda" "hgraph" "lambda-analysis"
+  ]
+end
+
+begin program "analyzer"
+ dirname = "src/driver"
+ files = [ "cmb.ml" "bgrapha.ml" ]
+ requires =
+  [
+    "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"
+    "common" "tlambda" "hgraph" "lambda-analysis"
+  ]
+end
+
 begin test "tgraph"
+ test_byte = false
  files = [ "test/test_graph.ml" ]
  requires = [ "hgraph" ]
 end
 
 begin test "tint"
+ test_byte = false
  files = [ "test/test_int.ml" ]
  requires = [ "hgraph" ]
 end
 
 begin test "tdata"
+ test_byte = false
  files = [ "test/test_data.ml" ]
  requires = [ "common" "hgraph" "data" ]
 end
 
+begin test "thgraph"
+ test_byte = false
+ files = [ "test/test_hgraph.ml" ]
+ requires = [ "common" "hgraph" "data" ]
+end
+
 begin test "ttlambda"
+ test_byte = false
  files = [ "test/test_tlambda.ml" ]
  requires = [ "common" "tlambda" ]
 end
 
 begin test "ttoolchain"
  files = [ "test/test_toolchain.ml" ]
- requires = [ "common" "lambda" "tlambda" ]
+ requires = [ "common" "lambda" "tlambda" "compiler-libs" "compiler-libs.common" ]
  test_dir = "test/samples"
- test_args = [ "myper.ml" ]
+ test_byte = false
+ tests =
+ [
+  "simple" ( test_args = [ "myper.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "a.ml" ] )
+  "pervasives" ( test_args = [ "pervasives.ml" ] )
+ ]
+end
+
+begin test "tbg"
+ files = [ ]
+ requires = [ "bigraphc" ]
+ test_dir = "test/samples"
+ test_byte = false
+ tests =
+ [
+  "simple" ( test_args = [ "myper.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
+  "pervasives" ( test_args = [ "pervasives.ml" ] )
+  "simplest" ( test_args = [ "simpler.ml" ] )
+  "pervasives2" ( test_args = [ "pervasives2.ml" ] )
+ ]
+end
+
+begin test "tba"
+ files = [ ]
+ requires = [ "analyzer" ]
+ test_dir = "test/samples"
+ test_byte = false
+ tests =
+ [
+  "simple" ( test_args = [ "myper.cmb" ] )
+  "chain" ( test_args = [ "myper.cmb" "a.cmb" ] )
+  "pervasives" ( test_args = [ "pervasives.cmb" ] )
+  "simplest" ( test_args = [ "simpler.cmb" ] )
+  "pervasives2" ( test_args = [ "pervasives2.cmb" ] )
+ ]
+
 end

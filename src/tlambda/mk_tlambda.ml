@@ -109,17 +109,6 @@ let prim_translate = function
   (* byte swap *)
   | Pbswap16 -> TPbswap16
   | Pbbswap k -> TPbbswap k
-  (* | Pidentity -> assert false *)
-  (* | Pignore -> assert false *)
-  (* | Prevapply _ *)
-  (* | Pdirapply _ -> assert false *)
-  (* | Pgetglobal _ -> assert false *)
-  (* | Psetglobal _ -> assert false *)
-  (* | Plazyforce -> assert false *)
-  (* | Pccall _ -> assert false *)
-  (* | Praise -> assert false *)
-  (* | Psequand | Psequor -> assert false *)
-  (* | Parrayrefs _ | Parraysets _ | Pstringrefs | Pstringsets -> assert false *)
   | _ -> assert false
 
 let cp i = Lconst ( Const_pointer i )
@@ -139,9 +128,9 @@ let register_global = Hashtbl.add globals_tbl
 let get_global = Hashtbl.find globals_tbl
 
 
-let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
+let lambda_to_tlambda ~modname ~funs code =
 
-  let mk : unit -> id = mk_id in
+  let mk : unit -> id = Id.create in
 
   let tid i : tid = modname,i in
 
@@ -151,16 +140,29 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
 
   (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
   
-  let register_function tlam fv =
-    let i = (* F.create () *) mk_fid () in
+  let register_function tlam arg fv =
+    let i = F.create ~name:modname ()  in
+    let idf = tid ( mk ()) in
+    let targ = tid arg in
     let tlam, _ =
       Idm.fold (fun _ id (tlam,n) ->
-          tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [] ) ) tlam, succ n
+          tlet ~k:Alias ~id ( Tprim ( TPfunfield n, [idf] ) ) tlam, succ n
         )
         fv ( tlam, 0 )
     in
-    Hashtbl.add funs i tlam;
-    i
+    Hashtbl.add funs i (
+      ( Tlet
+          {
+            te_kind = Alias;
+            te_id = idf;
+            te_lam = (Tprim ( TPgetfun i, [] ));
+            te_in = 
+              Tlet { te_kind = Alias; te_id = targ; 
+                     te_lam = (Tprim ( TPgetarg, [] ));
+                     te_in = tlam; };
+          }
+      ) );
+      i
   in
   
   let lraise_glob x l =
@@ -413,14 +415,6 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
       fv, tlet ~id tc lam
     | [] -> assert false
 
-  (* and mk_no_tlet rv nfv fv stack = *)
-  (*   match stack with *)
-  (*   | [ _, cont ] -> *)
-  (*     tlambda rv nfv fv cont *)
-  (*   | (_,cont) :: stack -> *)
-  (*     tcontrol rv nfv fv stack cont *)
-  (*   | [] -> assert false *)
-
   and prim_handle rv nfv fv stack p l =
     let tl = mk_tlet rv nfv fv stack in
     let fv, l = lcheck rv nfv fv l in
@@ -434,7 +428,9 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
     | Pgetglobal i, [] ->
       if builtin i
       then tl ( Tprim ( TPbuiltin, [tid i] ) )
-      else tl ( Tvar ( "", i ) )
+      else
+      let fv, i = check rv nfv fv i in
+      mk_tlet rv nfv fv stack ( Tvar ( tid i ) )
     | Psetglobal ig, [ir] ->
       let fv, cont =
         tcontrol rv nfv fv stack
@@ -446,30 +442,6 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
         te_kind = Alias;
         te_in = cont;
       }
-
-      (* let i, ( fv, cont ) = *)
-      (*   match stack with *)
-      (*   | [i,cont] -> *)
-      (*     i, tlambda rv (Ids.add id nfv) fv cont *)
-      (*   | (i,cont)::stack -> *)
-      (*     i, ( tcontrol rv (Ids.add id nfv) fv stack cont ) *)
-      (* in *)
-      (* fv, { *)
-      (*   te_id: ("",ig); *)
-      (*   te_lam: Tvar (tid ir); *)
-      (*   te_kind: Alias; *)
-      (*   te_cont: cont *)
-      (* } *)
-
-
-
-
-
-
-
-
-
-
     | Plazyforce, [a] ->
       tl ( Tlazyforce ( tid a ) )
     | Praise, [e] ->
@@ -652,7 +624,7 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
     let nfv2 = Ids.singleton arg in
     let fv2 = Idm.empty in
     let fv2, lam = tlambda rv nfv2 fv2 body in
-    let i = register_function lam fv2 in
+    let i = register_function lam arg fv2 in
     let fv, l = Idm.fold
         (fun i _ (fv,l) ->
            let fv,i = check rv nfv fv i in
@@ -666,5 +638,11 @@ let lambda_to_tlambda ~mk_id ~mk_fid ~modname ~funs code =
   in
 
   let fv, lam =  tlambda Ids.empty Ids.empty Idm.empty code in
-  assert ( Idm.is_empty fv );
+  let lam =
+    Idm.fold (fun _ id lam ->
+        assert ( id.Ident.stamp = 0 );
+        tlet ~k:Alias ~id ( Tvar ( "",id ) ) lam
+      )
+      fv lam
+  in
   lam

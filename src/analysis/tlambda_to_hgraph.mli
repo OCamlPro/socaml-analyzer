@@ -3,7 +3,7 @@ open Common_types
 module Vertex :
 sig
   include Hgraph.OrderedHashedType
-  val mk : unit -> t
+  val mk : ?modulename : string -> unit -> t
 end
 module Hedge :
 sig
@@ -38,21 +38,30 @@ type fun_desc =
     f_out : Vertex.t array;
     f_vertex : VertexSet.t;
     f_hedge : HedgeSet.t;
-    f_arg : tid;
-    f_return : tid;
-    f_exn : tid;
+    (* f_arg : tid; *)
+    (* f_return : tid; *)
+    (* f_exn : tid; *)
   }
 
 type mod_desc
 
-type hg = ( unit, ( tid * hinfo ) list, unit ) G.graph
+type vattr = unit
+type hattr = ( tid * hinfo ) list
+type gattr = unit
+type hg = ( vattr, hattr, gattr ) G.graph
 
-(* val mk_graph : last_id:int -> funs:( Data.f, Tlambda.tlambda ) Hashtbl.t -> Tlambda.tlambda -> ( unit, ( tid * hinfo ) list, unit ) G.graph * Vertex.t * Vertex.t * Vertex.t * ( Data.f, fun_desc ) Hashtbl.t * tid * tid * tid *)
-(* (\* the graph, the in, out and exn vectors, the functions, the arg, return and exn tids *\) *)
+ val mk_graph :
+   modulename : string ->
+   ( F.t, Tlambda.tlambda ) Hashtbl.t ->
+   Tlambda.tlambda ->
+   ( hg * ( F.t, fun_desc ) Hashtbl.t *
+       Vertex.t * Vertex.t * Vertex.t *
+       tid * tid )
+(* the graph, the in, out and exn vectors, the functions, the exn and return tids *)
 
 
 val init :
-  last_id:int ->
+  modulename : string ->
   ( Data.f, Tlambda.tlambda ) Hashtbl.t ->
   hg * ( Data.f, fun_desc ) Hashtbl.t * tid
 
@@ -61,7 +70,12 @@ val init :
    returns the graph, the fun descriptors and a exn_id
  *)
 
-val mk_subgraph : g : hg -> exn_id : tid -> Tlambda.tlambda -> mod_desc
+val mk_subgraph :
+  g : hg ->
+  modulename : string ->
+  exn_id : tid ->
+  Tlambda.tlambda ->
+  mod_desc
 
 (* returns a inv, a outv, a exnv and a return tid *)
 

@@ -59,3 +59,7 @@ let get_field i b =
 	  else acc
 	) b acc
     ) b.blocks Ids.empty
+
+let sizes ~tag { blocks; _ } =
+  let a = Tagm.find tag blocks in
+  Intm.fold (fun s _ i -> Int.join (Int.singleton s) i) a bottom

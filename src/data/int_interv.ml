@@ -119,14 +119,6 @@ let blsl x y = top
 let blsr x y = top
 let basr x y = top
 
-(* let add_cst c x = *)
-(*   match x with *)
-(*   | None -> x *)
-(*   | Some (a, b) -> *)
-(*     Some ( *)
-(*       ( if a = min_int then a else a + c), *)
-(*       ( if b = max_int then b else b + c) ) *)
-
 type compres = bool option
 
 let comp c x y =

@@ -8,12 +8,10 @@ sig
   val inv : v
   val outv : v
   val exnv : v
-  val g : ( unit, ( tid * hinfo ) list, unit ) G.graph 
+  val g : hg
   val funs : ( Data.f, fun_desc ) Hashtbl.t
   val mk_vertex : unit -> v
   val mk_hedge : unit -> Hedge.t
-  val return_id : tid
-
 end
 
 module M : functor ( E : Entry ) ->
@@ -21,3 +19,6 @@ module M : functor ( E : Entry ) ->
   with
     module T := T
   and module H = G
+  and type hedge_attribute = hattr
+  and type vertex_attribute = vattr
+  and type graph_attribute = gattr

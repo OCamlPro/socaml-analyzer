@@ -21,6 +21,7 @@ type hedge_attr =
   | Access_param of tid
   | Add_int of tid * tid * tid
   | Ignore
+  | Tee of bool
 
 let hedge_attr_to_string = function
   | Set_int _ -> "Set_int"
@@ -31,6 +32,7 @@ let hedge_attr_to_string = function
   | Access_param _ -> "Access_param"
   | Add_int _ -> "Add_int"
   | Ignore -> "Ignore"
+  | Tee _ -> "Tee"
 
 module Hedge = struct
   type t = string
@@ -205,10 +207,13 @@ let v9 = "v9"
 let v10 = "v10"
 let v11 = "v11"
 let v12 = "v12"
+let v13 = "v13"
 let v_out = "v.out"
 
+let in_vert = [v7; v8; v9; v10; v11; v12; v13] 
+
 let () =
-  let vert = [v_in; v_out; v7; v8; v9; v10; v11; v12] in
+  let vert = [v_in; v_out] @ in_vert in
   List.iter (fun v -> H.add_vertex g_func v ()) vert;
   H.add_hedge g_func "6.7" (Access_closure (a_id, func, 0)) ~pred:[|v_in|] ~succ:[|v7|];
   H.add_hedge g_func "7.8" (Access_param b_id) ~pred:[|v7|] ~succ:[|v8|];
@@ -219,8 +224,9 @@ let () =
 
   H.add_hedge g_func "11.12" Call ~pred:[|v11|] ~succ:[|v12|];
 
-  H.add_hedge g_func "12.13" (Add_int (c_id, b_id, c_id)) ~pred:[|v12|] ~succ:[|v_out|];
-  H.add_hedge g_func "9.12" (Set_int (c_id,m_cst)) ~pred:[|v9|] ~succ:[|v_out|]
+  H.add_hedge g_func "12.13" (Add_int (c_id, b_id, c_id)) ~pred:[|v12|] ~succ:[|v13|];
+  H.add_hedge g_func "9.13" (Set_int (c_id,m_cst)) ~pred:[|v9|] ~succ:[|v13|];
+  H.add_hedge g_func "13.14" (Tee true) ~pred:[|v13|] ~succ:[|v_out;v_in|]
 
 let vset_list l = List.fold_right H.VertexSet.add l H.VertexSet.empty
 let hset_list l = List.fold_right H.HedgeSet.add l H.HedgeSet.empty
@@ -228,8 +234,8 @@ let hset_list l = List.fold_right H.HedgeSet.add l H.HedgeSet.empty
 let func_subgraph =
   { H.sg_input = [|v_in|];
     H.sg_output = [|v_out|];
-    H.sg_vertex = vset_list [v7;v8;v9;v10;v11;v12];
-    H.sg_hedge = hset_list ["6.7";"7.8";"8.9";"9.10";"10.11";"11.12";"12.13";"9.12"] }
+    H.sg_vertex = vset_list in_vert;
+    H.sg_hedge = hset_list ["6.7";"7.8";"8.9";"9.10";"10.11";"11.12";"12.13";"13.14";"9.13"] }
 
 module Manager = struct
   module H = H
@@ -258,6 +264,11 @@ module Manager = struct
     | Add_int (id1,id2,id3) ->
       [|Env.add_int abs id1 id2 id3|], [] (* c <- a + b *)
     | Ignore -> [|abs|], []
+
+    | Tee b ->
+      if b
+      then [|abs;Env.bottom|], []
+      else [|Env.bottom;abs|], []
 
   let abstract_init i =
     if i = "v0"
