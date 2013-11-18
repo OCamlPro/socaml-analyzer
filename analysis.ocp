@@ -103,7 +103,7 @@ begin test "ttoolchain"
  tests =
  [
   "simple" ( test_args = [ "myper.ml" ] )
-  "chain" ( test_args = [ "myper.ml" "a.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
   "pervasives" ( test_args = [ "pervasives.ml" ] )
  ]
 end
