@@ -186,11 +186,6 @@ module T = struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  (* module VertexSet = Set.Make(Vertex) *)
-  (* module HedgeSet = Set.Make(Hedge) *)
-  (* module VertexTbl = Hashtbl.Make(Vertex) *)
-  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
-
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print
 
@@ -204,24 +199,6 @@ module Manager = struct
   type vertex_attribute = unit
   type hedge_attribute = unit
   type graph_attribute = unit
-
-  (* let apply hedge tabs = *)
-  (*   let abs = tabs.(0) in *)
-  (*   let nabs = *)
-  (*     match hedge with *)
-  (*     | 01 -> A2.setcst () abs 0 0 *)
-  (*     | 12 -> A2.setcst () abs 1 0 *)
-  (*     | 23 -> A2.leqcst () abs 0 99 *)
-  (*     | 210 -> A2.geqcst () abs 0 100 *)
-  (*     | 34 -> A2.addcst () abs 0 1 *)
-  (*     | 45 -> A2.leqcst () abs 0 49 *)
-  (*     | 59 -> A2.addcst () abs 1 1 *)
-  (*     | 47 -> A2.geqcst () abs 0 50 *)
-  (*     | 79 -> A2.addcst () abs 1 (-1) *)
-  (*     | 92 -> abs *)
-  (*     | _ -> failwith "" *)
-  (*   in *)
-  (*   nabs *)
 
   let apply hedge () tabs =
     let abs = tabs.(0) in
@@ -285,7 +262,7 @@ let v8 = "v8"
 let v9 = "v9"
 let v10 = "v10"
 
-let vert = [v0;v1;v2;v3;v4;v5;v6; (*v7;v8;v9;v10*) ]
+let vert = [v0;v1;v2;v3;v4;v5;v6;]
 
 let () =
   List.iter (fun v -> H.add_vertex g v ()) vert;
@@ -296,17 +273,6 @@ let () =
   H.add_hedge g 34 () ~pred:[|v3|] ~succ:[|v4|];
   H.add_hedge g 45 () ~pred:[|v4|] ~succ:[|v5|];
   H.add_hedge g 52 () ~pred:[|v5|] ~succ:[|v2|]
-
-  (* H.add_hedge g 01 () ~pred:[|v0|] ~succ:[|v1|]; *)
-  (* H.add_hedge g 12 () ~pred:[|v1|] ~succ:[|v2|]; *)
-  (* H.add_hedge g 23 () ~pred:[|v2|] ~succ:[|v3|]; *)
-  (* H.add_hedge g 210 () ~pred:[|v2|] ~succ:[|v10|]; *)
-  (* H.add_hedge g 34 () ~pred:[|v3|] ~succ:[|v4|]; *)
-  (* H.add_hedge g 45 () ~pred:[|v4|] ~succ:[|v5|]; *)
-  (* H.add_hedge g 59 () ~pred:[|v5|] ~succ:[|v9|]; *)
-  (* H.add_hedge g 47 () ~pred:[|v4|] ~succ:[|v7|]; *)
-  (* H.add_hedge g 79 () ~pred:[|v7|] ~succ:[|v9|]; *)
-  (* H.add_hedge g 92 () ~pred:[|v9|] ~succ:[|v2|] *)
 
 let r = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
 

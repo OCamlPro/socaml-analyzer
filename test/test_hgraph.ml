@@ -50,11 +50,6 @@ module T = struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  (* module VertexSet = Set.Make(Vertex) *)
-  (* module HedgeSet = Set.Make(Hedge) *)
-  (* module VertexTbl = Hashtbl.Make(Vertex) *)
-  (* module HedgeTbl = Hashtbl.Make(Hedge) *)
-
   let print_vertex = Vertex.print
   let print_hedge = Hedge.print
 
@@ -181,9 +176,6 @@ let c_id = tid "c"
 let f_id = tid "f"
 let closure_id = tid "f"
 
-(* let n_cst = Constant.create ~name:"n" () *)
-(* let m_cst = Constant.create ~name:"m" () *)
-
 let n_cst = 1
 let m_cst = 42
 
@@ -232,8 +224,6 @@ let () =
 
   H.add_hedge g_func "11.12" Call ~pred:[|v11|] ~succ:[|v12|];
 
-  (* H.add_hedge g_func "11.12" Ignore ~pred:[|v11|] ~succ:[|v12|]; *)
-
   H.add_hedge g_func "12.13" (Add_int (c_id, b_id, c_id)) ~pred:[|v12|] ~succ:[|v13|];
   H.add_hedge g_func "9.13" (Set_int (c_id,m_cst)) ~pred:[|v9|] ~succ:[|v13|];
   H.add_hedge g_func "13.14" (Tee true) ~pred:[|v13|] ~succ:[|v_out;v_in|]
@@ -279,15 +269,6 @@ module Manager = struct
       if b
       then [|abs;Env.bottom|], []
       else [|Env.bottom;abs|], []
-
-    (* | 01 -> [|Env.set_int abs a_id n_cst|], [] (\* a <- n *\) *)
-    (* | 12 -> [|Env.set_int abs b_id m_cst|], [] (\* b <- m *\) *)
-    (* | 23 -> [|Env.set_closure abs f_id func [|a_id|]|], [] (\* f <- closure{a} *\) *)
-    (* | 34 -> [|Env.prepare_call abs f_id b_id|], [] (\* prepare call f b *\) *)
-    (* | 45 -> Env.call abs (\* call f b *\) *)
-    (* | 67 -> [|Env.access_closure abs a_id func 0|], [] (\* a <- closure.(0) *\) *)
-    (* | 78 -> [|Env.access_param abs b_id|], [] (\* b <- param *\) *)
-    (* | 89 -> [|Env.add_int abs a_id b_id c_id|], [] (\* c <- a + b *\) *)
 
   let abstract_init i =
     if i = "v0"
@@ -349,8 +330,5 @@ let r =
     (*      (\* ~print_attrhedge *\) *)
     (*      Format.std_formatter g); *)
     raise e
-
-(* let print_attrhedge ppf hedge attr = *)
-(*   Format.pp_print_int ppf hedge *)
 
 let () = ouput_dot r
