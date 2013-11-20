@@ -39,3 +39,86 @@ module MakeId(E:Empty) : Id = struct
   let output fd t = output_string fd (to_string t)
   let print ppf v = Format.pp_print_string ppf (to_string v)
 end
+
+module Set =
+struct
+
+  module type OrderedType = 
+  sig
+    include Set.OrderedType
+    val print : Format.formatter -> t -> unit
+  end
+
+  module type S =
+  sig
+    include Set.S
+    val print : Format.formatter -> t -> unit
+    val print_sep :
+      ( Format.formatter -> unit) ->
+      Format.formatter ->
+      t ->
+      unit
+  end
+
+  module Make ( Ord : OrderedType ) :
+    S with type elt = Ord.t =
+  struct
+    include Set.Make ( Ord )
+    let print pp = iter (Ord.print pp)
+    let print_sep f pp s =
+      if is_empty s
+      then ()
+      else (
+        let e = choose s in
+        Ord.print pp e;
+        iter (fun e -> f pp; Ord.print pp e) (remove e s)
+      )
+  end
+
+end
+
+
+
+module Map =
+struct
+
+  module type OrderedType = 
+  sig
+    include Map.OrderedType
+    val print : Format.formatter -> t -> unit
+  end
+
+  module type S =
+  sig
+    include Map.S
+    val print :
+      ( Format.formatter -> 'a -> unit ) ->
+      Format.formatter ->
+      'a t ->
+      unit
+    val print_sep :
+      ( Format.formatter -> unit) ->
+      ( Format.formatter -> 'a -> unit ) ->
+      Format.formatter ->
+      'a t ->
+      unit
+  end
+
+  module Make ( Ord : OrderedType ) :
+    S with type key = Ord.t =
+  struct
+    include Map.Make ( Ord )
+    let print f pp = iter (fun k e -> Ord.print pp k; f pp e)
+    let print_sep fsep f pp s =
+      if is_empty s
+      then ()
+      else (
+        let (k,e) = choose s in
+        Ord.print pp k; f pp e;
+        iter
+          (fun k e -> fsep pp; Ord.print pp k; f pp e)
+          (remove k s)
+      )
+  end
+
+end
