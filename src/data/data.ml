@@ -343,3 +343,96 @@ let intersect_noncommut env a b =
       f;
       expr = [];
     }
+
+let odo f g = function
+  | Some x -> f x
+  | None -> g ()
+
+let print_simple pp t =
+  let open Format in
+  function
+  | Top -> fprintf pp "@[%s: Top@]@." t
+  | Constants s when Constants.is_empty s -> ()
+  | Constants s ->
+    let e = Constants.choose s in
+    fprintf pp "%s: [@ @[%s" (Constants.to_string e);
+    Constants.iter
+      ( fun e -> fprintf pp ",@ %s" (Constants.to_string e) )
+      (Constants.remove e s);
+    fprintf pp "@]@ ]@."
+
+let print_ids_array pp a =
+  let open Format in
+  let l = Array.length a  in
+  if l = 0
+  then ( pp_print_string pp "[||]"; Ids.empty )
+  else (
+    fprintf pp "[|@ @[@ %a";
+    Array.iter
+      (fun ids ->
+         failwith "pretty-printing ids"
+      )
+      a;
+    fprintf pp "@]@ |]"
+  )
+
+let print pp id env =
+  let open Format in
+  pp_open_box pp 0;
+  let d = get_env id env in
+  begin
+  if d.top
+  then ( fprintf pp "Top@.")
+  else
+    begin
+      if not ( Int_interv.is_bottom d.int )
+      then
+        (
+          fprintf pp "Ints: [@ @[";
+          odo
+            (pp_print_int pp)
+            (fun () -> pp_print_string pp "-inf")
+            (Int_interv.lower d.int);
+          fprintf pp ",@ ";
+          odo
+            (pp_print_int pp)
+            (fun () -> pp_print_string pp "inf")
+            (Int_interv.higher d.int);
+          fprintf pp "@]@ ]@."
+        );
+      print_simple pp "Floats" d.float;
+      print_simple pp "Strings" d.string;
+      print_simple pp "Float arrays" d.floata;
+      print_simple pp "Int32" d.i32;
+      print_simple pp "Int64" d.i64;
+      print_simple pp "Native ints" d.inat;
+      if not ( Ints.is_empty d.cp )
+      then
+        (
+          let e = Ints.choose d.cp in
+          fprintf pp "Const pointers : [ @[%d"@ e;
+          Ints.iter
+            ( fprintf pp ",@ %d")
+            ( Ints.remove e d.cp );
+          fprintf pp "@]@ ]@."
+        );
+      if not ( Tagm.is_empty d.blocks )
+      then
+        (
+          fprintf pp "Blocks@.@[@ ";
+          Tagm.iter
+            (fun t im ->
+               fprintf pp "Tag %d : @[{@ " t;
+               Intm.iter
+                 (fun s a ->
+                    fprintf pp "%d ->@ @[" s;
+                    print_ids_array pp a env;
+                    fprintf pp "@]"
+                 ) im
+               fprintf pp "}@]@.";
+            ) d.blocks
+          fprintf pp "@ @]@."
+        );
+    end
+  end
+  pp_close_box pp ();
