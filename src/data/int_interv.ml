@@ -220,3 +220,13 @@ let make_comp c x y : t * t =
 
 let leqcst x c = meet x ( Some ( minimum, c))
 let geqcst x c = meet x ( Some ( c, maximum))
+
+let lower = function
+  | None -> raise ( Invalid_argument "int_interv" )
+  | Some (a,_) when a = minimum -> None
+  | Some (a,_) -> Some a
+
+let higher = function
+  | None -> raise ( Invalid_argument "int_interv" )
+  | Some (_,a) when a = maximum -> None
+  | Some (_,a) -> Some a
