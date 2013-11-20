@@ -18,3 +18,5 @@ let mk s =
 
 let singleton s =
   Constants ( Constants.singleton ( mk s ) )
+
+let to_string = Hashtbl.find tbl
