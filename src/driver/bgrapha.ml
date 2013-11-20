@@ -17,7 +17,14 @@ let () =
   let module F = Hgraph.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
   print_endline "starting the analysis";
   let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
-  ignore result;
-  print_endline "That's all for now"
-    
-  
+  let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
+  if Envs.is_bottom exn_env
+  then print_endline "No exception found"
+  else
+    begin
+      print_endline "I found something:";
+      Data.print
+        Format.std_formatter
+        Manager.exn_tid
+        exn_env
+    end
