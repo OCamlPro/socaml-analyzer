@@ -37,6 +37,9 @@ let list_of_one f = function
   | [x] -> f x
   | _ -> assert false
 
+(* Constraint propagation :
+   Using the results of a "if" or "match" statement to restrain the environment
+*)
 
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
