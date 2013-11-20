@@ -15,10 +15,14 @@ sig
 end
 
 module M : functor ( E : Entry ) ->
-   Hgraph.Manager
-  with
-    module T := T
-  and module H = G
-  and type hedge_attribute = hattr
-  and type vertex_attribute = vattr
-  and type graph_attribute = gattr
+  sig
+    include Hgraph.Manager
+      with
+        module T := T
+       and module H = G
+       and type hedge_attribute = hattr
+       and type vertex_attribute = vattr
+       and type graph_attribute = gattr
+       and type abstract = Data.environment
+    val exn_tid : tid
+  end

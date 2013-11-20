@@ -161,12 +161,16 @@ sig
 end
 
 module M : functor ( E : Entry ) ->
-  Hgraph.Manager
-  with module T := T
-   and module H = G 
-   and type hedge_attribute = hattr
-   and type vertex_attribute = vattr
-   and type graph_attribute = gattr
+  sig
+    include Hgraph.Manager
+      with module T := T
+       and module H = G 
+       and type hedge_attribute = hattr
+       and type vertex_attribute = vattr
+       and type graph_attribute = gattr
+       and type abstract = Data.environment
+    val exn_tid : tid
+  end
    = functor ( E : Entry ) ->
    struct
 
@@ -216,7 +220,6 @@ module M : functor ( E : Entry ) ->
            | Const_int i -> Int.singleton i
            | Const_char c -> Int.singleton (Char.code c)
            | Const_string s -> Strings.singleton s
-           (* Data.singleton_string s *)
            | Const_float s -> Floats.singleton s
            | Const_int32 i -> Otherints.( singleton I32 i )
            | Const_int64 i -> Otherints.( singleton I64 i )
