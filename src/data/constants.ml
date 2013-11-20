@@ -1,7 +1,16 @@
 open Utils
 
-module Constant = MakeId(struct end)
+module C = MakeId(struct end) 
 
+let tbl : ( C.t, string ) Hashtbl.t = Hashtbl.create 1024
+
+let to_string = Hashtbl.find tbl
+
+module Constant =
+struct
+  include C
+  let print pp c = Format.pp_print_string pp (to_string c)
+end
 type t = Constant.t
 
 module Constants = Set.Make (struct include Constant end)
@@ -9,7 +18,6 @@ module Constants = Set.Make (struct include Constant end)
 type simple = Top | Constants of Constants.t
 
 
-let tbl : ( t, string ) Hashtbl.t = Hashtbl.create 1024
 
 let mk s =
   let c = Constant.create () in
@@ -18,5 +26,3 @@ let mk s =
 
 let singleton s =
   Constants ( Constants.singleton ( mk s ) )
-
-let to_string = Hashtbl.find tbl

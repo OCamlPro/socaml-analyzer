@@ -36,7 +36,7 @@ struct
   let name (m,x) = Some ( m ^ x.name )
   let to_string (m,x) = Printf.sprintf "%s.%s/%d" m x.name x.stamp
   let output o (m,x) = Printf.fprintf o "%s.%s/%d" m x.name x.stamp
-  let print = print
+  let print pp (m,x) = Format.fprintf pp "%s.%s/%d" m x.name x.stamp
   let idref = ref 0
   let create ?(name="") () =
     decr idref;

@@ -14,15 +14,15 @@ type tag = int
 
 type f = F.t
 
-module Ints = Set.Make (struct type t = int let compare = compare end)
-module Intm = Map.Make (struct type t = int let compare = compare end)
+module Ints = Set.Make (struct type t = int let compare = compare let print = Format.pp_print_int end)
+module Intm = Map.Make (struct type t = int let compare = compare let print = Format.pp_print_int end)
 
-module Tagm = Map.Make (struct type t = tag let compare = compare end)
+module Tagm = Map.Make (struct type t = tag let compare = compare let print = Format.pp_print_int end)
 
-module Idm = Map.Make (struct type t = tid let compare = compare end)
-module Ids = Set.Make (struct type t = tid let compare = compare end)
+module Idm = Map.Make (struct type t = tid let compare = compare let print = TId.print end)
+module Ids = Set.Make (struct type t = tid let compare = compare let print = TId.print end)
 
-module Fm = Map.Make (struct type t = f let compare = compare end)
+module Fm = Map.Make (struct type t = f let compare = compare let print = F.print end)
 
 (* The data *)
 
@@ -348,36 +348,37 @@ let odo f g = function
   | Some x -> f x
   | None -> g ()
 
+let sep pp = Format.fprintf pp ",@ "
+
 let print_simple pp t =
   let open Format in
   function
   | Top -> fprintf pp "@[%s: Top@]@." t
   | Constants s when Constants.is_empty s -> ()
   | Constants s ->
-    let e = Constants.choose s in
-    fprintf pp "%s: [@ @[%s" (Constants.to_string e);
-    Constants.iter
-      ( fun e -> fprintf pp ",@ %s" (Constants.to_string e) )
-      (Constants.remove e s);
+    fprintf pp "%s: [@ @[" t;
+    Constants.print_sep sep pp s;
     fprintf pp "@]@ ]@."
 
-let print_ids_array pp a =
-  let open Format in
-  let l = Array.length a  in
-  if l = 0
-  then ( pp_print_string pp "[||]"; Ids.empty )
-  else (
-    fprintf pp "[|@ @[@ %a";
-    Array.iter
-      (fun ids ->
-         failwith "pretty-printing ids"
-      )
-      a;
-    fprintf pp "@]@ |]"
-  )
+let print_ids_array pp a = ()
+  (* let open Format in *)
+  (* let l = Array.length a  in *)
+  (* if l = 0 *)
+  (* then ( pp_print_string pp "[||]"; Ids.empty ) *)
+  (* else ( *)
+  (*   fprintf pp "[|@ @[@ %a"; *)
+  (*   Array.iter *)
+  (*     (fun ids -> *)
+  (*        failwith "pretty-printing ids" *)
+  (*     ) *)
+  (*     a; *)
+  (*   fprintf pp "@]@ |]" *)
+  (* ) *)
 
 let print pp id env =
   let open Format in
+  TId.print pp id;
+  fprintf pp ":@[";
   pp_open_box pp 0;
   let d = get_env id env in
   begin
@@ -409,30 +410,34 @@ let print pp id env =
       if not ( Ints.is_empty d.cp )
       then
         (
-          let e = Ints.choose d.cp in
-          fprintf pp "Const pointers : [ @[%d"@ e;
-          Ints.iter
-            ( fprintf pp ",@ %d")
-            ( Ints.remove e d.cp );
+          fprintf pp  "Const pointers : [ @[@ ";
+          Ints.print_sep sep pp d.cp;
           fprintf pp "@]@ ]@."
         );
       if not ( Tagm.is_empty d.blocks )
       then
         (
           fprintf pp "Blocks@.@[@ ";
-          Tagm.iter
-            (fun t im ->
-               fprintf pp "Tag %d : @[{@ " t;
-               Intm.iter
-                 (fun s a ->
-                    fprintf pp "%d ->@ @[" s;
-                    print_ids_array pp a env;
-                    fprintf pp "@]"
-                 ) im
-               fprintf pp "}@]@.";
-            ) d.blocks
+          Tagm.print
+            (fun pp im ->
+               fprintf pp "@[{@ ";
+               Intm.print_sep
+                 sep
+                 print_ids_array
+                 pp 
+                 im;
+               fprintf pp "}@]@." )
+            pp
+            d.blocks;
           fprintf pp "@ @]@."
         );
+      if not ( Fm.is_empty d.f )
+      then
+        (
+          fprintf pp "Functions: {@[@ ";
+          Fm.print_sep sep (fun _ _ -> ()) pp d.f;
+          fprintf pp "@ @]}@."
+        )
     end
-  end
-  pp_close_box pp ();
+  end;
+  fprintf pp "@]@."

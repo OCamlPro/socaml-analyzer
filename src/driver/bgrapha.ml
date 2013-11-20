@@ -19,12 +19,14 @@ let () =
   let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
   let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
   if Envs.is_bottom exn_env
-  then print_endline "No exception found"
+  || Data.is_bottom exn_env ( Data.get_env Manager.exn_tid exn_env )
+  then ()
   else
     begin
       print_endline "I found something:";
       Data.print
         Format.std_formatter
         Manager.exn_tid
-        exn_env
+        exn_env;
+      exit 1
     end
