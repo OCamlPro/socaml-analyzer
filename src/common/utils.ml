@@ -122,3 +122,48 @@ struct
   end
 
 end
+
+
+module Htbl =
+struct
+
+  module type HashedType = 
+  sig
+    include Hashtbl.HashedType
+    val print : Format.formatter -> t -> unit
+  end
+
+  module type S =
+  sig
+    include Hashtbl.S
+    val print :
+      ( Format.formatter -> 'a -> unit ) ->
+      Format.formatter ->
+      'a t ->
+      unit
+    val print_sep :
+      ( Format.formatter -> unit) ->
+      ( Format.formatter -> 'a -> unit ) ->
+      Format.formatter ->
+      'a t ->
+      unit
+  end
+
+  module Make ( H : HashedType ) :
+    S with type key = H.t =
+  struct
+    include Hashtbl.Make ( H )
+    let print f pp = iter (fun k e -> H.print pp k; f pp e)
+    let print_sep fsep f pp s =
+      let first = ref true in
+      iter
+        (fun k e ->
+           if !first
+           then first := false
+           else fsep pp;
+           H.print pp k;
+           f pp e)
+        s
+  end
+
+end
