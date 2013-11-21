@@ -22,3 +22,6 @@ let mk i l =
             ( Array.of_list l )
         );
   }
+
+let extract_ids { f; _ } = 
+  Fm.fold (fun k _ l -> k::l) f []

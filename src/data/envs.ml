@@ -60,7 +60,7 @@ let gc roots env =
 	  match e with
    | Var x
    | Lazyforce x -> aux (x::res) tl
-   | App ( x, y )
+   | App_prep ( x, y )
    | Send ( x, y ) -> aux ( x :: y :: res ) tl
    | Constraint _
    | Const _ -> aux res tl
@@ -68,6 +68,7 @@ let gc roots env =
    | Ccall ( _, l )->
      aux ( List.rev_append l res ) tl
    | Return _ | Retexn _ -> failwith "TODO: GC function return"
+   | App -> assert false
         end
     in aux res l
 

@@ -19,7 +19,7 @@ let () =
   let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
   let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
   if Envs.is_bottom exn_env
-  || Data.is_bottom exn_env ( Data.get_env Manager.exn_tid exn_env )
+  (* || Data.is_bottom exn_env ( Data.get_env Manager.exn_tid exn_env ) *)
   then ()
   else
     begin

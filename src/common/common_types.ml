@@ -145,7 +145,8 @@ type hinfo =
 | Const of Lambda.structured_constant
 | Prim of primitive * tid list
 | Constraint of constr
-| App of tid * tid (* function, argument *)
+| App_prep of tid * tid (* function, argument *)
+| App
 | Return of tid | Retexn of tid (* the function exit *)
 | Lazyforce of tid
 | Ccall of Primitive.description * tid list

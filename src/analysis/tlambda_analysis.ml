@@ -125,11 +125,12 @@ and constraint_env_tag expr tag env =
   match expr with
   | Var x -> constraint_env_tag_var x tag env
   | Const _
-  | App ( _, _ )
+  | App_prep ( _, _ )
   | Return _| Retexn _
   | Lazyforce _
   | Ccall (_, _)
   | Send (_, _) -> env
+  | App -> assert false
   | Prim ( p, l ) ->
     begin
       match p with
@@ -251,7 +252,7 @@ module M : functor ( E : Entry ) ->
          in
          let sa x = set ( act x ) in
          match action with
-         | App _ | Lazyforce _ | Ccall _ | Send _ -> assert false
+         | App | App_prep _ | Lazyforce _ | Ccall _ | Send _ -> assert false
          | Var i -> set ( act (get i) )
          | Const c ->
            let env,d = constant env c in
@@ -416,17 +417,21 @@ set_env id vunit env *)
          | h :: t -> aux (in_apply h e) t
        in 
        match l with
-       | [ _, App ( f, x ) ] ->
+       | [ _, App_prep ( f, x ) ] ->
          let env =
            env
            |> set_env fun_tid ( get_env f env )
            |> set_env arg_tid ( get_env x env )
          in
-         ( [| env; env |], ( fun_ids f env ) )
+         ( [| env |], [] )
+       | [ _, App ] ->
+         let f = get_env fun_tid env in
+         let l = Funs.extract_ids f in
+         [| Envs.bottom; Envs.bottom |], l
        | [ id, ( Lazyforce _ as a )]
        | [ id, ( Ccall (_, _) as a ) ]
        | [ id, ( Send (_, _) as a ) ] ->
-         [|set_env id ( Exprs.set Data.top a ) env; env |], []
+         [|set_env id ( Exprs.set Data.top a ) env; Envs.bottom |], []
        | _ -> [|aux env l|], []
 
    end
