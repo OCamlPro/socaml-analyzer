@@ -428,8 +428,12 @@ set_env id vunit env *)
          let f = get_env fun_tid env in
          let l = Funs.extract_ids f in
          [| Envs.bottom; Envs.bottom |], l
+       | [ id, Ccall (pd, l) ] ->
+         let open Primitive in
+         assert ( pd.prim_arity = List.length l );
+         let envo, enve = Def_c_fun.get_envs pd l id env in
+         [| envo; enve |], []
        | [ id, ( Lazyforce _ as a )]
-       | [ id, ( Ccall (_, _) as a ) ]
        | [ id, ( Send (_, _) as a ) ] ->
          [|set_env id ( Exprs.set Data.top a ) env; Envs.bottom |], []
        | _ -> [|aux env l|], []
