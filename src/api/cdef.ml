@@ -29,11 +29,9 @@ let rec aux d res = function
 
 
 let restrain l d =
-  in aux d Data.bottom l
+  aux d Data.bottom l
 
 let remove l d =
   aux Data.bottom d l
 
-        
-
-let is_only
+let is_only l d env = Data.is_bottom env ( remove l d ) 
