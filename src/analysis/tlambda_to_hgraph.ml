@@ -49,7 +49,7 @@ struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  let print_vertex _ _ = () 		(* TODO *)
+  let print_vertex _ _ = ()             (* TODO *)
   let print_hedge _ _ = ()
 end
 
@@ -94,7 +94,7 @@ let nv ?(modulename="") g =
 
 let simpleh g id v ~inv ~outv =
   add_hedge g ( Hedge.mk ()) [id,v] ~pred:[|inv|] ~succ:[|outv|]
- 
+
 let statics : ( int, Vertex.t * tid list ) Hashtbl.t = Hashtbl.create 32
 
 
@@ -144,24 +144,24 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
       in
       begin
         match s.t_failaction with
-	  None -> ()
+          None -> ()
         | Some lam ->
-	  let get_not_used n l =
-	    let rec aux n res =
-	      if n = 0
-	      then res
-	      else
-	        let n = pred n in
-	        aux n ( Is.add n res)
-	    in
-	    List.fold_left ( fun s (i,_) -> Is.remove i s) (aux n Is.empty) l
-	  in
-	  let cps = get_not_used s.t_numconsts s.t_consts
-	  and bs = get_not_used s.t_numblocks s.t_blocks in
-	  let inf = nv g in
-	  Is.iter (fun cp -> simpleh g si_id (Constraint (Ccp cp)) ~inv ~outv:inf) cps;
-	  Is.iter (fun tag -> simpleh g si_id (Constraint (Ctag tag)) ~inv ~outv:inf) bs;
-	  tlambda ~g ~outv ~ret_id ~inv:inf ~exnv ~exn_id lam
+          let get_not_used n l =
+            let rec aux n res =
+              if n = 0
+              then res
+              else
+                let n = pred n in
+                aux n ( Is.add n res)
+            in
+            List.fold_left ( fun s (i,_) -> Is.remove i s) (aux n Is.empty) l
+          in
+          let cps = get_not_used s.t_numconsts s.t_consts
+          and bs = get_not_used s.t_numblocks s.t_blocks in
+          let inf = nv g in
+          Is.iter (fun cp -> simpleh g si_id (Constraint (Ccp cp)) ~inv ~outv:inf) cps;
+          Is.iter (fun tag -> simpleh g si_id (Constraint (Ctag tag)) ~inv ~outv:inf) bs;
+          tlambda ~g ~outv ~ret_id ~inv:inf ~exnv ~exn_id lam
       end
 
     | Tstaticraise ( i, args) ->
@@ -222,7 +222,7 @@ let tlambda ~g ~mk_tid ~modulename ~outv ~ret_id ~exn_id ~inv ~exnv code =
       add_hedge g (Hedge.mk ()) [ id, (Send(o,m))]
         ~pred:[|inv|] ~succ:[|outv;exnv|]
   in
-  
+
   tlambda ~g ~outv ~ret_id ~exn_id ~inv ~exnv code
 
 
@@ -232,7 +232,7 @@ let init ~modulename funs =
   let g = create () in
   let nf = Hashtbl.length funs in
   let exn_id = mk_tid "$exn" in
-  
+
   let fun_descs = Hashtbl.create nf in
 
   Hashtbl.iter
@@ -245,9 +245,9 @@ let init ~modulename funs =
         let f_return = mk_tid "#$return" and f_exn = mk_tid "#$exn" in
         let outv = nv g and exnv = nv g in
         add_hedge g (Hedge.mk () ) [ f_return, Return f_return ]
-        ~pred:[|outv|] ~succ:[|f_out.(0)|];
+          ~pred:[|outv|] ~succ:[|f_out.(0)|];
         add_hedge g (Hedge.mk () ) [ f_exn, Retexn f_exn ]
-        ~pred:[|exnv|] ~succ:[|f_out.(1)|];
+          ~pred:[|exnv|] ~succ:[|f_out.(1)|];
         tlambda ~g
           ~mk_tid
           ~modulename
@@ -293,7 +293,7 @@ let mk_graph ~modulename funs tlam =
   let ret_id = mk_tid "$ret" in
   tlambda ~g ~mk_tid ~modulename ~inv ~outv ~exnv ~ret_id ~exn_id tlam;
   ( g, fun_descs, inv, outv, exnv, exn_id, ret_id )
-  
+
 
 let merge_graphs ~g subs =
   let mv = vertex_merge g (fun () () -> ()) in

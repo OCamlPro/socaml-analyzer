@@ -7,17 +7,17 @@ open Common_types
 module Idm = Map.Make ( struct type t = tid let compare = compare end )
 
 type v =
-| Int of int
-| Intn of nativeint
-| Int32 of int32
-| Int64 of int64
-| Float of float
-| Floata of float array
-| String of string
-| Cp of int
-| Block of int * tid ref list
-| Fun of F.t * tid list
-| Unknown
+  | Int of int
+  | Intn of nativeint
+  | Int32 of int32
+  | Int64 of int64
+  | Float of float
+  | Floata of float array
+  | String of string
+  | Cp of int
+  | Block of int * tid ref list
+  | Fun of F.t * tid list
+  | Unknown
 
 type env = v Idm.t
 type fun_table = ( F.t, tlambda ) Hashtbl.t
@@ -32,7 +32,7 @@ let id_arg = "", { stamp = pred ( pred max_int); name = "#arg_f"; flags = 0}
 
 let get_env env i =
   try Idm.find i env with
-  Not_found ->
+    Not_found ->
     TId.output stdout i;
     assert false
 let set_env env i v = Idm.add i v env
@@ -86,10 +86,10 @@ and structured_constant = function
     end
   | Const_pointer i -> Cp i
   | Const_block (i, l) -> failwith "TODO: const_block"
-    (* Block ( i, List.map structured_constant l) *)
+  (* Block ( i, List.map structured_constant l) *)
   | Const_float_array l -> failwith "TODO: float_array const"
   | Const_immstring s -> String s
-  
+
 
 and tcontrol funs env = function
   | Tvar i -> get_env env i
@@ -99,11 +99,11 @@ and tcontrol funs env = function
   | Tswitch ( i, s) ->
     let switch_handle i l =
       let b =
-	try List.assoc i l with
-	  Not_found ->
-	    ( match s.t_failaction with
-	    | Some b -> b
-	    | None -> raise match_failure)
+        try List.assoc i l with
+          Not_found ->
+          ( match s.t_failaction with
+            | Some b -> b
+            | None -> raise match_failure)
       in
       fst ( tlambda funs env b )
     in
@@ -118,17 +118,17 @@ and tcontrol funs env = function
     begin
       try fst ( tlambda funs env lam ) with
       | Staticraise ( i2, l2) when i2 = i ->
-	let env = assign_list env l l2 in
-	fst ( tlambda funs env lam2 )
+        let env = assign_list env l l2 in
+        fst ( tlambda funs env lam2 )
     end
   | Traise i -> raise ( Exn ( get_env env i))
   | Ttrywith ( lam, i, lam2) ->
-      begin
-	try fst (tlambda funs env lam) with
-	  Exn v ->
-	    let env = set_env env i v in
-	    fst ( tlambda funs env lam2 )
-      end
+    begin
+      try fst (tlambda funs env lam) with
+        Exn v ->
+        let env = set_env env i v in
+        fst ( tlambda funs env lam2 )
+    end
   | Tifthenelse ( i, l1, l2) ->
     fst (
       if val_to_bool ( get_env env i)
@@ -156,16 +156,16 @@ and tcontrol funs env = function
   | Tccall _ -> Unknown
   | Tsend _ -> Unknown
 
-    
+
 and call_fun funs f x =
   match f with
   | Fun ( i, l ) ->
     begin
       let body = Hashtbl.find funs i in
       let e =
-	env_empty
- |> Idm.add id_fun f
- |> Idm.add id_arg x
+        env_empty
+        |> Idm.add id_fun f
+        |> Idm.add id_arg x
       in
       fst ( tlambda funs e body )
     end
@@ -219,8 +219,8 @@ and call_prim env funs p l =
   | TPoffsetint _, _ -> failwith "TODO: ask Pierre"
   | TPoffsetref _, _ -> failwith "TODO: ask Pierre"
   (* Floats *)
-  
- 
+
+
   | TPfun i, _ -> Fun ( i, (* List.map g *) l )
   | TPfunfield i, [] ->
     begin

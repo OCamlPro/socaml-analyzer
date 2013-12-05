@@ -6,7 +6,7 @@ open Data
 let is_bottom = function
   | Bottom -> true
   | _ -> false
- 
+
 let bottom = Bottom
 let empty = Env Idm.empty
 
@@ -19,12 +19,12 @@ let join e1 e2 =
   | Env i1, Env i2 ->
     Env
       ( Idm.merge
-	    ( fun _ v1 v2 ->
-	      match v1, v2 with
-	      | None, v | v, None -> v
-	      | Some v1, Some v2 ->
-		Some (union v1 v2)
-	    ) i1 i2
+          ( fun _ v1 v2 ->
+             match v1, v2 with
+             | None, v | v, None -> v
+             | Some v1, Some v2 ->
+               Some (union v1 v2)
+          ) i1 i2
       )
 
 (* Environment comparison *)
@@ -43,32 +43,32 @@ let is_leq e1 e2 =
 let gc roots env =
   let dep_blocks b res =
     Tagm.fold (fun _ t res ->
-      Intm.fold
-	(fun _ a res ->
-	  Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
-	) t res
-    ) b res
+        Intm.fold
+          (fun _ a res ->
+             Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
+          ) t res
+      ) b res
   and dep_funs f res =
     Fm.fold (fun _ a res ->
-      Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
-    ) f res
+        Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
+      ) f res
   and dep_expr l res =
     let rec aux res = function
       | [] -> res
       | e :: tl ->
         begin
-	  match e with
-   | Var x
-   | Lazyforce x -> aux (x::res) tl
-   | App_prep ( x, y )
-   | Send ( x, y ) -> aux ( x :: y :: res ) tl
-   | Constraint _
-   | Const _ -> aux res tl
-   | Prim ( _, l )
-   | Ccall ( _, l )->
-     aux ( List.rev_append l res ) tl
-   | Return _ | Retexn _ -> failwith "TODO: GC function return"
-   | App -> assert false
+          match e with
+          | Var x
+          | Lazyforce x -> aux (x::res) tl
+          | App_prep ( x, y )
+          | Send ( x, y ) -> aux ( x :: y :: res ) tl
+          | Constraint _
+          | Const _ -> aux res tl
+          | Prim ( _, l )
+          | Ccall ( _, l )->
+            aux ( List.rev_append l res ) tl
+          | Return _ | Retexn _ -> failwith "TODO: GC function return"
+          | App -> assert false
         end
     in aux res l
 
@@ -91,4 +91,4 @@ let gc roots env =
   match env with
     Bottom -> Bottom
   | Env m -> aux empty m roots
-    
+

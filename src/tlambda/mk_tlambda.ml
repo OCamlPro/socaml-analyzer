@@ -139,7 +139,7 @@ let lambda_to_tlambda ~modname ~funs code =
   in
 
   (* let funcs : ( F.t, tlambda ) Hashtbl.t = Hashtbl.create 256 in *)
-  
+
   let register_function tlam arg fv =
     let i = F.create ~name:modname ()  in
     let idf = tid ( mk ()) in
@@ -162,9 +162,9 @@ let lambda_to_tlambda ~modname ~funs code =
                      te_in = tlam; };
           }
       ) );
-      i
+    i
   in
-  
+
   let lraise_glob x l =
     Lprim (
       Praise,
@@ -429,8 +429,8 @@ let lambda_to_tlambda ~modname ~funs code =
       if builtin i
       then tl ( Tprim ( TPbuiltin, [tid i] ) )
       else
-      let fv, i = check rv nfv fv i in
-      mk_tlet rv nfv fv stack ( Tvar ( tid i ) )
+        let fv, i = check rv nfv fv i in
+        mk_tlet rv nfv fv stack ( Tvar ( tid i ) )
     | Psetglobal ig, [ir] ->
       let fv, cont =
         tcontrol rv nfv fv stack
@@ -560,7 +560,7 @@ let lambda_to_tlambda ~modname ~funs code =
           | _ -> assert false
         end in
       mk_tletrec rv nfv fv (x::res) tl
-        
+
   and extract_vars l =
     let b, l =
       List.fold_left
@@ -616,7 +616,7 @@ let lambda_to_tlambda ~modname ~funs code =
            (fv,i::l)
         ) (fv,[]) l
     in fv, List.rev l
-         
+
   and get_vars = List.map (function Lvar v -> v | _ -> assert false )
 
   and fun_create rv nfv fv arg body =

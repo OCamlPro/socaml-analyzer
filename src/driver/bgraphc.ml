@@ -14,7 +14,7 @@ let handle_file ppf sourcefile =
       ~modname:modulename ~funs
       lambda
   in
-      
+
   let (g,funtbl,vin,vout,vexn,exn_id,return_id) =
     Tlambda_to_hgraph.mk_graph ~modulename funs tlambda
   in
@@ -35,4 +35,4 @@ let () =
 
   Arg.parse arg_parser (handle_file ppf)
     "please specify your .ml or .cmt files, order matters";
-    
+

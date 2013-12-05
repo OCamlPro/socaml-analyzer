@@ -118,7 +118,7 @@ let prim_translate = function
 let lambda_to_tlambda last_id code =
 
   let funs : ( F.t, tlambda) Hashtbl.t
-      = Hashtbl.create 100
+    = Hashtbl.create 100
   in
   let register_function body =
     let f = F.create () in
@@ -150,8 +150,8 @@ let lambda_to_tlambda last_id code =
       Tlet { l with te_lam; te_in; }
     | Trec r ->
       let tr_decls = List.rev_map
-  	(fun (i,p,ids) -> ( i, p, List.map f ids))
-  	r.tr_decls in
+          (fun (i,p,ids) -> ( i, p, List.map f ids))
+          r.tr_decls in
       let tr_in = map_idents f r.tr_in in
       Trec { tr_decls; tr_in; }
     | Tend i -> Tend ( f i)
@@ -163,26 +163,26 @@ let lambda_to_tlambda last_id code =
     | Tswitch ( i, s) ->
       let smap (a,lam) = ( a, map_idents f lam ) in
       let omap o = match o with
-  	| None -> o
-  	| Some lam -> Some ( map_idents f lam )
+        | None -> o
+        | Some lam -> Some ( map_idents f lam )
       in
       Tswitch
-  	( f i,
-  	  { s with
-  	    t_consts = List.rev_map smap s.t_consts;
-  	    t_blocks = List.rev_map smap s.t_blocks;
-  	    t_failaction = omap s.t_failaction;
-  	  } )
+        ( f i,
+          { s with
+            t_consts = List.rev_map smap s.t_consts;
+            t_blocks = List.rev_map smap s.t_blocks;
+            t_failaction = omap s.t_failaction;
+          } )
     | Tstaticraise ( i, ids) -> Tstaticraise ( i, List.map f ids )
     | Tstaticcatch ( lam, ( i, l), lam2 ) ->
       Tstaticcatch ( map_idents f lam,
-  		     ( i, List.map f l),
-  		     map_idents f lam2 )
+                     ( i, List.map f l),
+                     map_idents f lam2 )
     | Traise i -> Traise ( f i)
     | Ttrywith ( lam, i, lam2 ) ->
       Ttrywith ( map_idents f lam,
-  		f i,
-  		map_idents f lam2 )
+                 f i,
+                 map_idents f lam2 )
     | Tifthenelse ( i, lam, lam2 ) ->
       Tifthenelse ( f i, map_idents f lam, map_idents f lam2 )
     | Twhile ( c, b) ->
@@ -200,16 +200,16 @@ let lambda_to_tlambda last_id code =
     in
     let rec aux nfv fv = function
       | Tlet { te_id; te_lam; te_in; _ } ->
-	let fv = auxc nfv fv te_lam in
-	aux fv (Iset.add te_id nfv) te_in
+        let fv = auxc nfv fv te_lam in
+        aux fv (Iset.add te_id nfv) te_in
       | Trec { tr_decls; tr_in } ->
-	let fv, nfv = List.fold_left
-	  (fun (fv, nfv) (v,p,l) ->
-	    let fv = Iset.remove v fv
-	    and nfv = Iset.add v nfv in
-	    ( List.fold_left (check nfv) fv l, nfv)
-	  ) (fv, nfv) tr_decls in
-	aux nfv fv tr_in
+        let fv, nfv = List.fold_left
+            (fun (fv, nfv) (v,p,l) ->
+               let fv = Iset.remove v fv
+               and nfv = Iset.add v nfv in
+               ( List.fold_left (check nfv) fv l, nfv)
+            ) (fv, nfv) tr_decls in
+        aux nfv fv tr_in
       | Tend i -> check nfv fv i
     and auxc nfv fv = function
       | Tvar v -> check nfv fv v
@@ -217,38 +217,38 @@ let lambda_to_tlambda last_id code =
       | Tapply ( f, x ) -> check nfv (check nfv fv f) x
       | Tprim ( _, l) -> List.fold_left ( check nfv) fv l
       | Tswitch ( i, s) ->
-	let fv = check nfv fv i in
-	let fold = List.fold_left
-	  (fun fv (_,lam) -> aux nfv fv lam) in
-	let fv = fold (fold fv s.t_consts) s.t_blocks in
-	begin
-	  match s.t_failaction with
-	  | None -> fv
-	  | Some l -> aux nfv fv l
-	end
+        let fv = check nfv fv i in
+        let fold = List.fold_left
+            (fun fv (_,lam) -> aux nfv fv lam) in
+        let fv = fold (fold fv s.t_consts) s.t_blocks in
+        begin
+          match s.t_failaction with
+          | None -> fv
+          | Some l -> aux nfv fv l
+        end
       | Tstaticraise ( _, l ) -> List.fold_left (check nfv) fv l
       | Tstaticcatch ( lt, ( _, l), lc) ->
-	let fv = aux nfv fv lt in
-	let nfv = List.fold_left
-	  (fun nfv v -> Iset.add v nfv) nfv l in
-	aux nfv fv lc
+        let fv = aux nfv fv lt in
+        let nfv = List.fold_left
+            (fun nfv v -> Iset.add v nfv) nfv l in
+        aux nfv fv lc
       | Traise i -> check nfv fv i
       | Ttrywith ( lt, i, lw ) ->
-	let fv = aux nfv fv lt in
-	let nfv = Iset.add i nfv in
-	aux nfv fv lw
+        let fv = aux nfv fv lt in
+        let nfv = Iset.add i nfv in
+        aux nfv fv lw
       | Tifthenelse ( i, t, e) ->
-	let fv = check nfv fv i in
-	let fv = aux nfv fv t in
-	aux nfv fv e
+        let fv = check nfv fv i in
+        let fv = aux nfv fv t in
+        aux nfv fv e
       | Twhile ( c, b) ->
-	let fv = aux nfv fv c in
-	aux nfv fv b
+        let fv = aux nfv fv c in
+        aux nfv fv b
       | Tfor ( i, b, e, _, body) ->
-	let nfv = Iset.add i nfv in
-	let fv = check nfv fv b in
-	let fv = check nfv fv e in
-	aux nfv fv body
+        let nfv = Iset.add i nfv in
+        let fv = check nfv fv b in
+        let fv = check nfv fv e in
+        aux nfv fv body
       | Tlazyforce id -> check nfv fv id
       | Tccall ( _, l ) -> List.fold_left (check nfv) fv l
       | Tsend ( _, o, m) -> check nfv ( check nfv fv o ) m
@@ -281,9 +281,9 @@ let lambda_to_tlambda last_id code =
       let sw_consts = aux s.sw_consts in
       let sw_blocks = aux s.sw_blocks in
       let sw_failaction =
-	match s.sw_failaction with
-	  None -> s.sw_failaction
-	| Some l -> Some ( add_let l )
+        match s.sw_failaction with
+          None -> s.sw_failaction
+        | Some l -> Some ( add_let l )
       in
       Lswitch ( add_let i, { s with sw_consts; sw_blocks; sw_failaction; } )
     | Lstaticraise ( i, l) -> Lstaticraise ( i, List.map add_let l )
@@ -328,10 +328,10 @@ let lambda_to_tlambda last_id code =
     | [] -> llet k i lam ( organize_let cont )
     | _ ->
       organize_let
-	( to_add_to_lets
-	    ( llet k i ( mklam ( List.rev vars ) ) cont )
-	    to_add
-	)
+        ( to_add_to_lets
+            ( llet k i ( mklam ( List.rev vars ) ) cont )
+            to_add
+        )
 
   and organize_in_let k i cont lam =
     let ll = llet k i in
@@ -380,7 +380,7 @@ let lambda_to_tlambda last_id code =
       organize_in_let k i cont lam
     | Lletrec ( decls, cont) ->
       let decls, to_out =
-	List.fold_left (fun (decls, to_out) (id, lam) -> promote_rec decls to_out id lam ) ([],[]) decls
+        List.fold_left (fun (decls, to_out) (id, lam) -> promote_rec decls to_out id lam ) ([],[]) decls
       in
       List.fold_left (fun cont (id,lam) -> Llet ( Strict, id, lam, cont ) ) ( Lletrec ( decls, organize_let cont )) to_out
     | Lvar _  as lam -> lam
@@ -391,7 +391,7 @@ let lambda_to_tlambda last_id code =
     let sw_consts = aux s.sw_consts in
     let sw_failaction =
       match s.sw_failaction with
-      |	None -> s.sw_failaction
+      |      None -> s.sw_failaction
       | Some lam -> Some ( organize_let lam )
     in
     { s with sw_blocks; sw_consts; sw_failaction; }
@@ -407,7 +407,7 @@ let lambda_to_tlambda last_id code =
       promote_rec promoted expelled i cont
     | Lletrec ( l, cont ) ->
       let ( promoted, expelled ) =
-	List.fold_left (fun (p,e) (id,lam) -> promote_rec p e id lam ) ( promoted, expelled ) l in
+        List.fold_left (fun (p,e) (id,lam) -> promote_rec p e id lam ) ( promoted, expelled ) l in
       promote_rec promoted expelled i cont
     | _ -> ( promoted, ( i, lam ) :: expelled )
   in
@@ -427,13 +427,13 @@ let lambda_to_tlambda last_id code =
       Tlet { te_kind = k; te_id = i; te_lam = tcontrol e; te_in = tlambda cont; }
     | Lletrec ( decls, cont ) ->
       Trec { tr_decls = List.rev_map
-	  (fun (id, lam ) ->
-	    match lam with
-	    | Lprim (p,l) ->
-	      ( id, prim_translate p, extract_vars l )
-	    | _ -> assert false
-	  ) decls;
-	     tr_in = tlambda cont; }
+                 (fun (id, lam ) ->
+                    match lam with
+                    | Lprim (p,l) ->
+                      ( id, prim_translate p, extract_vars l )
+                    | _ -> assert false
+                 ) decls;
+             tr_in = tlambda cont; }
     | Lvar v -> Tend v
     | _ -> assert false
   and tcontrol = function
@@ -445,19 +445,19 @@ let lambda_to_tlambda last_id code =
       let fv = free_vars ( Iset.singleton arg ) body in
       let fvl = Iset.fold (fun v acc -> (v,remk v)::acc) fv [] in
       let body =
-	map_idents
-	  ( fun i -> try List.assoc i fvl with Not_found -> i)
-	  body
+        map_idents
+          ( fun i -> try List.assoc i fvl with Not_found -> i)
+          body
       in
       let body,_ = List.fold_left
-	(fun (cont,idx) (_,i) ->
-	  ( tlet
-	      ~kind:Alias
-	      i
-	      ( Tprim ( TPfunfield idx, [](*, [f_ident]*) ))
-	      (* TODO: f_ident (I'm not sure we need it) *)
-	      cont
-	  ), succ idx) (body,0) fvl
+          (fun (cont,idx) (_,i) ->
+             ( tlet
+                 ~kind:Alias
+                 i
+                 ( Tprim ( TPfunfield idx, [](*, [f_ident]*) ))
+                 (* TODO: f_ident (I'm not sure we need it) *)
+                 cont
+             ), succ idx) (body,0) fvl
       in
       let idf = register_function body in
       Tprim ( TPfun idf, fst ( List.split fvl ) )
@@ -470,18 +470,18 @@ let lambda_to_tlambda last_id code =
     | Lswitch ( Lvar x, s ) ->
       let aux = List.rev_map (fun (a,b) -> (a, tlambda b) ) in
       Tswitch ( x,
-		{
-		  t_numconsts = s.sw_numconsts;
-		  t_consts = aux s.sw_consts;
-		  t_numblocks = s.sw_numblocks;
-		  t_blocks = aux s.sw_blocks;
-		  t_failaction =
-		    (
-		      match s.sw_failaction with
-		      | None -> None
-		      | Some l -> Some ( tlambda l )
-		    );
-		} )
+                {
+                  t_numconsts = s.sw_numconsts;
+                  t_consts = aux s.sw_consts;
+                  t_numblocks = s.sw_numblocks;
+                  t_blocks = aux s.sw_blocks;
+                  t_failaction =
+                    (
+                      match s.sw_failaction with
+                      | None -> None
+                      | Some l -> Some ( tlambda l )
+                    );
+                } )
     | Lstaticraise ( i, l ) -> Tstaticraise ( i, extract_vars l )
     | Lstaticcatch ( lt, i, lw ) -> Tstaticcatch ( tlambda lt, i, tlambda lw )
     | Ltrywith ( lt, i, lw ) -> Ttrywith ( tlambda lt, i, tlambda lw )

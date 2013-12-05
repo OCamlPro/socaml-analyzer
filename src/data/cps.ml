@@ -3,7 +3,7 @@ open Data
 let any i =
   let rec aux res = function
     | 0 -> res
-    | n	-> let n = pred n in aux (Ints.add n res) n
+    | n      -> let n = pred n in aux (Ints.add n res) n
   in { bottom with cp = aux Ints.empty i }
 
 let singleton i =

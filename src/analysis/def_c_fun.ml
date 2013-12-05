@@ -20,6 +20,6 @@ let default = fun _ i e -> ( Data.set_env i Data.top e, Envs.bottom)
 
 let get_envs d =
   try HP.find defs d.Primitive.prim_name with
-  _ -> default
+    _ -> default
 
 let add_def = HP.add defs

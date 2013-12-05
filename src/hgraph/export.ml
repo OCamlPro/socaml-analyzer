@@ -28,10 +28,10 @@ struct
 
 
   type fdescr =
-  {
-    f_id : I.fid;
-    f_graph : gext;
-  }
+    {
+      f_id : I.fid;
+      f_graph : gext;
+    }
 
   type funs = fdescr list
 
@@ -70,7 +70,7 @@ struct
            H.hedge_pred' g h, H.hedge_succ' g h )
         ( H.list_hedge g )
     ), vin, vout, vexn
-    
+
 
   let gext_in_g ~g (vl,hl,_,_,_) =
     let rec export_vertex = function
@@ -92,12 +92,12 @@ struct
     H.vertex_merge g I.vattr_merge vin vein;
     H.vertex_merge g I.vattr_merge vexn veexn;
     veout
-    
+
   let f_to_fdescr fid fg vin vout vexn =
-  {
-    f_id = fid;
-    f_graph = g_to_gext ~g:fg ~vin ~vout ~vexn;
-  }
+    {
+      f_id = fid;
+      f_graph = g_to_gext ~g:fg ~vin ~vout ~vexn;
+    }
 
   let export ~g ~funtbl ~( map_fun : fun_mapper ) ~vin ~vout ~vexn ~file =
     let gext = g_to_gext ~g ~vin ~vout ~vexn in

@@ -80,7 +80,7 @@ module type Hgraph = sig
   val hedge_attrib : (_, 'b, _) graph -> T.hedge -> 'b
 
   val vertex_merge : ('a,_,_) graph -> ('a -> 'a -> 'a) -> T.vertex -> T.vertex -> unit
-    (* vertex_merge g f v1 v2 merges v2 into v1, new attrib is f (vertex_attrib v1) (vertex_attrib v2) *)
+  (* vertex_merge g f v1 v2 merges v2 into v1, new attrib is f (vertex_attrib v1) (vertex_attrib v2) *)
 
   (* utils *)
 
@@ -129,22 +129,22 @@ end
 
 module Make(T:T) : Hgraph
   with module T := T
-  and type VertexSet.elt = T.vertex
-  and type VertexSet.t = Set.Make(T.Vertex).t
-  and module VertexSet = Set.Make(T.Vertex)
-  and type VertexMap.key = T.vertex
-  and type 'a VertexMap.t = 'a Map.Make(T.Vertex).t
-  and module VertexMap = Map.Make(T.Vertex)
-  and type VertexTbl.key = T.vertex
-  and module VertexTbl = Hashtbl.Make(T.Vertex)
-  and type HedgeSet.elt = T.hedge
-  and module HedgeSet = Set.Make(T.Hedge)
-  and type HedgeMap.key = T.hedge
-  and module HedgeMap = Map.Make(T.Hedge)
-  and type HedgeTbl.key = T.hedge
-  and module HedgeTbl = Hashtbl.Make(T.Hedge)
-	     
- = struct
+   and type VertexSet.elt = T.vertex
+   and type VertexSet.t = Set.Make(T.Vertex).t
+   and module VertexSet = Set.Make(T.Vertex)
+   and type VertexMap.key = T.vertex
+   and type 'a VertexMap.t = 'a Map.Make(T.Vertex).t
+   and module VertexMap = Map.Make(T.Vertex)
+   and type VertexTbl.key = T.vertex
+   and module VertexTbl = Hashtbl.Make(T.Vertex)
+   and type HedgeSet.elt = T.hedge
+   and module HedgeSet = Set.Make(T.Hedge)
+   and type HedgeMap.key = T.hedge
+   and module HedgeMap = Map.Make(T.Hedge)
+   and type HedgeTbl.key = T.hedge
+   and module HedgeTbl = Hashtbl.Make(T.Hedge)
+
+= struct
 
   open T
   module VertexSet = Set.Make(T.Vertex)
@@ -227,18 +227,18 @@ module Make(T:T) : Hgraph
     then failwith (Format.asprintf "add_hedge: the hedge %a is already in \
                                     the graph" Hedge.print h);
     begin try
-      Array.iteri
-        (fun i v ->
-          let vertex_n =  vertex_n g v in
-          vertex_n.v_succ <- HISet.add (i,h) vertex_n.v_succ)
-        pred;
-      Array.iteri
-        (fun i v ->
-          let vertex_n =  vertex_n g v in
-          vertex_n.v_pred <- HISet.add (i,h) vertex_n.v_pred)
-        succ;
-    with Not_found ->
-      failwith "add_hedge: origin or destination vertex does not exists"
+        Array.iteri
+          (fun i v ->
+             let vertex_n =  vertex_n g v in
+             vertex_n.v_succ <- HISet.add (i,h) vertex_n.v_succ)
+          pred;
+        Array.iteri
+          (fun i v ->
+             let vertex_n =  vertex_n g v in
+             vertex_n.v_pred <- HISet.add (i,h) vertex_n.v_pred)
+          succ;
+      with Not_found ->
+        failwith "add_hedge: origin or destination vertex does not exists"
     end;
     HTbl.add g.hedge h
       { h_attr; h_pred = pred; h_succ = succ }
@@ -460,13 +460,13 @@ module Make(T:T) : Hgraph
       | Some print_attrvertex ->
         VTbl.iter
           (begin fun vertex vertex_n ->
-            fprintf ppf "%a [%s,label=\"%t\"];@ "
-              print_vertex vertex
-              (match fvertexstyle with
-               | Some f -> f vertex
-               | None -> vertexstyle)
-              (fun ppf -> print_attrvertex ppf vertex vertex_n.v_attr);
-          end)
+             fprintf ppf "%a [%s,label=\"%t\"];@ "
+               print_vertex vertex
+               (match fvertexstyle with
+                | Some f -> f vertex
+                | None -> vertexstyle)
+               (fun ppf -> print_attrvertex ppf vertex vertex_n.v_attr);
+           end)
           g.vertex
     end;
     begin match print_attrhedge with
@@ -474,30 +474,30 @@ module Make(T:T) : Hgraph
       | Some print_attrhedge ->
         HTbl.iter
           (begin fun hedge hedge_n ->
-            fprintf ppf "%a [%s,label=\"%t\"];@ "
-              print_hedge hedge
-              (match fhedgestyle with
-               | Some f -> f hedge
-               | None -> hedgestyle)
-              (fun ppf -> print_attrhedge ppf hedge hedge_n.h_attr);
-          end)
+             fprintf ppf "%a [%s,label=\"%t\"];@ "
+               print_hedge hedge
+               (match fhedgestyle with
+                | Some f -> f hedge
+                | None -> hedgestyle)
+               (fun ppf -> print_attrhedge ppf hedge hedge_n.h_attr);
+           end)
           g.hedge
     end;
     HTbl.iter
       (begin fun hedge hedge_n ->
-        Array.iter
-          (begin fun pred ->
-            fprintf ppf "%a -> %a;@ "
-              print_vertex pred print_hedge hedge
-          end)
-          hedge_n.h_pred;
-        Array.iter
-          (begin fun succ ->
-            fprintf ppf "%a -> %a;@ "
-              print_hedge hedge print_vertex succ
-          end)
-          hedge_n.h_succ
-      end)
+         Array.iter
+           (begin fun pred ->
+              fprintf ppf "%a -> %a;@ "
+                print_vertex pred print_hedge hedge
+            end)
+           hedge_n.h_pred;
+         Array.iter
+           (begin fun succ ->
+              fprintf ppf "%a -> %a;@ "
+                print_hedge hedge print_vertex succ
+            end)
+           hedge_n.h_succ
+       end)
       g.hedge
     ;
     fprintf ppf "@]@.}@.";
@@ -514,8 +514,8 @@ let rec map_filter f l =
 
 let lift_option_array a =
   try Some (Array.map (function
-        | None -> raise Not_found
-        | Some v -> v) a)
+      | None -> raise Not_found
+      | Some v -> v) a)
   with Not_found -> None
 
 module type Manager = sig
@@ -773,7 +773,7 @@ end = struct
         Hwq.push_set hwq (vertex_succ g v)
       end
       (* else Printf.printf "not increasing\n%!" *)
-    ;
+      ;
       VTbl.replace vertex_result v abstract
     in
 
@@ -796,15 +796,15 @@ end = struct
         new_hedge
       in
       let subgraph, input_hedges, output_hedges = clone_subgraph
-        ~in_graph
-        ~out_graph:g
-        ~import_vattr:(fun ~new_vertex ~old_attr -> ())
-        ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
-        ~clone_vertex:Manager.clone_vertex
-        ~clone_hedge:import_hedge
-        ~input
-        ~output
-        subgraph
+          ~in_graph
+          ~out_graph:g
+          ~import_vattr:(fun ~new_vertex ~old_attr -> ())
+          ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
+          ~clone_vertex:Manager.clone_vertex
+          ~clone_hedge:import_hedge
+          ~input
+          ~output
+          subgraph
       in
       let input = Array.mapi (fun i hi -> (input.(i),hi)) input_hedges in
       let output = Array.mapi (fun i hi -> (output.(i),hi)) output_hedges in

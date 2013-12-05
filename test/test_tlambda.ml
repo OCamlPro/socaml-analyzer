@@ -30,10 +30,10 @@ let b = mk_id "b"
 let t2 =
   tlet a ( tconst_int 1605)
     ( tlet b ( tconst_int 1666)
-	( tlet ret_id ( tadd a b) tend )
+        ( tlet ret_id ( tadd a b) tend )
     )
 
-    
+
 open Tlambda_interpret
 
 let nofuns = Hashtbl.create 1
