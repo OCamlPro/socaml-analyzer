@@ -41,11 +41,11 @@ let widening x y =
 let print fmt x =
   let open Format in
   match x with
-    | Some(a,b) ->
-	if is_top x then pp_print_string fmt "top"
-	else
-	  fprintf fmt "[%i,%i]" a b
-    | None -> pp_print_string fmt "bot"
+  | Some(a,b) ->
+    if is_top x then pp_print_string fmt "top"
+    else
+      fprintf fmt "[%i,%i]" a b
+  | None -> pp_print_string fmt "bot"
 
 let meet x y =
   match x, y with
@@ -65,13 +65,13 @@ let addcst c x =
     then
       let bc = b+c in
       Some (
-	( if a = minimum then minimum else a+c),
-	( if bc < b then maximum else bc))
+        ( if a = minimum then minimum else a+c),
+        ( if bc < b then maximum else bc))
     else
       let ac = a+c in
       Some (
-	( if ac > a then minimum else ac),
-	( if b = maximum then maximum else b+c))
+        ( if ac > a then minimum else ac),
+        ( if b = maximum then maximum else b+c))
 
 let uminus x =
   match x with
@@ -80,7 +80,7 @@ let uminus x =
     Some (
       (if b = maximum then minimum else ~-b),
       (if a = minimum then maximum else ~-a))
-    
+
 let add x y =
   match x, y with
   | None, _ | _, None -> None
@@ -97,12 +97,12 @@ let mul x y = match x, y with
       if x = 0 || y = 0
       then 0
       else
-	if ( x = minimum && y < 0 ) || ( x = maximum && y > 0 ) || ( y = minimum && x < 0 ) || ( y = maximum && x > 0 ) 
-	then maximum
-	else
-	  if ( x = maximum && y < 0 ) || ( x = minimum && y > 0 ) || ( y = maximum && x < 0 ) || ( y = minimum && x > 0 )
-	  then minimum
-	  else x * y
+      if ( x = minimum && y < 0 ) || ( x = maximum && y > 0 ) || ( y = minimum && x < 0 ) || ( y = maximum && x > 0 ) 
+      then maximum
+      else
+      if ( x = maximum && y < 0 ) || ( x = minimum && y > 0 ) || ( y = maximum && x < 0 ) || ( y = minimum && x > 0 )
+      then minimum
+      else x * y
     in
 
     let xlyl = aux xl yl
@@ -151,9 +151,9 @@ let comp c x y =
       match c with
       | Ceq -> test_eq xl xg yl yg
       | Cneq ->
-	(match test_eq xl xg yl yg with
-	| None -> None
-	| Some b -> Some (not b))
+        (match test_eq xl xg yl yg with
+         | None -> None
+         | Some b -> Some (not b))
       | Clt -> test_lt xl xg yl yg
       | Cgt -> test_lt yl yg xl yg
       | Cle -> test_le xl xg yl yg
@@ -169,54 +169,54 @@ let make_comp c x y : t * t =
     begin
       match c with
       | Ceq ->
-	let l = max xl yl
-	and g = min xg yg
-	in
-	if l <= g
-	then ( let r = Some ( l, g ) in r, r )
-	else ( bottom, bottom )
+        let l = max xl yl
+        and g = min xg yg
+        in
+        if l <= g
+        then ( let r = Some ( l, g ) in r, r )
+        else ( bottom, bottom )
       | Cneq ->
-	if xl = xg
-	then
-	  (
-	    if xl = yl
-	    then
-	      if yl = yg
-	      then ( bottom, bottom )
-	      else ( x, Some ( succ yl, yg ) )
-	    else if xg = yg
-	    then ( x, Some ( yl, pred yg ) )
-	    else ( x, y )
-	  )
-	else if yl = yg
-	then
-	  (
-	    if yl = xl
-	    then ( Some ( succ xl, xg ), y )
-	    else if yg = xg
-	    then ( Some ( xl, pred xg ), y )
-	    else ( x, y )
-	  )
-	else ( x, y )
+        if xl = xg
+        then
+          (
+            if xl = yl
+            then
+              if yl = yg
+              then ( bottom, bottom )
+              else ( x, Some ( succ yl, yg ) )
+            else if xg = yg
+            then ( x, Some ( yl, pred yg ) )
+            else ( x, y )
+          )
+        else if yl = yg
+        then
+          (
+            if yl = xl
+            then ( Some ( succ xl, xg ), y )
+            else if yg = xg
+            then ( Some ( xl, pred xg ), y )
+            else ( x, y )
+          )
+        else ( x, y )
       | Clt ->
-	if xl >= yg
-	then ( bottom, bottom )
-	else ( Some ( xl, min xg (pred yg) ), Some ( max yl (succ xl), yg ) )
+        if xl >= yg
+        then ( bottom, bottom )
+        else ( Some ( xl, min xg (pred yg) ), Some ( max yl (succ xl), yg ) )
       | Cgt ->
-	if xg <= yl
-	then ( bottom, bottom )
-	else ( Some ( max xl (succ yl), xg ), Some ( yl, min yg (pred xg) ) )
+        if xg <= yl
+        then ( bottom, bottom )
+        else ( Some ( max xl (succ yl), xg ), Some ( yl, min yg (pred xg) ) )
       | Cle ->
-	if xl > yg
-	then ( bottom, bottom )
-	else ( Some ( xl, min xg yg ), Some ( max yl xl, yg ) )
+        if xl > yg
+        then ( bottom, bottom )
+        else ( Some ( xl, min xg yg ), Some ( max yl xl, yg ) )
       | Cge ->
-	if xg < yl
-	then ( bottom, bottom )
-	else ( Some ( max xl yl, xg ), Some ( yl, min yg xg ) )
-	
+        if xg < yl
+        then ( bottom, bottom )
+        else ( Some ( max xl yl, xg ), Some ( yl, min yg xg ) )
+
     end
-    
+
 
 let leqcst x c = meet x ( Some ( minimum, c))
 let geqcst x c = meet x ( Some ( c, maximum))

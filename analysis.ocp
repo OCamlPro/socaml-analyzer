@@ -40,6 +40,13 @@ begin library "lambda-analysis"
  requires = [ "common" "tlambda" "hgraph" "data" ]
 end
 
+begin library "api"
+ dirname = "src/api"
+ files = [ "cdef.ml" ]
+ requires = [ "data" "lambda-analysis" (* temporary *) ]
+end
+
+
 begin program "main"
  dirname = "src/driver"
  files = [ "main.ml" ]
@@ -120,6 +127,9 @@ begin test "tbg"
   "pervasives" ( test_args = [ "pervasives.ml" ] )
   "simplest" ( test_args = [ "simpler.ml" ] )
   "pervasives2" ( test_args = [ "pervasives2.ml" ] )
+  "good" ( test_args = [ "pervasives.ml" "-open" "Pervasives" "good.ml" ] )
+  "bad" ( test_args = [ "pervasives.ml" "-open" "Pervasives" "bad.ml" ] )
+  "conditionnal" ( test_args = [ "pervasives.ml" "-open" "Pervasives" "conditionnal.ml" ] )
  ]
 end
 
@@ -135,6 +145,10 @@ begin test "tba"
   "pervasives" ( test_args = [ "pervasives.cmb" ] )
   "simplest" ( test_args = [ "simpler.cmb" ] )
   "pervasives2" ( test_args = [ "pervasives2.cmb" ] )
+  "good" ( test_args = [ "pervasives.cmb" "good.cmb" ] )
+  "bad" ( test_args = [ "pervasives.cmb" "bad.cmb" ] test_exit = 1 )
+  "conditionnal" ( test_args = [ "pervasives.cmb" "conditionnal.cmb" ] )
+
  ]
 
 end

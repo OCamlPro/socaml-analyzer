@@ -1,7 +1,7 @@
 let () =
   let args = Array.sub Sys.argv 1 ( pred (Array.length Sys.argv) ) in
   let (g,funs,inv,exnv,outv) = Cmb.import args in
-  
+
   let module E =
   struct
     let inv = inv

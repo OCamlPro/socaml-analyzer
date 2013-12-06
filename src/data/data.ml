@@ -74,7 +74,7 @@ let is_bottom_simple = function
   | Constants c -> Constants.is_empty c
 
 let is_bottom env { top; int; float; string; floata; i32;
-                i64; inat; cp; blocks; f } =
+                    i64; inat; cp; blocks; f } =
   top = false && Int_interv.is_bottom int && is_bottom_simple float &&
   is_bottom_simple string && is_bottom_simple floata &&
   is_bottom_simple i32 && is_bottom_simple i64 &&
@@ -126,29 +126,29 @@ let rec union (* env *) a b =
   let blocks =
     Tagm.merge
       begin
-	fun _ a b ->
-	  match a, b with
-	  | a, None | None, a -> a
-	  | Some is1, Some is2 ->
-	    Some (
-	      Intm.merge
-		(fun _ a b ->
-		  match a, b with
-		  | a, None | None, a -> a
-		  | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> Ids.union i1 s2.(i)) s1)
-		)
-		is1 is2
-	    )
+        fun _ a b ->
+          match a, b with
+          | a, None | None, a -> a
+          | Some is1, Some is2 ->
+            Some (
+              Intm.merge
+                (fun _ a b ->
+                   match a, b with
+                   | a, None | None, a -> a
+                   | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> Ids.union i1 s2.(i)) s1)
+                )
+                is1 is2
+            )
       end
       a.blocks b.blocks in
   let f = Fm.merge
-    begin
-      fun _ a b ->
-	match a, b with
-	| a, None | None, a -> a
-	| Some i1, Some i2 -> Some ( Array.mapi (fun i i1i -> Ids.union i1i i2.(i)) i1 )
-    end
-    a.f b.f;
+      begin
+        fun _ a b ->
+          match a, b with
+          | a, None | None, a -> a
+          | Some i1, Some i2 -> Some ( Array.mapi (fun i i1i -> Ids.union i1i i2.(i)) i1 )
+      end
+      a.f b.f;
   in
   (* env, *)
   {
@@ -169,7 +169,7 @@ let rec union (* env *) a b =
 and union_id env i1 i2 =
   let ( (* env, *) u) = union (* env *) (get_env i1 env) (get_env i2 env) in
   reg_env u env
-  
+
 let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_env a env) b) ids ( (* env, *) bottom)
 
 let fun_ids i env =
@@ -204,31 +204,31 @@ let rec included env i1 i2 =
     || Ints.exists (fun a -> Ints.mem a b.cp) a.cp
     || Tagm.exists
       (fun k a ->
-	try
-	  let b = Tagm.find k b.blocks in
-	  Intm.exists
-	    (fun k a ->
-	      let b = Intm.find k b in
-	      array2_forall
-		(fun a b ->
-		  Ids.exists
-		    (fun a -> Ids.exists ( included env a) b)
-		    a
-		)
-		a b
-	    ) a
-	with Not_found -> false) a.blocks
+         try
+           let b = Tagm.find k b.blocks in
+           Intm.exists
+             (fun k a ->
+                let b = Intm.find k b in
+                array2_forall
+                  (fun a b ->
+                     Ids.exists
+                       (fun a -> Ids.exists ( included env a) b)
+                       a
+                  )
+                  a b
+             ) a
+         with Not_found -> false) a.blocks
     || Fm.exists
       (fun k a ->
-	try
-	  let b = Fm.find k b.f in
-	  array2_forall
-	    (fun a b ->
-	      Ids.exists
-		(fun a -> Ids.exists ( included env a) b)
-		a
-	    ) a b
-	with Not_found -> false) a.f
+         try
+           let b = Fm.find k b.f in
+           array2_forall
+             (fun a b ->
+                Ids.exists
+                  (fun a -> Ids.exists ( included env a) b)
+                  a
+             ) a b
+         with Not_found -> false) a.f
 
 (* Leq test *)
 
@@ -252,21 +252,21 @@ let is_leq a b =
     && Ints.subset a.cp b.cp
     && Tagm.for_all
       (fun k a ->
-	try
-	  let b = Tagm.find k b.blocks in
-	  Intm.for_all
-	    (fun k a ->
-	      let b = Intm.find k b in
-	      array2_forall Ids.subset a b
-	    ) a
-	with Not_found -> false
+         try
+           let b = Tagm.find k b.blocks in
+           Intm.for_all
+             (fun k a ->
+                let b = Intm.find k b in
+                array2_forall Ids.subset a b
+             ) a
+         with Not_found -> false
       ) a.blocks
     && Fm.for_all
       (fun k a ->
-	try
-	  let b = Fm.find k b.f in
-	  array2_forall Ids.subset a b
-	with Not_found -> false
+         try
+           let b = Fm.find k b.f in
+           array2_forall Ids.subset a b
+         with Not_found -> false
       ) a.f
   end
 
@@ -285,49 +285,49 @@ let intersect_noncommut env a b =
   else
     let blocks = 
       Tagm.merge
-	begin
-	  fun _ a b ->
-	    match a, b with
-	    | _, None | None, _ -> None
-	    | Some is1, Some is2 ->
-	      Some (
-		Intm.merge
-		  (fun _ a b ->
-		    match a, b with
-		    | _, None | None, _ -> None
-		    | Some s1, Some s2 ->
-		      Some
-			(
-			  Array.mapi
-			    (fun i i1 ->
-			      ( Ids.filter (fun id -> Ids.exists ( included env id) s2.(i)) i1)
-			    )
-			    s1
-			)
-		  )
-		  is1 is2
-	      )
-	end
-	a.blocks b.blocks
+        begin
+          fun _ a b ->
+            match a, b with
+            | _, None | None, _ -> None
+            | Some is1, Some is2 ->
+              Some (
+                Intm.merge
+                  (fun _ a b ->
+                     match a, b with
+                     | _, None | None, _ -> None
+                     | Some s1, Some s2 ->
+                       Some
+                         (
+                           Array.mapi
+                             (fun i i1 ->
+                                ( Ids.filter (fun id -> Ids.exists ( included env id) s2.(i)) i1)
+                             )
+                             s1
+                         )
+                  )
+                  is1 is2
+              )
+        end
+        a.blocks b.blocks
     in
     let f =
       Fm.merge
-	begin
-	  fun _ a b ->
-	    match a, b with
-	    | _, None | None, _ -> None
-	    | Some a, Some b ->
-	      Some (
-		Array.mapi
-		  (fun i a ->
-		    Ids.filter
-		      (fun a ->
-			Ids.exists (included env a) b.(i)
-		      ) a
-		  ) a
-	      )
-	end
-	a.f b.f
+        begin
+          fun _ a b ->
+            match a, b with
+            | _, None | None, _ -> None
+            | Some a, Some b ->
+              Some (
+                Array.mapi
+                  (fun i a ->
+                     Ids.filter
+                       (fun a ->
+                          Ids.exists (included env a) b.(i)
+                       ) a
+                  ) a
+              )
+        end
+        a.f b.f
     in
     env,
     { top = false;
@@ -361,19 +361,19 @@ let print_simple pp t =
     fprintf pp "@]@ ]@."
 
 let print_ids_array pp a = ()
-  (* let open Format in *)
-  (* let l = Array.length a  in *)
-  (* if l = 0 *)
-  (* then ( pp_print_string pp "[||]"; Ids.empty ) *)
-  (* else ( *)
-  (*   fprintf pp "[|@ @[@ %a"; *)
-  (*   Array.iter *)
-  (*     (fun ids -> *)
-  (*        failwith "pretty-printing ids" *)
-  (*     ) *)
-  (*     a; *)
-  (*   fprintf pp "@]@ |]" *)
-  (* ) *)
+(* let open Format in *)
+(* let l = Array.length a  in *)
+(* if l = 0 *)
+(* then ( pp_print_string pp "[||]"; Ids.empty ) *)
+(* else ( *)
+(*   fprintf pp "[|@ @[@ %a"; *)
+(*   Array.iter *)
+(*     (fun ids -> *)
+(*        failwith "pretty-printing ids" *)
+(*     ) *)
+(*     a; *)
+(*   fprintf pp "@]@ |]" *)
+(* ) *)
 
 let print pp id env =
   let open Format in
@@ -382,62 +382,62 @@ let print pp id env =
   pp_open_box pp 0;
   let d = get_env id env in
   begin
-  if d.top
-  then ( fprintf pp "Top@.")
-  else
-    begin
-      if not ( Int_interv.is_bottom d.int )
-      then
-        (
-          fprintf pp "Ints: [@ @[";
-          odo
-            (pp_print_int pp)
-            (fun () -> pp_print_string pp "-inf")
-            (Int_interv.lower d.int);
-          fprintf pp ",@ ";
-          odo
-            (pp_print_int pp)
-            (fun () -> pp_print_string pp "inf")
-            (Int_interv.higher d.int);
-          fprintf pp "@]@ ]@."
-        );
-      print_simple pp "Floats" d.float;
-      print_simple pp "Strings" d.string;
-      print_simple pp "Float arrays" d.floata;
-      print_simple pp "Int32" d.i32;
-      print_simple pp "Int64" d.i64;
-      print_simple pp "Native ints" d.inat;
-      if not ( Ints.is_empty d.cp )
-      then
-        (
-          fprintf pp  "Const pointers : [ @[@ ";
-          Ints.print_sep sep pp d.cp;
-          fprintf pp "@]@ ]@."
-        );
-      if not ( Tagm.is_empty d.blocks )
-      then
-        (
-          fprintf pp "Blocks@.@[@ ";
-          Tagm.print
-            (fun pp im ->
-               fprintf pp "@[{@ ";
-               Intm.print_sep
-                 sep
-                 print_ids_array
-                 pp 
-                 im;
-               fprintf pp "}@]@." )
-            pp
-            d.blocks;
-          fprintf pp "@ @]@."
-        );
-      if not ( Fm.is_empty d.f )
-      then
-        (
-          fprintf pp "Functions: {@[@ ";
-          Fm.print_sep sep (fun _ _ -> ()) pp d.f;
-          fprintf pp "@ @]}@."
-        )
-    end
+    if d.top
+    then ( fprintf pp "Top@.")
+    else
+      begin
+        if not ( Int_interv.is_bottom d.int )
+        then
+          (
+            fprintf pp "Ints: [@ @[";
+            odo
+              (pp_print_int pp)
+              (fun () -> pp_print_string pp "-inf")
+              (Int_interv.lower d.int);
+            fprintf pp ",@ ";
+            odo
+              (pp_print_int pp)
+              (fun () -> pp_print_string pp "inf")
+              (Int_interv.higher d.int);
+            fprintf pp "@]@ ]@."
+          );
+        print_simple pp "Floats" d.float;
+        print_simple pp "Strings" d.string;
+        print_simple pp "Float arrays" d.floata;
+        print_simple pp "Int32" d.i32;
+        print_simple pp "Int64" d.i64;
+        print_simple pp "Native ints" d.inat;
+        if not ( Ints.is_empty d.cp )
+        then
+          (
+            fprintf pp  "Const pointers : [ @[@ ";
+            Ints.print_sep sep pp d.cp;
+            fprintf pp "@]@ ]@."
+          );
+        if not ( Tagm.is_empty d.blocks )
+        then
+          (
+            fprintf pp "Blocks@.@[@ ";
+            Tagm.print
+              (fun pp im ->
+                 fprintf pp "@[{@ ";
+                 Intm.print_sep
+                   sep
+                   print_ids_array
+                   pp 
+                   im;
+                 fprintf pp "}@]@." )
+              pp
+              d.blocks;
+            fprintf pp "@ @]@."
+          );
+        if not ( Fm.is_empty d.f )
+        then
+          (
+            fprintf pp "Functions: {@[@ ";
+            Fm.print_sep sep (fun _ _ -> ()) pp d.f;
+            fprintf pp "@ @]}@."
+          )
+      end
   end;
   fprintf pp "@]@."

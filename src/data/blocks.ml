@@ -16,9 +16,9 @@ let restrict ?tag ?has_field ?size d =
     | Some s -> Intm.singleton s ( Intm.find s im)
   in
   { bottom with blocks =
-      match tag with
-      | None -> Tagm.map restrict_tag d.blocks
-      | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d.blocks))
+                  match tag with
+                  | None -> Tagm.map restrict_tag d.blocks
+                  | Some t -> Tagm.singleton t ( restrict_tag ( Tagm.find t d.blocks))
   }
 
 let fieldn_map f n b =
@@ -52,12 +52,12 @@ let set_field i v b =
 let get_field i b =
   Tagm.fold
     (fun _ b acc ->
-      Intm.fold
-	(fun s a acc ->
-	  if s > i
-	  then Ids.union acc a.(i)
-	  else acc
-	) b acc
+       Intm.fold
+         (fun s a acc ->
+            if s > i
+            then Ids.union acc a.(i)
+            else acc
+         ) b acc
     ) b.blocks Ids.empty
 
 let sizes ~tag { blocks; _ } =

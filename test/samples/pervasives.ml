@@ -94,7 +94,7 @@ external asin : float -> float = "caml_asin_float" "asin" "float"
 external atan : float -> float = "caml_atan_float" "atan" "float"
 external atan2 : float -> float -> float = "caml_atan2_float" "atan2" "float"
 external hypot : float -> float -> float
-               = "caml_hypot_float" "caml_hypot" "float"
+  = "caml_hypot_float" "caml_hypot" "float"
 external cos : float -> float = "caml_cos_float" "cos" "float"
 external cosh : float -> float = "caml_cosh_float" "cosh" "float"
 external log : float -> float = "caml_log_float" "log" "float"
@@ -109,7 +109,7 @@ external ceil : float -> float = "caml_ceil_float" "ceil" "float"
 external floor : float -> float = "caml_floor_float" "floor" "float"
 external abs_float : float -> float = "%absfloat"
 external copysign : float -> float -> float
-                  = "caml_copysign_float" "caml_copysign" "float"
+  = "caml_copysign_float" "caml_copysign" "float"
 external mod_float : float -> float -> float = "caml_fmod_float" "fmod" "float"
 external frexp : float -> float * int = "caml_frexp_float"
 external ldexp : float -> int -> float = "caml_ldexp_float"
@@ -145,7 +145,7 @@ external classify_float : float -> fpclass = "caml_classify_float"
 external string_length : string -> int = "%string_length"
 external string_create : int -> string = "caml_create_string"
 external string_blit : string -> int -> string -> int -> int -> unit
-                     = "caml_blit_string" "noalloc"
+  = "caml_blit_string" "noalloc"
 
 let ( ^ ) s1 s2 =
   let l1 = string_length s1 and l2 = string_length s2 in
@@ -195,9 +195,9 @@ let valid_float_lexem s =
   let l = string_length s in
   let rec loop i =
     if i >= l then s ^ "." else
-    match s.[i] with
-    | '0' .. '9' | '-' -> loop (i + 1)
-    | _ -> s
+      match s.[i] with
+      | '0' .. '9' | '-' -> loop (i + 1)
+      | _ -> s
   in
   loop 0
 ;;
@@ -219,7 +219,7 @@ type in_channel
 type out_channel
 
 external open_descriptor_out : int -> out_channel
-                             = "caml_ml_open_descriptor_out"
+  = "caml_ml_open_descriptor_out"
 external open_descriptor_in : int -> in_channel = "caml_ml_open_descriptor_in"
 
 let stdin = open_descriptor_in 0
@@ -247,7 +247,7 @@ let open_out_bin name =
 external flush : out_channel -> unit = "caml_ml_flush"
 
 external out_channels_list : unit -> out_channel list
-                           = "caml_ml_out_channels_list"
+  = "caml_ml_out_channels_list"
 
 let flush_all () =
   let rec iter = function
@@ -256,7 +256,7 @@ let flush_all () =
   in iter (out_channels_list ())
 
 external unsafe_output : out_channel -> string -> int -> int -> unit
-                       = "caml_ml_output"
+  = "caml_ml_output"
 
 external output_char : out_channel -> char -> unit = "caml_ml_output_char"
 
@@ -272,7 +272,7 @@ external output_byte : out_channel -> int -> unit = "caml_ml_output_char"
 external output_binary_int : out_channel -> int -> unit = "caml_ml_output_int"
 
 external marshal_to_channel : out_channel -> 'a -> unit list -> unit
-     = "caml_output_value"
+  = "caml_output_value"
 let output_value chan v = marshal_to_channel chan v []
 
 external seek_out : out_channel -> int -> unit = "caml_ml_seek_out"
@@ -284,7 +284,7 @@ let close_out_noerr oc =
   (try flush oc with _ -> ());
   (try close_out_channel oc with _ -> ())
 external set_binary_mode_out : out_channel -> bool -> unit
-                             = "caml_ml_set_binary_mode"
+  = "caml_ml_set_binary_mode"
 
 (* General input functions *)
 
@@ -300,7 +300,7 @@ let open_in_bin name =
 external input_char : in_channel -> char = "caml_ml_input_char"
 
 external unsafe_input : in_channel -> string -> int -> int -> int
-                      = "caml_ml_input"
+  = "caml_ml_input"
 
 let input ic s ofs len =
   if ofs < 0 || len < 0 || ofs > string_length s - len
@@ -324,8 +324,8 @@ external input_scan_line : in_channel -> int = "caml_ml_input_scan_line"
 
 let input_line chan =
   let rec build_result buf pos = function
-    [] -> buf
-  | hd :: tl ->
+      [] -> buf
+    | hd :: tl ->
       let len = string_length hd in
       string_blit hd 0 buf (pos - len) len;
       build_result buf (pos - len) tl in
@@ -342,7 +342,7 @@ let input_line chan =
       match accu with
         [] -> res
       |  _ -> let len = len + n - 1 in
-              build_result (string_create len) len (res :: accu)
+        build_result (string_create len) len (res :: accu)
     end else begin                        (* n < 0: newline not found *)
       let beg = string_create (-n) in
       ignore(unsafe_input chan beg 0 (-n));
@@ -359,7 +359,7 @@ external in_channel_length : in_channel -> int = "caml_ml_channel_size"
 external close_in : in_channel -> unit = "caml_ml_close_channel"
 let close_in_noerr ic = (try close_in ic with _ -> ());;
 external set_binary_mode_in : in_channel -> bool -> unit
-                            = "caml_ml_set_binary_mode"
+  = "caml_ml_set_binary_mode"
 
 (* Output functions on standard output *)
 
@@ -390,15 +390,15 @@ let read_float () = float_of_string(read_line())
 (* Operations on large files *)
 
 module LargeFile =
-  struct
-    external seek_out : out_channel -> int64 -> unit = "caml_ml_seek_out_64"
-    external pos_out : out_channel -> int64 = "caml_ml_pos_out_64"
-    external out_channel_length : out_channel -> int64
-                                = "caml_ml_channel_size_64"
-    external seek_in : in_channel -> int64 -> unit = "caml_ml_seek_in_64"
-    external pos_in : in_channel -> int64 = "caml_ml_pos_in_64"
-    external in_channel_length : in_channel -> int64 = "caml_ml_channel_size_64"
-  end
+struct
+  external seek_out : out_channel -> int64 -> unit = "caml_ml_seek_out_64"
+  external pos_out : out_channel -> int64 = "caml_ml_pos_out_64"
+  external out_channel_length : out_channel -> int64
+    = "caml_ml_channel_size_64"
+  external seek_in : in_channel -> int64 -> unit = "caml_ml_seek_in_64"
+  external pos_in : in_channel -> int64 = "caml_ml_pos_in_64"
+  external in_channel_length : in_channel -> int64 = "caml_ml_channel_size_64"
+end
 
 (* References *)
 
@@ -415,18 +415,18 @@ type ('a, 'b, 'c, 'd) format4 = ('a, 'b, 'c, 'c, 'c, 'd) format6
 type ('a, 'b, 'c) format = ('a, 'b, 'c, 'c) format4
 
 external format_of_string :
- ('a, 'b, 'c, 'd, 'e, 'f) format6 ->
- ('a, 'b, 'c, 'd, 'e, 'f) format6 = "%identity"
+  ('a, 'b, 'c, 'd, 'e, 'f) format6 ->
+  ('a, 'b, 'c, 'd, 'e, 'f) format6 = "%identity"
 
 external format_to_string :
- ('a, 'b, 'c, 'd, 'e, 'f) format6 -> string = "%identity"
+  ('a, 'b, 'c, 'd, 'e, 'f) format6 -> string = "%identity"
 external string_to_format :
- string -> ('a, 'b, 'c, 'd, 'e, 'f) format6 = "%identity"
+  string -> ('a, 'b, 'c, 'd, 'e, 'f) format6 = "%identity"
 
 let (( ^^ ) :
-      ('a, 'b, 'c, 'd, 'e, 'f) format6 ->
-      ('f, 'b, 'c, 'e, 'g, 'h) format6 ->
-      ('a, 'b, 'c, 'd, 'g, 'h) format6) =
+       ('a, 'b, 'c, 'd, 'e, 'f) format6 ->
+     ('f, 'b, 'c, 'e, 'g, 'h) format6 ->
+     ('a, 'b, 'c, 'd, 'g, 'h) format6) =
   fun fmt1 fmt2 ->
     string_to_format (format_to_string fmt1 ^ "%," ^ format_to_string fmt2)
 ;;
@@ -455,6 +455,6 @@ let exit retcode =
   sys_exit retcode
 
 external register_named_value : string -> 'a -> unit
-                              = "caml_register_named_value"
+  = "caml_register_named_value"
 
 let _ = register_named_value "Pervasives.do_at_exit" do_at_exit

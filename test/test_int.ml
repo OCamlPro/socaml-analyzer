@@ -35,26 +35,26 @@ module A1 = struct
     | (None,_) -> copy y
     | (_,None) -> copy x
     | (Some(a1,b1),Some(a2,b2)) ->
-	ref (Some((min a1 a2),(max b1 b2)))
+      ref (Some((min a1 a2),(max b1 b2)))
   let join_list man tx =
     List.fold_left (fun res x ->
-      join man res x) (bottom man) tx
+        join man res x) (bottom man) tx
   let widening man (x:t) y =
     canonical man x; canonical man y;
     match (!x,!y) with
     | (None,_) -> copy y
     | (_,None) -> failwith ""
     | (Some(a1,b1),Some(a2,b2)) ->
-	ref (Some(
-	  (if a2<a1 then min_int else a2),
-	  (if b2>b1 then max_int else b2)))
+      ref (Some(
+          (if a2<a1 then min_int else a2),
+          (if b2>b1 then max_int else b2)))
   let print man fmt (x:t) =
     canonical man x;
     match !x with
     | Some(a,b) ->
-	if is_top man x then pp_print_string fmt "top"
-	else
-	  fprintf fmt "[%i,%i]" a b
+      if is_top man x then pp_print_string fmt "top"
+      else
+        fprintf fmt "[%i,%i]" a b
     | None -> pp_print_string fmt "bot"
   let meet man (x:t) y =
     canonical man x; canonical man y;
@@ -62,9 +62,9 @@ module A1 = struct
     | (None,_) -> ref None
     | (_,None) -> ref None
     | (Some(a1,b1),Some(a2,b2)) ->
-	let a = max a1 a2 in
-	let b = min b1 b2 in
-	ref (if a>b then None else Some(a,b))
+      let a = max a1 a2 in
+      let b = min b1 b2 in
+      ref (if a>b then None else Some(a,b))
   let setcst man (x:t) (cst:int) =
     canonical man x;
     match !x with
@@ -75,22 +75,22 @@ module A1 = struct
     match !x with
     | None -> x
     | Some(a,b) -> ref (Some(
-	(if a=min_int then a else a+cst),
-	(if b=max_int then b else b+cst)))
+        (if a=min_int then a else a+cst),
+        (if b=max_int then b else b+cst)))
   let leqcst man (x:t) (cst:int) =
     canonical man x;
     match !x with
     | None -> x
     | Some(a,b) ->
-	let i = ref(Some(min_int,cst)) in
-	meet man (x:t) i
+      let i = ref(Some(min_int,cst)) in
+      meet man (x:t) i
   let geqcst man (x:t) (cst:int) =
     canonical man x;
     match !x with
     | None -> x
     | Some(a,b) ->
-	let i = ref(Some(cst,max_int)) in
-	meet man x i
+      let i = ref(Some(cst,max_int)) in
+      meet man x i
 end
 
 module A2 = struct
@@ -114,7 +114,7 @@ module A2 = struct
     (A1.join man x1 x2, A1.join man y1 y2)
   let join_list man tx =
     List.fold_left (fun res x ->
-      join man res x) (bottom man) tx
+        join man res x) (bottom man) tx
   let widening man (x1,y1) (x2,y2) =
     (A1.widening man x1 x2, A1.widening man y1 y2)
   let print man fmt ((x,y) as v) =
@@ -215,14 +215,14 @@ module Manager = struct
     in
     [|nabs|], []
 
-(* Creation of the following equation graph:
-   X0: x=0;
-   X1: y=0;
-   X2: while (x<=99) do
-   X3:   incr x;
-   X4:   y = x;
-   X5: done
-*)
+  (* Creation of the following equation graph:
+     X0: x=0;
+     X1: y=0;
+     X2: while (x<=99) do
+     X3:   incr x;
+     X4:   y = x;
+     X5: done
+  *)
 
 
   let abstract_init i =

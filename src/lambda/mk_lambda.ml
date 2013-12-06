@@ -34,7 +34,7 @@ let cmt_file ppf sourcefile outputprefix =
     ( Translmod.transl_implementation
         modulename
         (s,Typedtree.Tcoerce_none) (* Should be changed someday *)
-      , modulename )
+    , modulename )
   | _ -> failwith (Printf.sprintf "Bad cmt file: %s" sourcefile)
 
 let open_module s =

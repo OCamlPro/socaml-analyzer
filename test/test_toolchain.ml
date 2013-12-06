@@ -34,4 +34,4 @@ let tlambdas =
 let () =  print_endline "Got Tlambdas !"
 
 let _ = Array.fold_left (fun (_,env) -> Tlambda_interpret.tlambda funs env )
- (Tlambda_interpret.val_unit, Tlambda_interpret.env_empty) tlambdas
+    (Tlambda_interpret.val_unit, Tlambda_interpret.env_empty) tlambdas
