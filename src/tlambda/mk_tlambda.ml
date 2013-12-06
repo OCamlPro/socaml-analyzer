@@ -125,7 +125,11 @@ let s_insert a b = function
 
 let globals_tbl : (id, id) Hashtbl.t = Hashtbl.create 128
 let register_global = Hashtbl.add globals_tbl
-let get_global = Hashtbl.find globals_tbl
+let get_global i =
+  try Hashtbl.find globals_tbl i with
+  Not_found ->
+    let x = Id.create () in
+    register_global i x; x
 
 
 let lambda_to_tlambda ~modname ~funs code =
@@ -429,6 +433,7 @@ let lambda_to_tlambda ~modname ~funs code =
       if builtin i
       then tl ( Tprim ( TPbuiltin, [tid i] ) )
       else
+        (* let i = get_global i in *)
         let fv, i = check rv nfv fv i in
         mk_tlet rv nfv fv stack ( Tvar ( tid i ) )
     | Psetglobal ig, [ir] ->
@@ -581,19 +586,26 @@ let lambda_to_tlambda ~modname ~funs code =
       let i = mk () in
       extract_lams ((i,lam)::res) ((Lvar i)::l) tl
 
-  and extract_and_apply rv nfv fv stack mkl (mkt:id list -> 'a) l =
+  and extract_and_apply rv nfv fv stack mkl mkt l =
     let ok, lv = extract_vars l in
     if ok
     then mkt lv
     else
-      let stack, cont, _ =
+      let stack, nfv, cont, _ =
         List.fold_left
-          (fun (stack,cont,lv) lam ->
+          (fun (stack,nfv,cont,lv) lam ->
              match lam,lv with
-             | Lvar v, x::tl -> ( assert (x = v); (stack,cont,tl) )
-             | _, i::tl -> ( (i,cont)::stack, lam, tl )
+             | Lvar v, x::tl ->
+               assert (x = v);
+               ( stack, nfv, cont, tl )
+             | _, i::tl ->
+               ( (i,cont)::stack,
+                 ( Ids.add i nfv ),
+                 lam, tl )
              | _,[] -> assert false
-          ) ( stack, ( mkl ( lvars lv ) ), lv ) l
+
+          )
+          ( stack, nfv, ( mkl ( lvars lv ) ), lv ) l
       in
       tcontrol rv nfv fv stack cont
 
@@ -639,9 +651,9 @@ let lambda_to_tlambda ~modname ~funs code =
 
   let fv, lam =  tlambda Ids.empty Ids.empty Idm.empty code in
   let lam =
-    Idm.fold (fun _ id lam ->
-        assert ( id.Ident.stamp = 0 );
-        tlet ~k:Alias ~id ( Tvar ( "",id ) ) lam
+    Idm.fold (fun gid id lam ->
+        assert ( gid.Ident.stamp = 0 );
+        tlet ~k:Alias ~id ( Tvar ( "",gid ) ) lam
       )
       fv lam
   in
