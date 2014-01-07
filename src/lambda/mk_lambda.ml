@@ -37,9 +37,27 @@ let cmt_file ppf sourcefile outputprefix =
     , modulename )
   | _ -> failwith (Printf.sprintf "Bad cmt file: %s" sourcefile)
 
+let mli_file ppf sourcefile outputprefix =
+  Optcompile.interface ppf sourcefile outputprefix
+
+let cmti_file _ _ _ = failwith ".cmti not implemented, please directly compile .mli"
+  
+
 let open_module s =
   Compenv.implicit_modules := 
     s :: !Compenv.implicit_modules
+
+let open_module s =
+  Compenv.implicit_modules := 
+    s :: !Compenv.implicit_modules
+
+let close_module s =
+  let rec aux res = function
+    | [] -> ()
+    | h :: t when h = s -> Compenv.implicit_modules := List.rev_append res t
+    | h :: t -> aux (h::res) t
+  in
+  aux [] !Compenv.implicit_modules
 
 let mk_lambda ppf sourcefile =
   let outputprefix = Filename.chop_extension sourcefile in
