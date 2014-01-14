@@ -70,4 +70,5 @@ project_external_dirs = [
 files = [
   "/home/pat/devel/ocaml/dataanalysis/analysis.ocp";
   "/home/pat/devel/ocaml/dataanalysis/test/tests.ocp";
+  "/home/pat/devel/ocaml/dataanalysis/src/driver/programs.ocp";
 ]

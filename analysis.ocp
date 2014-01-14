@@ -46,29 +46,3 @@ begin library "api"
  requires = [ "data" "lambda-analysis" (* temporary *) ]
 end
 
-
-begin program "main"
- dirname = "src/driver"
- files = [ "cmb.ml" "my_main_args.ml" "main.ml" ]
- requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
-end
-
-begin program "bigraphc"
- dirname = "src/driver"
- files = [ "cmb.ml" "bgraphc" ]
- requires =
-  [
-    "common" "lambda" "tlambda" "hgraph" "lambda-analysis"
-  ]
-end
-
-begin program "analyzer"
- dirname = "src/driver"
- files = [ "cmb.ml" "bgrapha.ml" ]
- requires =
-  [
-    "compiler-libs" "compiler-libs.common" "compiler-libs.optcomp"
-    "common" "tlambda" "hgraph" "lambda-analysis"
-  ]
-end
-
