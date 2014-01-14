@@ -54,7 +54,7 @@ let ext_fun funtbl fid f_graph vin vout vexn =
           (list_hedge f_graph);
     }
 
-let import a =
+let import_generic folder arg =
   let open Tlambda_to_hgraph.G in 
   let g = create () in
   let nv g =
@@ -68,10 +68,16 @@ let import a =
     Hashtbl.create 65536
   in
   let vout =
-    Array.fold_left
+    folder
       (fun vin file ->
          Exp.import ~g ~funtbl ~ext_fun ~vin ~vexn ~file
-      ) vin a
+      ) vin arg
   in
   (g,funtbl,vin,vexn,vout)
 
+
+let import = import_generic Array.fold_left
+
+
+let import_list  = import_generic List.fold_left
+  

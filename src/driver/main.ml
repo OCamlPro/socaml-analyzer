@@ -1,40 +1,41 @@
+let ppf = Format.std_formatter
 
-open Common_types
+open My_main_args
 
-let lambdas =
-  Mk_lambda.mk_lambdas
-    Format.std_formatter
-    (Array.sub Sys.argv 1 ( pred (Array.length Sys.argv)) )
+let () =
+  Arg.parse arg_parser (handle_file ppf)
+    "Make sure that all your files are in the right order";
+  if not !only_compile
+  then
+    begin
+      let t = get_targets () in
+      let (g,funs,inv,exnv,outv) = Cmb.import_list t in
+      let module E =
+      struct
+        let inv = inv
+        let outv = outv
+        let exnv = exnv
+        let g = g
+        let funs = funs
+        let mk_vertex = Tlambda_to_hgraph.Vertex.mk ~modulename:""
+        let mk_hedge = Tlambda_to_hgraph.Hedge.mk
+      end
+      in
+      let module Manager = Tlambda_analysis.M ( E ) in
+      let module F = Hgraph.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
+      print_endline "starting the analysis";
+      let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
+      let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
+      if Envs.is_bottom exn_env
+      then ()
+      else
+        begin
+          print_endline "I found something:";
+          Data.print
+            Format.std_formatter
+            Manager.exn_tid
+            exn_env;
+          exit 1
+        end
 
-let funs : ( F.t, Tlambda.tlambda ) Hashtbl.t = Hashtbl.create 1024
-
-let tlambdas =
-  Array.map
-    (fun (lam, modname) ->
-       Mk_tlambda.lambda_to_tlambda
-         ~modname ~funs lam )
-    lambdas
-
-let ( g, funs, exn_id ) = Tlambda_to_hgraph.init ~modulename:"" funs
-
-let subgs =
-  Array.map
-    ( Tlambda_to_hgraph.mk_subgraph ~g ~modulename:"" ~exn_id )
-    tlambdas
-
-let inv,outv,exnv,return_id =
-  Tlambda_to_hgraph.merge_graphs ~g subgs
-
-module E =
-struct
-  let inv = inv
-  let outv = outv
-  let exnv = exnv
-  let g = g
-  let funs = funs
-  let mk_vertex = Tlambda_to_hgraph.Vertex.mk ~modulename:""
-  let mk_hedge = Tlambda_to_hgraph.Hedge.mk
-  let return_id = return_id
-end
-
-module Manager = Tlambda_analysis.M ( E )
+    end

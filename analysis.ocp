@@ -49,7 +49,7 @@ end
 
 begin program "main"
  dirname = "src/driver"
- files = [ "main.ml" ]
+ files = [ "cmb.ml" "my_main_args.ml" "main.ml" ]
  requires = [ "common" "lambda" "tlambda" "hgraph" "lambda-analysis" ]
 end
 
