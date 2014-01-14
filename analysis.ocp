@@ -24,7 +24,7 @@ begin library "data"
  files =
   [
     "int_interv.ml" "constants.ml" "data.ml" "envs.ml"
-     "int.ml" "otherints.ml" "blocks.ml" "cps.ml" "bools.ml" "strings.ml" "floats.ml" "funs.ml" "exprs.ml"
+     "int.ml" "otherints.ml" "blocks.ml" "cps.ml" "bools.ml" "strings.ml" "arrays.ml" "floats.ml" "funs.ml" "exprs.ml"
   ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
