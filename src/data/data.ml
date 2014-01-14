@@ -24,6 +24,12 @@ module Ids = Set.Make (struct type t = tid let compare = compare let print = TId
 
 module Fm = Map.Make (struct type t = f let compare = compare let print = F.print end)
 
+type array_descr =
+  {
+    a_elems: Ids.t;
+    a_size: Int_interv.t;
+  }
+
 (* The data *)
 
 type data =
@@ -38,6 +44,7 @@ type data =
     inat : simple;
     cp : Ints.t;
     blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
+    arrays : array_descr;
     f : Ids.t array Fm.t;
     expr : hinfo list;
   }
@@ -61,6 +68,7 @@ let bottom =
     inat = simple_bottom;
     cp = Ints.empty;
     blocks = Tagm.empty;
+    arrays = { a_elems = Ids.empty; a_size = Int_interv.bottom; };
     f = Fm.empty;
     expr = [];
   }
@@ -74,12 +82,12 @@ let is_bottom_simple = function
   | Constants c -> Constants.is_empty c
 
 let is_bottom env { top; int; float; string; floata; i32;
-                    i64; inat; cp; blocks; f } =
+                    i64; inat; cp; blocks; arrays = { a_elems; a_size; }; f; } =
   top = false && Int_interv.is_bottom int && is_bottom_simple float &&
   is_bottom_simple string && is_bottom_simple floata &&
   is_bottom_simple i32 && is_bottom_simple i64 &&
   is_bottom_simple inat &&
-  Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
+  Ints.is_empty cp && Tagm.is_empty blocks && ( Ids.is_empty a_elems || Int_interv.is_bottom a_size ) && Fm.is_empty f
 
 (* basic env management *)
 
@@ -162,6 +170,11 @@ let rec union (* env *) a b =
     inat = union_simple a.inat b.inat;
     cp = Ints.union a.cp b.cp;
     blocks;
+    arrays =
+      {
+        a_elems = Ids.union a.arrays.a_elems b.arrays.a_elems;
+        a_size = Int_interv.join a.arrays.a_size b.arrays.a_size;
+      };
     f;
     expr = List.rev_append a.expr b.expr;
   }
@@ -218,6 +231,7 @@ let rec included env i1 i2 =
                   a b
              ) a
          with Not_found -> false) a.blocks
+    || ( Int_interv.is_leq a.arrays.a_size b.arrays.a_size && true (* TODO: the idsets *) )
     || Fm.exists
       (fun k a ->
          try
@@ -261,6 +275,8 @@ let is_leq a b =
              ) a
          with Not_found -> false
       ) a.blocks
+    && Ids.subset a.arrays.a_elems b.arrays.a_elems
+    && Int_interv.is_leq a.arrays.a_size b.arrays.a_size
     && Fm.for_all
       (fun k a ->
          try
@@ -340,6 +356,11 @@ let intersect_noncommut env a b =
       inat = intersection_simple a.inat b.inat;
       cp = Ints.inter a.cp b.cp;
       blocks;
+      arrays =
+        {
+          a_elems = b.arrays.a_elems (* TODO: see that again *);
+          a_size = Int_interv.meet a.arrays.a_size b.arrays.a_size;
+        };
       f;
       expr = [];
     }
@@ -430,6 +451,15 @@ let print pp id env =
               pp
               d.blocks;
             fprintf pp "@ @]@."
+          );
+        if not ( Ids.is_empty d.arrays.a_elems || Int_interv.is_bottom d.arrays.a_size )
+        then
+          (
+            fprintf pp "Arrays@.[@[@ sizes:@[";
+            Int_interv.print pp d.arrays.a_size;
+            fprintf pp "@]@ elements:@[";
+            Ids.print_sep sep pp d.arrays.a_elems;
+            fprintf pp "@]@ @]]@."
           );
         if not ( Fm.is_empty d.f )
         then
