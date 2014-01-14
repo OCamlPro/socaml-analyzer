@@ -1,4 +1,4 @@
 *.cm?
-ocp-build.root*
+ocp-build.root.old*
 _obuild/
 *~
