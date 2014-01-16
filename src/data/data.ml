@@ -24,6 +24,8 @@ module Ids = Set.Make (struct type t = tid let compare = compare let print = TId
 
 module Fm = Map.Make (struct type t = f let compare = compare let print = F.print end)
 
+module Hinfos = Set.Make (struct type t = hinfo let compare = compare let print _ _ = () end)
+
 type array_descr =
   {
     a_elems: Ids.t;
@@ -50,7 +52,7 @@ type data =
     blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
     arrays : array_descr;
     f : Ids.t array Fm.t;
-    expr : hinfo list;
+    expr : Hinfos.t;
   }
 
 (* The environment *)
@@ -77,7 +79,7 @@ let bottom =
       a_float = false; a_gen = false; a_addr = false; a_int = false;
     };
     f = Fm.empty;
-    expr = [];
+    expr = Hinfos.empty;
   }
 
 let top = { bottom with top = true; }
@@ -187,7 +189,7 @@ let rec union (* env *) a b =
         a_int = a.arrays.a_int || b.arrays.a_int;
      };
     f;
-    expr = List.rev_append a.expr b.expr;
+    expr = Hinfos.union a.expr b.expr;
   }
 
 and union_id env i1 i2 =
@@ -383,7 +385,7 @@ let intersect_noncommut env a b =
           a_int = a.arrays.a_int && b.arrays.a_int;
         };
       f;
-      expr = [];
+      expr = Hinfos.empty;
     }
 
 let odo f g = function

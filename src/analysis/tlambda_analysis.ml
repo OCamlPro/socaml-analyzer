@@ -45,22 +45,22 @@ let warn ~env msg = print_endline msg; env
 
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
-  let l = d.expr in
+  let es = d.expr in
   if Cps.has cp d
   then
     if Cps.is_one d env
     then env
     else
       begin
-        constraint_env_cp_list l cp env
+        constraint_env_cp_exprs es cp env
         |> set_env id (Cps.restrict ~v:cp d)
       end
   else Envs.bottom
 
-and constraint_env_cp_list l cp env =
-  List.fold_left
-    (fun e expr -> Envs.join e ( constraint_env_cp expr cp env ) )
-    Envs.bottom l
+and constraint_env_cp_exprs es cp env =
+  Hinfos.fold
+    (fun expr e -> Envs.join e ( constraint_env_cp expr cp env ) )
+    es Envs.bottom
 
 and constraint_env_cp expr cp env =
   match expr with
@@ -113,15 +113,15 @@ let rec constraint_env_tag_var id tag env =
     then env
     else
       begin
-        constraint_env_tag_list l tag env
+        constraint_env_tag_exprs l tag env
         |> set_env id (Blocks.restrict ~tag d)
       end
   else Envs.bottom
 
-and constraint_env_tag_list l tag env =
-  List.fold_left
-    (fun e expr -> Envs.join e ( constraint_env_tag expr tag env ) )
-    Envs.bottom l
+and constraint_env_tag_exprs es tag env =
+  Hinfos.fold
+    (fun expr e -> Envs.join e ( constraint_env_tag expr tag env ) )
+    es Envs.bottom
 
 and constraint_env_tag expr tag env =
   match expr with

@@ -52,26 +52,22 @@ let gc roots env =
     Fm.fold (fun _ a res ->
         Array.fold_left (fun res ids -> List.rev_append (Ids.elements ids) res ) res a
       ) f res
-  and dep_expr l res =
-    let rec aux res = function
-      | [] -> res
-      | e :: tl ->
-        begin
-          match e with
-          | Var x
-          | Lazyforce x -> aux (x::res) tl
-          | App_prep ( x, y )
-          | Send ( x, y ) -> aux ( x :: y :: res ) tl
-          | Constraint _
-          | Const _ -> aux res tl
-          | Prim ( _, l )
-          | Ccall ( _, l )->
-            aux ( List.rev_append l res ) tl
-          | Return _ | Retexn _ -> failwith "TODO: GC function return"
-          | App -> assert false
-        end
-    in aux res l
-
+  and dep_expr es res =
+    Hinfos.fold (fun e res ->
+        match e with
+        | Var x
+        | Lazyforce x -> x :: res
+        | App_prep ( x, y )
+        | Send ( x, y ) ->  x :: y :: res
+        | Constraint _
+        | Const _ -> res
+        | Prim ( _, l )
+        | Ccall ( _, l )->
+          List.rev_append l res
+        | Return _ | Retexn _ -> failwith "TODO: GC function return"
+        | App -> assert false
+      )
+      es res
   in
   let dependancies id idm =
     let d = Idm.find id idm in
