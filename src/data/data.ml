@@ -44,7 +44,6 @@ type data =
     int : Int_interv.t;
     float : simple;
     string : simple;
-    floata : simple;
     i32 : simple;
     i64 : simple;
     inat : simple;
@@ -68,7 +67,6 @@ let bottom =
     int = Int_interv.bottom;
     float = simple_bottom;
     string = simple_bottom;
-    floata = simple_bottom;
     i32 = simple_bottom;
     i64 = simple_bottom;
     inat = simple_bottom;
@@ -90,10 +88,10 @@ let is_bottom_simple = function
   | Top -> false
   | Constants c -> Constants.is_empty c
 
-let is_bottom env { top; int; float; string; floata; i32;
+let is_bottom env { top; int; float; string; i32;
                     i64; inat; cp; blocks; arrays = { a_elems; a_size; }; f; } =
   top = false && Int_interv.is_bottom int && is_bottom_simple float &&
-  is_bottom_simple string && is_bottom_simple floata &&
+  is_bottom_simple string &&
   is_bottom_simple i32 && is_bottom_simple i64 &&
   is_bottom_simple inat &&
   Ints.is_empty cp && Tagm.is_empty blocks && ( Ids.is_empty a_elems || Int_interv.is_bottom a_size ) && Fm.is_empty f
@@ -173,7 +171,6 @@ let rec union (* env *) a b =
     int = Int_interv.join a.int b.int;
     float = union_simple a.float b.float;
     string = union_simple a.string b.string;
-    floata = union_simple a.floata b.floata;
     i32 = union_simple a.i32 b.i32;
     i64 = union_simple a.i64 b.i64;
     inat = union_simple a.inat b.inat;
@@ -223,7 +220,6 @@ let rec included env i1 i2 =
     || Int_interv.is_leq a.int b.int
     || included_simple a.float b.float
     || included_simple a.string b.string
-    || included_simple a.floata b.floata
     || included_simple a.i32 b.i32
     || included_simple a.i64 b.i64
     || included_simple a.inat b.inat
@@ -272,7 +268,6 @@ let is_leq a b =
     && Int_interv.is_leq a.int b.int
     && leq_simple a.float b.float
     && leq_simple a.string b.string
-    && leq_simple a.floata b.floata
     && leq_simple a.i32 b.i32
     && leq_simple a.i64 b.i64
     && leq_simple a.inat b.inat
@@ -369,7 +364,6 @@ let intersect_noncommut env a b =
       int = Int_interv.meet a.int b.int;
       float = intersection_simple a.float b.float;
       string = intersection_simple a.string b.string;
-      floata = intersection_simple a.floata b.floata;
       i32 = intersection_simple a.i32 b.i32;
       i64 = intersection_simple a.i64 b.i64;
       inat = intersection_simple a.inat b.inat;
@@ -447,7 +441,6 @@ let print pp id env =
           );
         print_simple pp "Floats" d.float;
         print_simple pp "Strings" d.string;
-        print_simple pp "Float arrays" d.floata;
         print_simple pp "Int32" d.i32;
         print_simple pp "Int64" d.i64;
         print_simple pp "Native ints" d.inat;

@@ -240,7 +240,14 @@ end
         in
         let a = Array.of_list (List.rev ids) in
         env, ( Blocks.singleton t a )
-      | Const_float_array l -> env, Floats.array l
+      | Const_float_array l ->
+        let ids,env =
+          List.fold_left
+            (fun (ids,env) f ->
+               let env,id = reg_env (Floats.singleton f) env in
+               (id::ids, env)
+            ) ([], env) l in
+        env, Arrays.singleton ids ( Int_interv.cst (List.length l)) Pfloatarray
       | Const_immstring s -> env, Strings.singleton s
     (* Data.singleton_string s *)
 

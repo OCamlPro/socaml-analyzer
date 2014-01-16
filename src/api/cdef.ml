@@ -5,7 +5,7 @@ let register = Def_c_fun.add_def
 let default = Def_c_fun.default
 
 type basetype =
-    Int | IntN | Int32 | Int64 | Float | Floata | Const | Block | String | Func
+    Int | IntN | Int32 | Int64 | Float | Array | Const | Block | String | Func
 
 let rec aux d res = function
   | [] -> res
@@ -19,7 +19,7 @@ let rec aux d res = function
         | Int32 -> { res with i32 = d.i32 }
         | Int64 -> { res with i64 = d.i64 }
         | Float -> { res with float = d.float }
-        | Floata -> { res with floata = d.floata }
+        | Array -> { res with arrays = d.arrays }
         | Const -> { res with cp = d.cp }
         | Block -> { res with blocks = d.blocks }
         | String -> { res with string = d.string }
