@@ -57,3 +57,5 @@ let is_int env d =
 
 let is_out x a b =
   failwith "is_out"
+
+let of_interv i = { bottom with int = i }

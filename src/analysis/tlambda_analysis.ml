@@ -327,12 +327,13 @@ set_env id vunit env *)
             (* Array operations *)
             | TPmakearray Pfloatarray, _ ->
               sa { Data.bottom with floata = Constants.Top }
-            | TParraylength Pfloatarray, _ ->
-              sa ( Int.any )
+            | TParraylength _, [x] ->
+              let a = get x in
+              sa ( Int.of_interv (Arrays.size a) )
             | TParrayrefu Pfloatarray, _ -> sa Data.top
             | TPmakearray _, l ->
               sa ( Blocks.singleton 0 (Array.of_list l) )
-            | TParraylength k, [a] -> sa ( Blocks.sizes ~tag:0 (get a) )
+            (* | TParraylength k, [a] -> sa ( Blocks.sizes ~tag:0 (get a) ) *)
             | TParrayrefu k, [a;i] -> (* sa ( Blocks.field ) *) dsaw "Array ref" 
             | TParraysetu k, [a;i;x] -> dsaw "Array set"
             (* Test if the argument is a block or an immediate integer *)
