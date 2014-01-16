@@ -41,3 +41,6 @@ let nofuns = Hashtbl.create 1
 let () =
   assert ( fst ( tlambda nofuns env_empty t1) = Int 42);
   assert ( fst ( tlambda nofuns env_empty t2) = Int (1605+1666))
+
+let () =
+  Format.printf "t2 : %a@." Print_tlambda.tlambda t2

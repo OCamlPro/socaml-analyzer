@@ -15,7 +15,7 @@ end
 
 begin library "tlambda"
  dirname = "src/tlambda"
- files = [ "tlambda.mli" "tlambda_interpret.ml" "mk_tlambda.ml" ]
+ files = [ "tlambda.mli" "print_tlambda.ml" "tlambda_interpret.ml" "mk_tlambda.ml" ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 
@@ -109,8 +109,9 @@ begin test "ttoolchain"
  test_byte = false
  tests =
  [
-  "simple" ( test_args = [ "myper.ml" ] )
-  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
+  "simple" ( test_args = [ "myper.ml" "-print" "Myper"] )
+  "chain" ( test_args = [ "myper.ml" "-open" "Myper"
+                          "-print" "A" "a.ml" ] )
   "pervasives" ( test_args = [ "pervasives.ml" ] )
  ]
 end
