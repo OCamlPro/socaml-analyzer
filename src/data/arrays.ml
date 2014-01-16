@@ -1,13 +1,18 @@
 open Common_types
 open Data
 
-let singleton id size =
+let singleton id size akind =
+  let open Lambda in
   {
     bottom with
     arrays =
       {
         a_elems = Ids.singleton id;
         a_size = size;
+        a_gen = akind = Pgenarray;
+        a_float = akind = Pfloatarray;
+        a_addr = akind = Paddrarray;
+        a_int = akind = Pintarray;
       }
   }
 

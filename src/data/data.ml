@@ -28,6 +28,10 @@ type array_descr =
   {
     a_elems: Ids.t;
     a_size: Int_interv.t;
+    a_float: bool;
+    a_gen: bool;
+    a_addr: bool;
+    a_int: bool;
   }
 
 (* The data *)
@@ -68,7 +72,10 @@ let bottom =
     inat = simple_bottom;
     cp = Ints.empty;
     blocks = Tagm.empty;
-    arrays = { a_elems = Ids.empty; a_size = Int_interv.bottom; };
+    arrays = {
+      a_elems = Ids.empty; a_size = Int_interv.bottom;
+      a_float = false; a_gen = false; a_addr = false; a_int = false;
+    };
     f = Fm.empty;
     expr = [];
   }
@@ -174,7 +181,11 @@ let rec union (* env *) a b =
       {
         a_elems = Ids.union a.arrays.a_elems b.arrays.a_elems;
         a_size = Int_interv.join a.arrays.a_size b.arrays.a_size;
-      };
+        a_float = a.arrays.a_float || b.arrays.a_float;
+        a_gen = a.arrays.a_gen || b.arrays.a_gen;
+        a_addr = a.arrays.a_addr || b.arrays.a_addr;
+        a_int = a.arrays.a_int || b.arrays.a_int;
+     };
     f;
     expr = List.rev_append a.expr b.expr;
   }
@@ -231,7 +242,7 @@ let rec included env i1 i2 =
                   a b
              ) a
          with Not_found -> false) a.blocks
-    || ( Int_interv.is_leq a.arrays.a_size b.arrays.a_size && true (* TODO: the idsets *) )
+    || ( Int_interv.is_leq a.arrays.a_size b.arrays.a_size && true (* TODO: the idsets and the atypes*) )
     || Fm.exists
       (fun k a ->
          try
@@ -277,6 +288,12 @@ let is_leq a b =
       ) a.blocks
     && Ids.subset a.arrays.a_elems b.arrays.a_elems
     && Int_interv.is_leq a.arrays.a_size b.arrays.a_size
+    && ( b.arrays.a_gen
+         || not a.arrays.a_gen
+            && ( not a.arrays.a_float || b.arrays.a_float )
+            && ( not a.arrays.a_addr || b.arrays.a_addr )
+            && ( not a.arrays.a_int || b.arrays.a_int )
+       )
     && Fm.for_all
       (fun k a ->
          try
@@ -360,6 +377,10 @@ let intersect_noncommut env a b =
         {
           a_elems = b.arrays.a_elems (* TODO: see that again *);
           a_size = Int_interv.meet a.arrays.a_size b.arrays.a_size;
+          a_gen = a.arrays.a_gen && b.arrays.a_gen;
+          a_float = a.arrays.a_float && b.arrays.a_float;
+          a_addr = a.arrays.a_addr && b.arrays.a_addr;
+          a_int = a.arrays.a_int && b.arrays.a_int;
         };
       f;
       expr = [];
@@ -452,13 +473,30 @@ let print pp id env =
               d.blocks;
             fprintf pp "@ @]@."
           );
-        if not ( Ids.is_empty d.arrays.a_elems || Int_interv.is_bottom d.arrays.a_size )
+        let a = d.arrays in
+        if not ( Ids.is_empty a.a_elems || Int_interv.is_bottom a.a_size )
         then
           (
-            fprintf pp "Arrays@.[@[@ sizes:@[";
-            Int_interv.print pp d.arrays.a_size;
+            fprintf pp "Arrays%s@.[@[@ sizes:@["
+              (if a.a_gen
+               then ""
+               else 
+                 "(" ^
+                 (String.concat ","
+                    (
+                      List.filter ((<>) "")
+                        [
+                          if a.a_float then "f" else "";
+                          if a.a_addr then "b" else "";
+                          if a.a_int then "i" else ""
+                        ]
+                    )
+                 )
+                 ^ ")"
+              );
+            Int_interv.print pp a.a_size;
             fprintf pp "@]@ elements:@[";
-            Ids.print_sep sep pp d.arrays.a_elems;
+            Ids.print_sep sep pp a.a_elems;
             fprintf pp "@]@ @]]@."
           );
         if not ( Fm.is_empty d.f )
