@@ -15,7 +15,7 @@ end
 
 begin library "tlambda"
  dirname = "src/tlambda"
- files = [ "tlambda.mli" "tlambda_interpret.ml" "mk_tlambda.ml" ]
+ files = [ "tlambda.mli" "print_tlambda.ml" "tlambda_interpret.ml" "mk_tlambda.ml" ]
  requires = [ "common" "compiler-libs" "compiler-libs.common" ]
 end
 
@@ -45,4 +45,3 @@ begin library "api"
  files = [ "cdef.ml" ]
  requires = [ "data" "lambda-analysis" (* temporary *) ]
 end
-
