@@ -253,6 +253,7 @@ end
         and act d = Exprs.set d action
         in
         let sa x = set ( act x ) in
+        let unit env = set_env id ( act (Cps.singleton 0)) env in
         let dsaw msg =
           let env = set ( act Data.top ) in
           warn ~env msg
@@ -325,17 +326,18 @@ set_env id vunit env *)
 (* String operations *)
 | TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets *)
             (* Array operations *)
-            | TPmakearray Pfloatarray, _ ->
-              sa { Data.bottom with floata = Constants.Top }
+            | TPmakearray k, l ->
+              sa ( Arrays.singleton l ( Int_interv.cst (List.length l)) k )
             | TParraylength _, [x] ->
               let a = get x in
               sa ( Int.of_interv (Arrays.size a) )
-            | TParrayrefu Pfloatarray, _ -> sa Data.top
-            | TPmakearray _, l ->
-              sa ( Blocks.singleton 0 (Array.of_list l) )
-            (* | TParraylength k, [a] -> sa ( Blocks.sizes ~tag:0 (get a) ) *)
-            | TParrayrefu k, [a;i] -> (* sa ( Blocks.field ) *) dsaw "Array ref" 
-            | TParraysetu k, [a;i;x] -> dsaw "Array set"
+            | TParrayrefu _, [a;_] ->
+              let ids = Arrays.get (get a) in
+              sa ( Data.union_ids env ids)
+            | TParraysetu _, [ai;_;i] ->
+              let a = Arrays.set (get ai) i in
+              let env = set_env ai a env in
+              unit env
             (* Test if the argument is a block or an immediate integer *)
             | TPisint, [x] -> sa ( Int.is_int env (get x) )
             (* Test if the (integer) argument is outside an interval *)
