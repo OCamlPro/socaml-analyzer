@@ -26,3 +26,5 @@ module M : functor ( E : Entry ) ->
        and type abstract = Data.environment
     val exn_tid : tid
   end
+
+val get_counter : unit -> int

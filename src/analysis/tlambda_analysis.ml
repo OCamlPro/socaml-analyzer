@@ -11,6 +11,10 @@ type h = Hedge.t
 type e = environment
 type ha = hattr
 
+let apply_counter = ref 0
+let get_counter () = !apply_counter
+
+
 let intop2_of_prim o =
   let open Int_interv in
   match o with
@@ -253,6 +257,7 @@ end
 
 
     let apply (_ :hedge ) ( l : hedge_attribute ) ( envs : abstract array ) =
+      incr apply_counter;
       let in_apply ( id, action) env =
         let set x = set_env id x env
         and get x = get_env x env

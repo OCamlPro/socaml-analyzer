@@ -11,6 +11,8 @@ let get_targets () = List.rev !targets
 let only_compile = ref false
 let target_string : string option ref = ref None
 
+let count_apply = ref false
+
 let arg_parser =
   let open Arg in
   align
@@ -27,6 +29,9 @@ let arg_parser =
       ( "-o",
         String (fun s -> target_string := Some s ),
         "Specify the name of the target to build");
+      ( "-counter",
+        Set count_apply,
+        "Output the pass count");
     ]
 
 let handle_file ppf sourcefile =
