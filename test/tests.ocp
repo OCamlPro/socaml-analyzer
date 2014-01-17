@@ -33,6 +33,7 @@ begin test "ttoolchain"
  requires = [ "common" "lambda" "tlambda" "compiler-libs" "compiler-libs.common" ]
  test_dir = "test/samples"
  test_byte = false
+ test_serialized = true
  tests =
  [
   "simple" ( test_args = [ "myper.ml" ] )
@@ -46,6 +47,7 @@ begin test "tbg"
  requires = [ "bigraphc" ]
  test_dir = "test/samples"
  test_byte = false
+ test_serialized = true
  tests =
  [
   "simple" ( test_args = [ "myper.ml" ] )
@@ -64,6 +66,7 @@ begin test "tba"
  requires = [ "analyzer" ]
  test_dir = "test/samples"
  test_byte = false
+ test_serialized = true
  tests =
  [
   "simple" ( test_args = [ "myper.cmb" ] )
@@ -75,6 +78,23 @@ begin test "tba"
   "bad" ( test_args = [ "pervasives.cmb" "bad.cmb" ] test_exit = 1 )
   "conditionnal" ( test_args = [ "pervasives.cmb" "conditionnal.cmb" ] )
 
+ ]
+
+end
+
+
+begin test "tmain"
+ files = [ ]
+ requires = [ "main" ]
+ test_dir = "test/samples"
+ test_byte = false
+ test_serialized = true
+ tests =
+ [
+  "simple" ( test_args = [ "myper.ml" ] )
+  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
+  "pervasives" ( test_args = [ "pervasives.ml" ] )
+  "simplest" ( test_args = [ "simpler.ml" ] )
  ]
 
 end
