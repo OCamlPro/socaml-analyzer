@@ -46,7 +46,7 @@ let is_one_tag d env =
 
 let set_field i v b =
   let b = restrict ~has_field:i b in
-  { b with blocks = Tagm.map ( Intm.map ( set_a i v)) b.blocks }
+  { b with blocks = Tagm.map ( Intm.map ( set_a i (Ids.singleton v))) b.blocks }
 
 
 let get_field i b =

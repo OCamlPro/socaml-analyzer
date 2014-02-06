@@ -298,7 +298,7 @@ end
                 env
             | TPsetfield ( i, _ ), [b;v] ->
               env
-              |> set_env b ( set_field i v (get b) )
+              |> set_env b ( Blocks.set_field i v (get b) )
               |> unit
 
             | TPfloatfield i, [b] -> dsaw "TODO: floatfield"
@@ -366,7 +366,7 @@ end
               sa ( Data.union_ids env ids)
             | TParraysetu _, [ai;_;i] ->
               env
-              |> set_env ai ( Arrays.set (get ai) i ) env
+              |> set_env ai ( Arrays.set (get ai) i )
               |> unit
 
             (* Test if the argument is a block or an immediate integer *)
