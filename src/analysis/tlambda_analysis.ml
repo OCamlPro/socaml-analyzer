@@ -45,22 +45,22 @@ let warn ~env msg = print_endline msg; env
 
 let rec constraint_env_cp_var id cp env =
   let d = get_env id env in
-  let l = d.expr in
+  let es = d.expr in
   if Cps.has cp d
   then
     if Cps.is_one d env
     then env
     else
       begin
-        constraint_env_cp_list l cp env
+        constraint_env_cp_exprs es cp env
         |> set_env id (Cps.restrict ~v:cp d)
       end
   else Envs.bottom
 
-and constraint_env_cp_list l cp env =
-  List.fold_left
-    (fun e expr -> Envs.join e ( constraint_env_cp expr cp env ) )
-    Envs.bottom l
+and constraint_env_cp_exprs es cp env =
+  Hinfos.fold
+    (fun expr e -> Envs.join e ( constraint_env_cp expr cp env ) )
+    es Envs.bottom
 
 and constraint_env_cp expr cp env =
   match expr with
@@ -113,15 +113,15 @@ let rec constraint_env_tag_var id tag env =
     then env
     else
       begin
-        constraint_env_tag_list l tag env
+        constraint_env_tag_exprs l tag env
         |> set_env id (Blocks.restrict ~tag d)
       end
   else Envs.bottom
 
-and constraint_env_tag_list l tag env =
-  List.fold_left
-    (fun e expr -> Envs.join e ( constraint_env_tag expr tag env ) )
-    Envs.bottom l
+and constraint_env_tag_exprs es tag env =
+  Hinfos.fold
+    (fun expr e -> Envs.join e ( constraint_env_tag expr tag env ) )
+    es Envs.bottom
 
 and constraint_env_tag expr tag env =
   match expr with
@@ -240,7 +240,14 @@ end
         in
         let a = Array.of_list (List.rev ids) in
         env, ( Blocks.singleton t a )
-      | Const_float_array l -> env, Floats.array l
+      | Const_float_array l ->
+        let ids,env =
+          List.fold_left
+            (fun (ids,env) f ->
+               let env,id = reg_env (Floats.singleton f) env in
+               (id::ids, env)
+            ) ([], env) l in
+        env, Arrays.singleton ids ( Int_interv.cst (List.length l)) Pfloatarray
       | Const_immstring s -> env, Strings.singleton s
     (* Data.singleton_string s *)
 
@@ -253,6 +260,7 @@ end
         and act d = Exprs.set d action
         in
         let sa x = set ( act x ) in
+        let unit env = set_env id ( act (Cps.singleton 0)) env in
         let dsaw msg =
           let env = set ( act Data.top ) in
           warn ~env msg
@@ -325,16 +333,18 @@ set_env id vunit env *)
 (* String operations *)
 | TPstringlength | TPstringrefu | TPstringsetu | TPstringrefs | TPstringsets *)
             (* Array operations *)
-            | TPmakearray Pfloatarray, _ ->
-              sa { Data.bottom with floata = Constants.Top }
-            | TParraylength Pfloatarray, _ ->
-              sa ( Int.any )
-            | TParrayrefu Pfloatarray, _ -> sa Data.top
-            | TPmakearray _, l ->
-              sa ( Blocks.singleton 0 (Array.of_list l) )
-            | TParraylength k, [a] -> sa ( Blocks.sizes ~tag:0 (get a) )
-            | TParrayrefu k, [a;i] -> (* sa ( Blocks.field ) *) dsaw "Array ref" 
-            | TParraysetu k, [a;i;x] -> dsaw "Array set"
+            | TPmakearray k, l ->
+              sa ( Arrays.singleton l ( Int_interv.cst (List.length l)) k )
+            | TParraylength _, [x] ->
+              let a = get x in
+              sa ( Int.of_interv (Arrays.size a) )
+            | TParrayrefu _, [a;_] ->
+              let ids = Arrays.get (get a) in
+              sa ( Data.union_ids env ids)
+            | TParraysetu _, [ai;_;i] ->
+              let a = Arrays.set (get ai) i in
+              let env = set_env ai a env in
+              unit env
             (* Test if the argument is a block or an immediate integer *)
             | TPisint, [x] -> sa ( Int.is_int env (get x) )
             (* Test if the (integer) argument is outside an interval *)

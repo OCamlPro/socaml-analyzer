@@ -1,11 +1,15 @@
 configure:
       ocp-build configure
 
-all:
+build:
       ocp-build build
+
+test:
       ocp-build test
+
+all: build test
 
 clean:
       ocp-build clean
 
-.PHONY: configure all clean
+.PHONY: configure all clean build test

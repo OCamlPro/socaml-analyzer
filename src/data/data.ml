@@ -24,6 +24,18 @@ module Ids = Set.Make (struct type t = tid let compare = compare let print = TId
 
 module Fm = Map.Make (struct type t = f let compare = compare let print = F.print end)
 
+module Hinfos = Set.Make (struct type t = hinfo let compare = compare let print _ _ = () end)
+
+type array_descr =
+  {
+    a_elems: Ids.t;
+    a_size: Int_interv.t;
+    a_float: bool;
+    a_gen: bool;
+    a_addr: bool;
+    a_int: bool;
+  }
+
 (* The data *)
 
 type data =
@@ -32,14 +44,14 @@ type data =
     int : Int_interv.t;
     float : simple;
     string : simple;
-    floata : simple;
     i32 : simple;
     i64 : simple;
     inat : simple;
     cp : Ints.t;
     blocks : Ids.t array Intm.t Tagm.t; (* referenced by tag, then by size *)
+    arrays : array_descr;
     f : Ids.t array Fm.t;
-    expr : hinfo list;
+    expr : Hinfos.t;
   }
 
 (* The environment *)
@@ -55,14 +67,17 @@ let bottom =
     int = Int_interv.bottom;
     float = simple_bottom;
     string = simple_bottom;
-    floata = simple_bottom;
     i32 = simple_bottom;
     i64 = simple_bottom;
     inat = simple_bottom;
     cp = Ints.empty;
     blocks = Tagm.empty;
+    arrays = {
+      a_elems = Ids.empty; a_size = Int_interv.bottom;
+      a_float = false; a_gen = false; a_addr = false; a_int = false;
+    };
     f = Fm.empty;
-    expr = [];
+    expr = Hinfos.empty;
   }
 
 let top = { bottom with top = true; }
@@ -73,13 +88,13 @@ let is_bottom_simple = function
   | Top -> false
   | Constants c -> Constants.is_empty c
 
-let is_bottom env { top; int; float; string; floata; i32;
-                    i64; inat; cp; blocks; f } =
+let is_bottom env { top; int; float; string; i32;
+                    i64; inat; cp; blocks; arrays = { a_elems; a_size; }; f; } =
   top = false && Int_interv.is_bottom int && is_bottom_simple float &&
-  is_bottom_simple string && is_bottom_simple floata &&
+  is_bottom_simple string &&
   is_bottom_simple i32 && is_bottom_simple i64 &&
   is_bottom_simple inat &&
-  Ints.is_empty cp && Tagm.is_empty blocks && Fm.is_empty f
+  Ints.is_empty cp && Tagm.is_empty blocks && ( Ids.is_empty a_elems || Int_interv.is_bottom a_size ) && Fm.is_empty f
 
 (* basic env management *)
 
@@ -156,14 +171,22 @@ let rec union (* env *) a b =
     int = Int_interv.join a.int b.int;
     float = union_simple a.float b.float;
     string = union_simple a.string b.string;
-    floata = union_simple a.floata b.floata;
     i32 = union_simple a.i32 b.i32;
     i64 = union_simple a.i64 b.i64;
     inat = union_simple a.inat b.inat;
     cp = Ints.union a.cp b.cp;
     blocks;
+    arrays =
+      {
+        a_elems = Ids.union a.arrays.a_elems b.arrays.a_elems;
+        a_size = Int_interv.join a.arrays.a_size b.arrays.a_size;
+        a_float = a.arrays.a_float || b.arrays.a_float;
+        a_gen = a.arrays.a_gen || b.arrays.a_gen;
+        a_addr = a.arrays.a_addr || b.arrays.a_addr;
+        a_int = a.arrays.a_int || b.arrays.a_int;
+     };
     f;
-    expr = List.rev_append a.expr b.expr;
+    expr = Hinfos.union a.expr b.expr;
   }
 
 and union_id env i1 i2 =
@@ -197,7 +220,6 @@ let rec included env i1 i2 =
     || Int_interv.is_leq a.int b.int
     || included_simple a.float b.float
     || included_simple a.string b.string
-    || included_simple a.floata b.floata
     || included_simple a.i32 b.i32
     || included_simple a.i64 b.i64
     || included_simple a.inat b.inat
@@ -218,6 +240,7 @@ let rec included env i1 i2 =
                   a b
              ) a
          with Not_found -> false) a.blocks
+    || ( Int_interv.is_leq a.arrays.a_size b.arrays.a_size && true (* TODO: the idsets and the atypes*) )
     || Fm.exists
       (fun k a ->
          try
@@ -245,7 +268,6 @@ let is_leq a b =
     && Int_interv.is_leq a.int b.int
     && leq_simple a.float b.float
     && leq_simple a.string b.string
-    && leq_simple a.floata b.floata
     && leq_simple a.i32 b.i32
     && leq_simple a.i64 b.i64
     && leq_simple a.inat b.inat
@@ -261,6 +283,14 @@ let is_leq a b =
              ) a
          with Not_found -> false
       ) a.blocks
+    && Ids.subset a.arrays.a_elems b.arrays.a_elems
+    && Int_interv.is_leq a.arrays.a_size b.arrays.a_size
+    && ( b.arrays.a_gen
+         || not a.arrays.a_gen
+            && ( not a.arrays.a_float || b.arrays.a_float )
+            && ( not a.arrays.a_addr || b.arrays.a_addr )
+            && ( not a.arrays.a_int || b.arrays.a_int )
+       )
     && Fm.for_all
       (fun k a ->
          try
@@ -334,14 +364,22 @@ let intersect_noncommut env a b =
       int = Int_interv.meet a.int b.int;
       float = intersection_simple a.float b.float;
       string = intersection_simple a.string b.string;
-      floata = intersection_simple a.floata b.floata;
       i32 = intersection_simple a.i32 b.i32;
       i64 = intersection_simple a.i64 b.i64;
       inat = intersection_simple a.inat b.inat;
       cp = Ints.inter a.cp b.cp;
       blocks;
+      arrays =
+        {
+          a_elems = b.arrays.a_elems (* TODO: see that again *);
+          a_size = Int_interv.meet a.arrays.a_size b.arrays.a_size;
+          a_gen = a.arrays.a_gen && b.arrays.a_gen;
+          a_float = a.arrays.a_float && b.arrays.a_float;
+          a_addr = a.arrays.a_addr && b.arrays.a_addr;
+          a_int = a.arrays.a_int && b.arrays.a_int;
+        };
       f;
-      expr = [];
+      expr = Hinfos.empty;
     }
 
 let odo f g = function
@@ -403,7 +441,6 @@ let print pp id env =
           );
         print_simple pp "Floats" d.float;
         print_simple pp "Strings" d.string;
-        print_simple pp "Float arrays" d.floata;
         print_simple pp "Int32" d.i32;
         print_simple pp "Int64" d.i64;
         print_simple pp "Native ints" d.inat;
@@ -430,6 +467,32 @@ let print pp id env =
               pp
               d.blocks;
             fprintf pp "@ @]@."
+          );
+        let a = d.arrays in
+        if not ( Ids.is_empty a.a_elems || Int_interv.is_bottom a.a_size )
+        then
+          (
+            fprintf pp "Arrays%s@.[@[@ sizes:@["
+              (if a.a_gen
+               then ""
+               else 
+                 "(" ^
+                 (String.concat ","
+                    (
+                      List.filter ((<>) "")
+                        [
+                          if a.a_float then "f" else "";
+                          if a.a_addr then "b" else "";
+                          if a.a_int then "i" else ""
+                        ]
+                    )
+                 )
+                 ^ ")"
+              );
+            Int_interv.print pp a.a_size;
+            fprintf pp "@]@ elements:@[";
+            Ids.print_sep sep pp a.a_elems;
+            fprintf pp "@]@ @]]@."
           );
         if not ( Fm.is_empty d.f )
         then
