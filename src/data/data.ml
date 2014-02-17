@@ -119,6 +119,8 @@ let mem_env id = function
   | Bottom -> false
   | Env m -> Idm.mem id m
 
+let cp_env id env =
+  reg_env (get_env id env ) env
 
 
 (* simple functions and values *)
