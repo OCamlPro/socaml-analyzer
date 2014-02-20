@@ -194,6 +194,7 @@ end
     let is_leq _ = Envs.is_leq
     let join_list _ = List.fold_left Envs.join Envs.bottom
     let abstract_init v = if v = E.inv then Envs.empty else Envs.bottom
+    let widening _ = Envs.widening
 
     type hedge_attribute = hattr
     type vertex_attribute = vattr
