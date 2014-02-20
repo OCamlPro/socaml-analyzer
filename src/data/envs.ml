@@ -10,10 +10,9 @@ let is_bottom = function
 let bottom = Bottom
 let empty = Env Idm.empty
 
+(* Joining and widening helper *)
 
-(* Environment joining *)
-
-let join e1 e2 =
+let join_or_widen union e1 e2 =
   match e1, e2 with
   | Bottom, e | e, Bottom -> e
   | Env i1, Env i2 ->
@@ -26,6 +25,18 @@ let join e1 e2 =
                Some (union v1 v2)
           ) i1 i2
       )
+
+
+(* Environment joining *)
+
+let join e1 e2 = join_or_widen union e1 e2
+
+(* Environment joining with widening *)
+
+let widening e1 e2 =
+  let renvres = ref empty in
+  let widening = widening e1 e2 renvres in
+  join_or_widen widening e1 e2
 
 (* Environment comparison *)
 
