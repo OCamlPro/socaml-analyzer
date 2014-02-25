@@ -1,7 +1,10 @@
 open Hgraph_types
 
-module MakeT ( V : OrderedHashedType ) ( H : OrderedHashedType )
-  : T with type vertex = V.t and type hedge = H.t and module Vertex = V and module Hedge = H =
+module MakeT ( V : CloneOrderedHashedType ) ( H : CloneOrderedHashedType )
+  : T with type vertex = V.t
+       and type hedge = H.t
+       and module Vertex = V
+       and module Hedge = H =
 struct
   type vertex = V.t
   type hedge = H.t
@@ -58,7 +61,7 @@ module Make(T:T) : Hgraph
   module HISet = HedgeIntSet
 
   let vset_of_array a = Array.fold_right VSet.add a VSet.empty
-  let hset_of_array a = Array.fold_right HSet.add a HSet.empty
+  (* let hset_of_array a = Array.fold_right HSet.add a HSet.empty *)
 
   (* module T = T *)
 
@@ -180,6 +183,15 @@ module Make(T:T) : Hgraph
     List.iter import_vertex vl;
     List.iter import_hedge hl
 
+  let copy g1 fv fh fe =
+    let g2 = create (fe g1.info) in
+    import_subgraph g1 g2
+      (list_vertex g1)
+      (list_hedge g1)
+      (fun v -> fv v (vertex_attrib g1 v))
+      (fun h -> fh h (hedge_attrib g1 h));
+    g2
+
   type subgraph = {
     sg_input : vertex array;
     sg_output : vertex array;
@@ -254,7 +266,7 @@ module Make(T:T) : Hgraph
            not (HSet.subset (hset_of_hiset v_node.v_succ) subgraph.sg_hedge)
         then raise (Invalid_argument "clone_subgraph: not independent subgraph");
         let new_node =
-          { v_attr = import_vattr ~new_vertex ~old_attr:v_node.v_attr;
+          { v_attr = import_vattr ~old_vertex:v ~new_vertex ~old_attr:v_node.v_attr;
             v_pred = HISet.fold add_matching_hedge v_node.v_pred HISet.empty;
             v_succ = HISet.fold add_matching_hedge v_node.v_succ HISet.empty } in
         add_vertex_node out_graph new_vertex new_node;
@@ -270,7 +282,7 @@ module Make(T:T) : Hgraph
           Array.iter check h_node.h_succ
         end;
         let new_node =
-          { h_attr = import_hattr ~new_hedge:new_h ~old_attr:h_node.h_attr;
+          { h_attr = import_hattr ~old_hedge:old_h ~new_hedge:new_h ~old_attr:h_node.h_attr;
             h_pred = Array.map matching_vertex h_node.h_pred;
             h_succ = Array.map matching_vertex h_node.h_succ } in
         add_hedge_node out_graph new_h new_node) assoc_hedge_list;

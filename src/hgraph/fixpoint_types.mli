@@ -13,7 +13,7 @@ module type Manager = sig
   val is_leq : T.vertex -> abstract -> abstract -> bool
   (* val join : vertex -> abstract -> abstract -> abstract *)
   val join_list : T.vertex -> abstract list -> abstract
-  (* val widening : vertex -> abstract -> abstract -> abstract *)
+  val widening : T.vertex -> abstract -> abstract -> abstract
   val abstract_init : T.vertex -> abstract
 
   type vertex_attribute
@@ -22,12 +22,10 @@ module type Manager = sig
   type function_id
 
   module Function_id : OrderedHashedType with type t = function_id
+  module Stack : Stack_types.Stack with type elt = function_id
 
   val find_function : function_id ->
     (vertex_attribute, hedge_attribute, graph_attribute) graph * subgraph
-
-  val clone_vertex : T.vertex -> T.vertex
-  val clone_hedge : T.hedge -> T.hedge
 
   val apply : T.hedge -> hedge_attribute -> abstract array ->
     abstract array * function_id list

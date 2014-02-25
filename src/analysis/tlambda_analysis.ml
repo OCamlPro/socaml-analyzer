@@ -211,6 +211,8 @@ end
         sg_hedge = f.f_hedge;
       }
 
+    module Stack = Abstract_stack.TwoLevels ( Function_id )
+
     let clone_vertex _ = E.mk_vertex ()
     let clone_hedge _ = E.mk_hedge ()
 

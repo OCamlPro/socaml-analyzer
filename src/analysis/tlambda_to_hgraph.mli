@@ -2,12 +2,12 @@ open Common_types
 
 module Vertex :
 sig
-  include Hgraph_types.OrderedHashedType
+  include Hgraph_types.CloneOrderedHashedType
   val mk : ?modulename : string -> unit -> t
 end
 module Hedge :
 sig
-  include Hgraph_types.OrderedHashedType
+  include Hgraph_types.CloneOrderedHashedType
   val mk : unit -> t
 end
 

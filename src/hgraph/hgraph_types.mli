@@ -6,12 +6,17 @@ module type OrderedHashedType = sig
   val print : Format.formatter -> t -> unit
 end
 
+module type CloneOrderedHashedType = sig
+  include OrderedHashedType
+  val clone : t -> t
+end
+
 module type T = sig
   type vertex (** Type of vertex identifiers *)
   type hedge  (** Type of hyperedge identifiers *)
 
-  module Vertex : OrderedHashedType with type t = vertex
-  module Hedge : OrderedHashedType with type t = hedge
+  module Vertex : CloneOrderedHashedType with type t = vertex
+  module Hedge : CloneOrderedHashedType with type t = hedge
 
   val print_vertex : Format.formatter -> vertex -> unit
   val print_hedge : Format.formatter -> hedge -> unit
@@ -61,6 +66,9 @@ module type Hgraph = sig
   val import_subgraph : (_, _, _) graph -> ('a, 'b, _) graph ->
     T.vertex list -> T.hedge list -> (T.vertex -> 'a) -> (T.hedge -> 'b) -> unit
 
+  val copy : ('v, 'h, 'e) graph -> (T.vertex -> 'v -> 'vv) -> (T.hedge -> 'h -> 'hh) -> ('e -> 'ee) ->
+    ('vv, 'hh, 'ee) graph
+
   val list_vertex : (_, _, _) graph -> T.vertex list
   val list_hedge : (_, _, _) graph -> T.hedge list
 
@@ -82,8 +90,8 @@ module type Hgraph = sig
   val clone_subgraph :
     in_graph:('a, 'b, 'c) graph ->
     out_graph:('d, 'e, 'f) graph ->
-    import_vattr:(new_vertex:T.vertex -> old_attr:'a -> 'd) ->
-    import_hattr:(new_hedge:T.hedge -> old_attr:'b -> 'e) ->
+    import_vattr:(old_vertex:T.vertex -> new_vertex:T.vertex -> old_attr:'a -> 'd) ->
+    import_hattr:(old_hedge:T.hedge -> new_hedge:T.hedge -> old_attr:'b -> 'e) ->
     clone_vertex:(T.vertex -> T.vertex) ->
     clone_hedge:(T.hedge -> T.hedge) ->
     input:T.vertex array ->

@@ -1,7 +1,10 @@
 open Hgraph_types
 
-module MakeT ( V : OrderedHashedType ) ( H : OrderedHashedType )
-  : T with type vertex = V.t and type hedge = H.t and module Vertex = V and module Hedge = H
+module MakeT ( V : CloneOrderedHashedType ) ( H : CloneOrderedHashedType )
+  : T with type vertex = V.t
+       and type hedge = H.t
+       and module Vertex = V
+       and module Hedge = H
 
 module Make(T:T) : Hgraph
   with module T := T

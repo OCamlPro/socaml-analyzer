@@ -165,6 +165,7 @@ module Vertex = struct
   let equal (i:string) j = i = j
 
   let print ppf s = Format.pp_print_string ppf s
+  let clone v = v (* BAAAAD, but there are no function *)
 end
 
 module Hedge = struct
@@ -177,6 +178,7 @@ module Hedge = struct
 
   let counter = ref (-1)
   let new_hedge () = incr counter; !counter
+  let clone i = i (* BAAAAD, but there are no function *)
 end
 
 module T = struct
@@ -240,12 +242,11 @@ module Manager = struct
   end
 
   let find_function _ = assert false
-  let clone_vertex _ = assert false
-  let clone_hedge _ = assert false
+  module Stack = Abstract_stack.TwoLevels ( Function_id )
 
 end
 
-module FP = Hgraph.Fixpoint(T)(Manager)
+module FP = Fixpoint.Fixpoint(T)(Manager)
 module H = Manager.H
 
 let g = H.create ()
@@ -274,7 +275,7 @@ let () =
   H.add_hedge g 45 () ~pred:[|v4|] ~succ:[|v5|];
   H.add_hedge g 52 () ~pred:[|v5|] ~succ:[|v2|]
 
-let r = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
+let r, map = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
 
 let print_attrvertex ppf vertex attr =
   A2.print () ppf attr
