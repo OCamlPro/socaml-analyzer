@@ -169,7 +169,7 @@ end
 
 module M : functor ( E : Entry ) ->
 sig
-  include Hgraph.Manager
+  include Fixpoint_types.Manager
     with module T := T
      and module H = G 
      and type hedge_attribute = hattr

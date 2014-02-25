@@ -31,7 +31,7 @@ end
 
 begin library "hgraph"
  dirname = "src/hgraph"
- files = [ "hgraph.ml" "export.ml" ]
+ files = [ "hgraph_types.mli" "hgraph.mli" "hgraph.ml" "fixpoint_types.mli" "fixpoint.ml" "fixpoint.mli" "export.ml" ]
 end
 
 begin library "lambda-analysis"
