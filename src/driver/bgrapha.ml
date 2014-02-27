@@ -16,9 +16,13 @@ let () =
   let module Manager = Tlambda_analysis.M ( E ) in
   let module F = Fixpoint.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
   print_endline "starting the analysis";
-  let result, _assotiation_map =
+  let result, assotiation_map =
     F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
-  let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
+  let exnv_output = Manager.H.VertexSet.elements
+      (Manager.H.VertexMap.find exnv assotiation_map) in
+  let exn_env =
+    Manager.join_list exnv
+      (List.map (Tlambda_to_hgraph.G.vertex_attrib result) exnv_output) in
   if Envs.is_bottom exn_env
   then ()
   else

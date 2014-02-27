@@ -386,12 +386,15 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
 
   let kleene_fixpoint (graph:input_graph) start_vertices =
     let state = kleene_fixpoint' graph start_vertices in
-    let vertex_map = ref M.H.VertexMap.empty in
+    let empty_vertex_map =
+      List.fold_left (fun map orig_vertex ->
+          M.H.VertexMap.add orig_vertex M.H.VertexSet.empty map)
+        M.H.VertexMap.empty
+        (M.H.list_vertex graph) in
+    let vertex_map = ref empty_vertex_map in
     let map_vertex new_vertex attrib =
       let orig_vertex = attrib.SG.orig_vertex in
-      let set =
-        try M.H.VertexMap.find orig_vertex !vertex_map with
-        | Not_found -> M.H.VertexSet.empty in
+      let set = M.H.VertexMap.find orig_vertex !vertex_map in
       vertex_map :=
         M.H.VertexMap.add
           orig_vertex
@@ -400,7 +403,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
       try M.H.VertexMap.find new_vertex state.vertex_values
       with Not_found -> M.bottom new_vertex
     in
-    M.H.copy state.graph.SG.graph map_vertex (fun _ _ -> ()) (fun _ -> ()),
-    !vertex_map
+    let graph = M.H.copy state.graph.SG.graph map_vertex (fun _ _ -> ()) (fun _ -> ()) in
+    graph, !vertex_map
 
 end
