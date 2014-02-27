@@ -286,7 +286,7 @@ module Manager = struct
   let join_list _ l =
     List.fold_left Env.join Env.bottom l
 
-  let widening _ _ _ = assert false
+  let widening _ a1 a2 = Env.join a1 a2
 
   let is_leq _ = Env.is_leq
 
