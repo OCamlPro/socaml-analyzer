@@ -1,27 +1,24 @@
 open Format
 
 module A1 = struct
-  type t = (int * int) option ref
+  type t = (int * int) option
   type manager = unit
 
-  let copy x = ref (!x)
-  let bottom man = ref None
-  let top man = ref (Some(min_int,max_int))
-  let canonical man (x:t) = match !x with
-    | Some(a,b) when a>b ->  x := None
-    | _ -> ()
+  let bottom man = None
+  let top man = Some(min_int,max_int)
+  let canonical (x:t) = match x with
+    | Some(a,b) when a>b -> None
+    | _ -> x
+
   let is_bottom man (x:t) =
-    canonical man x;
-    !x=None
+    x=None
   let is_top man (x:t) =
-    canonical man x;
-    match !x with
+    match x with
     | None -> false
     | Some(a,b) when a>min_int || b<max_int -> false
     | _ -> true
   let is_leq man (x:t) y =
-    canonical man x; canonical man y;
-    match (!x,!y) with
+    match (x,y) with
     | (None,_) -> true
     | (Some _, None) -> false
     | (Some(a1,b1),Some(a2,b2)) ->
@@ -30,67 +27,78 @@ module A1 = struct
       r
 
   let join man (x:t) y =
-    canonical man x; canonical man y;
-    match (!x,!y) with
-    | (None,_) -> copy y
-    | (_,None) -> copy x
+    match (x,y) with
+    | (None,_) -> y
+    | (_,None) -> x
     | (Some(a1,b1),Some(a2,b2)) ->
-      ref (Some((min a1 a2),(max b1 b2)))
+      canonical (Some((min a1 a2),(max b1 b2)))
+
   let join_list man tx =
     List.fold_left (fun res x ->
         join man res x) (bottom man) tx
   let widening man (x:t) y =
-    canonical man x; canonical man y;
-    match (!x,!y) with
-    | (None,_) -> copy y
+    match (x,y) with
+    | (None,_) -> y
     | (_,None) -> failwith ""
     | (Some(a1,b1),Some(a2,b2)) ->
-      ref (Some(
-          (if a2<a1 then min_int else a2),
-          (if b2>b1 then max_int else b2)))
+      canonical
+        (Some(
+            (if a2<a1 then min_int else a2),
+            (if b2>b1 then max_int else b2)))
+
+  let narrow man (x:t) y =
+    match (x,y) with
+    | (_, None) -> x
+    | (None,_) -> failwith ""
+    | (Some(a1,b1),Some(a2,b2)) ->
+      canonical (Some(
+          (if a1 = min_int then a2 else a1),
+          (if b1 = max_int then b2 else b1)))
+
   let print man fmt (x:t) =
-    canonical man x;
-    match !x with
+    match x with
     | Some(a,b) ->
       if is_top man x then pp_print_string fmt "top"
       else
         fprintf fmt "[%i,%i]" a b
     | None -> pp_print_string fmt "bot"
+
   let meet man (x:t) y =
-    canonical man x; canonical man y;
-    match (!x,!y) with
-    | (None,_) -> ref None
-    | (_,None) -> ref None
+    match (x,y) with
+    | (None,_) -> None
+    | (_,None) -> None
     | (Some(a1,b1),Some(a2,b2)) ->
       let a = max a1 a2 in
       let b = min b1 b2 in
-      ref (if a>b then None else Some(a,b))
+      canonical (if a>b then None else Some(a,b))
+
   let setcst man (x:t) (cst:int) =
-    canonical man x;
-    match !x with
+    match x with
     | None -> x
-    | Some(a,b) -> ref (Some(cst,cst))
+    | Some(a,b) -> canonical (Some(cst,cst))
+
   let addcst man (x:t) (cst:int) =
-    canonical man x;
-    match !x with
+    match x with
     | None -> x
-    | Some(a,b) -> ref (Some(
-        (if a=min_int then a else a+cst),
-        (if b=max_int then b else b+cst)))
+    | Some(a,b) ->
+      canonical (Some(
+          (if a=min_int then a else a+cst),
+          (if b=max_int then b else b+cst)))
+
   let leqcst man (x:t) (cst:int) =
-    canonical man x;
-    match !x with
+    match x with
     | None -> x
     | Some(a,b) ->
-      let i = ref(Some(min_int,cst)) in
+      let i = canonical (Some(min_int,cst)) in
       meet man (x:t) i
+
   let geqcst man (x:t) (cst:int) =
-    canonical man x;
-    match !x with
+    match x with
     | None -> x
     | Some(a,b) ->
-      let i = ref(Some(cst,max_int)) in
+      let i = canonical (Some(cst,max_int)) in
       meet man x i
+
 end
 
 module A2 = struct
@@ -103,11 +111,6 @@ module A2 = struct
     let top = A1.top man in (top,top)
   let is_bottom man (x,y) =
     A1.is_bottom man x || A1.is_bottom man y
-  let canonical man ((x,y) as abs) =
-    A1.canonical man x; A1.canonical man y;
-    if is_bottom man abs then begin
-      x := None; y := None
-    end
   let is_leq man (x1,y1) (x2,y2) =
     A1.is_leq man x1 x2 && A1.is_leq man y1 y2
   let join man (x1,y1) (x2,y2) =
@@ -117,8 +120,10 @@ module A2 = struct
         join man res x) (bottom man) tx
   let widening man (x1,y1) (x2,y2) =
     (A1.widening man x1 x2, A1.widening man y1 y2)
+  let narrow man (x1,y1) (x2,y2) =
+    (A1.narrow man x1 x2, A1.narrow man y1 y2)
+  let narrowing = Some narrow
   let print man fmt ((x,y) as v) =
-    canonical man v;
     if is_bottom man v then pp_print_string fmt "bot"
     else fprintf fmt "(%a,%a)" (A1.print man) x (A1.print man) y
   let meet man (x1,y1) (x2,y2) =
@@ -126,8 +131,8 @@ module A2 = struct
   let setcst man ((x,y) as v) (dim:int) (cst:int) =
     if is_bottom man v
     then v
-    else if dim=0 then (A1.setcst man x cst, A1.copy y)
-    else if dim=1 then (A1.copy x, A1.setcst man y cst)
+    else if dim=0 then (A1.setcst man x cst, y)
+    else if dim=1 then (x, A1.setcst man y cst)
     else failwith ""
 
   let assignvar man ((x,y) as v) (dim1:int) (dim2:int) =
@@ -140,20 +145,20 @@ module A2 = struct
   let addcst man ((x,y) as v) (dim:int) (cst:int) =
     if is_bottom man v || cst==0
     then v
-    else if dim=0 then (A1.addcst man x cst, A1.copy y)
-    else if dim=1 then (A1.copy x, A1.addcst man y cst)
+    else if dim=0 then (A1.addcst man x cst, y)
+    else if dim=1 then (x, A1.addcst man y cst)
     else failwith ""
   let leqcst man ((x,y) as v) (dim:int) (cst:int) =
     if is_bottom man v
     then v
-    else if dim=0 then (A1.leqcst man x cst, A1.copy y)
-    else if dim=1 then (A1.copy x, A1.leqcst man y cst)
+    else if dim=0 then (A1.leqcst man x cst, y)
+    else if dim=1 then (x, A1.leqcst man y cst)
     else failwith ""
   let geqcst man ((x,y) as v) (dim:int) (cst:int) =
     if is_bottom man v
     then v
-    else if dim=0 then (A1.geqcst man x cst, A1.copy y)
-    else if dim=1 then (A1.copy x, A1.geqcst man y cst)
+    else if dim=0 then (A1.geqcst man x cst, y)
+    else if dim=1 then (x, A1.geqcst man y cst)
     else failwith ""
 
 end

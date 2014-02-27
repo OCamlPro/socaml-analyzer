@@ -14,6 +14,8 @@ module type Manager = sig
   (* val join : vertex -> abstract -> abstract -> abstract *)
   val join_list : T.vertex -> abstract list -> abstract
   val widening : T.vertex -> abstract -> abstract -> abstract
+  val narrowing : (T.vertex -> abstract -> abstract -> abstract) option
+
   val abstract_init : T.vertex -> abstract
 
   type vertex_attribute

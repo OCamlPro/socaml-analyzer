@@ -288,6 +288,8 @@ module Manager = struct
 
   let widening _ a1 a2 = Env.join a1 a2
 
+  let narrowing = None
+
   let is_leq _ = Env.is_leq
 
   type function_id = F.t
