@@ -1,25 +1,10 @@
-module type OrderedHashedType = sig
-  type t
-  val compare : t -> t -> int
-  val equal : t -> t -> bool
-  val hash : t -> int
-  val print : Format.formatter -> t -> unit
-end
+open Hgraph_types
 
-module type T = sig
-  type vertex (** Type of vertex identifiers *)
-  type hedge  (** Type of hyperedge identifiers *)
-
-  module Vertex : OrderedHashedType with type t = vertex
-  module Hedge : OrderedHashedType with type t = hedge
-
-  val print_vertex : Format.formatter -> vertex -> unit
-  val print_hedge : Format.formatter -> hedge -> unit
-
-end
-
-module MakeT ( V : OrderedHashedType ) ( H : OrderedHashedType )
-  : T with type vertex = V.t and type hedge = H.t and module Vertex = V and module Hedge = H =
+module MakeT ( V : CloneOrderedHashedType ) ( H : CloneOrderedHashedType )
+  : T with type vertex = V.t
+       and type hedge = H.t
+       and module Vertex = V
+       and module Hedge = H =
 struct
   type vertex = V.t
   type hedge = H.t
@@ -28,103 +13,6 @@ struct
 
   let print_vertex = V.print
   let print_hedge = H.print
-end
-
-module type Hgraph = sig
-  module T : T
-
-  module VertexSet : (Set.S with type t = Set.Make(T.Vertex).t and type elt = T.vertex)
-  (** Set module for vertices *)
-  module HedgeSet : (Set.S with type t = Set.Make(T.Hedge).t and type elt = T.hedge)
-  (** Set module for hyperedges *)
-  module VertexMap : (Map.S with type 'a t = 'a Map.Make(T.Vertex).t and type key = T.vertex)
-  (** Set module for vertices *)
-  module HedgeMap : (Map.S with type 'a t = 'a Map.Make(T.Hedge).t and type key = T.hedge)
-  (** Set module for hyperedges *)
-  module VertexTbl : (Hashtbl.S with type 'a t = 'a Hashtbl.Make(T.Vertex).t and type key=T.vertex)
-  (** Hash module with vertices as keys *)
-  module HedgeTbl : (Hashtbl.S with type 'a t = 'a Hashtbl.Make(T.Hedge).t and type key=T.hedge)
-  (** Hash module with hyperedges as keys *)
-
-  module HedgeInt : Set.OrderedType with type t = int * T.hedge
-  module HedgeIntSet : (Set.S with type t = Set.Make(HedgeInt).t and type elt = int * T.hedge)
-
-  type ('vattr, 'hattr, 'e) graph
-  val create : ?size:int -> 'e -> ('vattr, 'hattr, 'e) graph
-  val contains_vertex : (_, _, _) graph -> T.vertex -> bool
-  val contains_hedge : (_, _, _) graph -> T.hedge -> bool
-  val add_vertex : ('a, _, _) graph -> T.vertex -> 'a -> unit
-  val add_hedge : (_, 'b, _) graph -> T.hedge -> 'b ->
-    pred:T.vertex array -> succ:T.vertex array -> unit
-
-  val vertex_succ : (_, _, _) graph -> T.vertex -> HedgeSet.t
-  val vertex_pred : (_, _, _) graph -> T.vertex -> HedgeSet.t
-
-  val hedge_succ : (_, _, _) graph -> T.hedge -> VertexSet.t
-  val hedge_pred : (_, _, _) graph -> T.hedge -> VertexSet.t
-
-  val vertex_succ' : (_, _, _) graph -> T.vertex -> HedgeIntSet.t
-  val vertex_pred' : (_, _, _) graph -> T.vertex -> HedgeIntSet.t
-
-  val hedge_succ' : (_, _, _) graph -> T.hedge -> T.vertex array
-  val hedge_pred' : (_, _, _) graph -> T.hedge -> T.vertex array
-
-  val import_hedge : (_, _, _) graph -> (_, 'b, _) graph -> T.hedge -> 'b -> unit
-  val import_subgraph : (_, _, _) graph -> ('a, 'b, _) graph ->
-    T.vertex list -> T.hedge list -> (T.vertex -> 'a) -> (T.hedge -> 'b) -> unit
-
-  val list_vertex : (_, _, _) graph -> T.vertex list
-  val list_hedge : (_, _, _) graph -> T.hedge list
-
-  val vertex_attrib : ('a, _, _) graph -> T.vertex -> 'a
-  val hedge_attrib : (_, 'b, _) graph -> T.hedge -> 'b
-
-  val vertex_merge : ('a,_,_) graph -> ('a -> 'a -> 'a) -> T.vertex -> T.vertex -> unit
-  (* vertex_merge g f v1 v2 merges v2 into v1, new attrib is f (vertex_attrib v1) (vertex_attrib v2) *)
-
-  (* utils *)
-
-  type subgraph = {
-    sg_input : T.vertex array;
-    sg_output : T.vertex array;
-    sg_vertex : VertexSet.t;
-    sg_hedge : HedgeSet.t;
-  }
-
-  val clone_subgraph :
-    in_graph:('a, 'b, 'c) graph ->
-    out_graph:('d, 'e, 'f) graph ->
-    import_vattr:(new_vertex:T.vertex -> old_attr:'a -> 'd) ->
-    import_hattr:(new_hedge:T.hedge -> old_attr:'b -> 'e) ->
-    clone_vertex:(T.vertex -> T.vertex) ->
-    clone_hedge:(T.hedge -> T.hedge) ->
-    input:T.vertex array ->
-    output:T.vertex array ->
-    subgraph -> subgraph * HedgeIntSet.t array * HedgeIntSet.t array
-  (** [clone_subgraph] returns a copy of the subgraph by copying the
-      vertices and edges in out_graph. The vertex sg_input and
-      sg_output are not copied, but are replaced by the provided input
-      and output. There should be no link outside of the subgraph
-      except in sg_input and sg_output. There must be no vertex from
-      sg_input or sg_output in sg_vertex.
-
-      The return value is : (subgraph, in_hedges, out_hedges)
-  *)
-
-  val print_dot :
-    ?style:string ->
-    ?titlestyle:string ->
-    ?vertexstyle:string ->
-    ?hedgestyle:string ->
-    ?fvertexstyle:(T.vertex -> string) ->
-    ?fhedgestyle:(T.hedge -> string) ->
-    ?title:string ->
-    ?print_attrvertex:(Format.formatter -> T.vertex -> 'a -> unit) ->
-    ?print_attrhedge:(Format.formatter -> T.hedge -> 'b -> unit) ->
-    Format.formatter -> ('a, 'b, 'c) graph -> unit
-
-  val correct : ('a, 'b, 'c) graph -> bool
-
 end
 
 module Make(T:T) : Hgraph
@@ -173,7 +61,7 @@ module Make(T:T) : Hgraph
   module HISet = HedgeIntSet
 
   let vset_of_array a = Array.fold_right VSet.add a VSet.empty
-  let hset_of_array a = Array.fold_right HSet.add a HSet.empty
+  (* let hset_of_array a = Array.fold_right HSet.add a HSet.empty *)
 
   (* module T = T *)
 
@@ -295,6 +183,15 @@ module Make(T:T) : Hgraph
     List.iter import_vertex vl;
     List.iter import_hedge hl
 
+  let copy g1 fv fh fe =
+    let g2 = create (fe g1.info) in
+    import_subgraph g1 g2
+      (list_vertex g1)
+      (list_hedge g1)
+      (fun v -> fv v (vertex_attrib g1 v))
+      (fun h -> fh h (hedge_attrib g1 h));
+    g2
+
   type subgraph = {
     sg_input : vertex array;
     sg_output : vertex array;
@@ -369,7 +266,7 @@ module Make(T:T) : Hgraph
            not (HSet.subset (hset_of_hiset v_node.v_succ) subgraph.sg_hedge)
         then raise (Invalid_argument "clone_subgraph: not independent subgraph");
         let new_node =
-          { v_attr = import_vattr ~new_vertex ~old_attr:v_node.v_attr;
+          { v_attr = import_vattr ~old_vertex:v ~new_vertex ~old_attr:v_node.v_attr;
             v_pred = HISet.fold add_matching_hedge v_node.v_pred HISet.empty;
             v_succ = HISet.fold add_matching_hedge v_node.v_succ HISet.empty } in
         add_vertex_node out_graph new_vertex new_node;
@@ -385,7 +282,7 @@ module Make(T:T) : Hgraph
           Array.iter check h_node.h_succ
         end;
         let new_node =
-          { h_attr = import_hattr ~new_hedge:new_h ~old_attr:h_node.h_attr;
+          { h_attr = import_hattr ~old_hedge:old_h ~new_hedge:new_h ~old_attr:h_node.h_attr;
             h_pred = Array.map matching_vertex h_node.h_pred;
             h_succ = Array.map matching_vertex h_node.h_succ } in
         add_hedge_node out_graph new_h new_node) assoc_hedge_list;
@@ -505,382 +402,3 @@ module Make(T:T) : Hgraph
 
 end
 
-let rec map_filter f l =
-  match l with
-  | [] -> []
-  | t::q -> match f t with
-    | None -> map_filter f q
-    | Some t' -> t' :: (map_filter f q)
-
-let lift_option_array a =
-  try Some (Array.map (function
-      | None -> raise Not_found
-      | Some v -> v) a)
-  with Not_found -> None
-
-module type Manager = sig
-
-  module T : T
-  module H : Hgraph with module T := T
-  open H
-
-  type abstract
-
-  val bottom : T.vertex -> abstract
-  val is_bottom : T.vertex -> abstract -> bool
-  val is_leq : T.vertex -> abstract -> abstract -> bool
-  (* val join : vertex -> abstract -> abstract -> abstract *)
-  val join_list : T.vertex -> abstract list -> abstract
-  (* val widening : vertex -> abstract -> abstract -> abstract *)
-  val abstract_init : T.vertex -> abstract
-
-  type vertex_attribute
-  type hedge_attribute
-  type graph_attribute
-  type function_id
-
-  module Function_id : OrderedHashedType with type t = function_id
-
-  val find_function : function_id ->
-    (vertex_attribute, hedge_attribute, graph_attribute) graph * subgraph
-
-  val clone_vertex : T.vertex -> T.vertex
-  val clone_hedge : T.hedge -> T.hedge
-
-  val apply : T.hedge -> hedge_attribute -> abstract array ->
-    abstract array * function_id list
-
-end
-
-module Fixpoint(T:T)(Manager:Manager with module T := T) : sig
-
-  type input_graph = (Manager.vertex_attribute,
-                      Manager.hedge_attribute,
-                      Manager.graph_attribute)
-      Manager.H.graph
-
-  val kleene_fixpoint :
-    (* ?err_graph:(unit, Manager.hedge_attribute, unit) Manager.H.graph option ref -> *)
-    input_graph -> Manager.H.VertexSet.t ->
-    (Manager.abstract, unit, unit) Manager.H.graph
-
-end = struct
-  open Manager
-  open H
-  module VSet = VertexSet
-  module VTbl = VertexTbl
-  module HSet = HedgeSet
-  module HISet = HedgeIntSet
-  module HTbl = HedgeTbl
-  module M = Manager
-  type abstract = M.abstract
-
-  type input_graph = (vertex_attribute, hedge_attribute, graph_attribute) graph
-
-  type output = (abstract,unit,unit) graph
-
-  module WorkQueue(S:Set.S) = struct
-    type elt = S.elt
-    type t = {
-      queue : elt Queue.t;
-      mutable set : S.t;
-    }
-
-    let push t v =
-      if not (S.mem v t.set)
-      then begin
-        Queue.push v t.queue;
-        t.set <- S.add v t.set
-      end
-
-    let push_set t s = S.iter (push t) s
-
-    let pop t =
-      if Queue.is_empty t.queue
-      then None
-      else
-        let v = Queue.pop t.queue in
-        t.set <- S.remove v t.set;
-        Some v
-
-    let create () =
-      { queue = Queue.create (); set = S.empty }
-
-  end
-
-  module Vwq = WorkQueue(VertexSet)
-  module Hwq = WorkQueue(HedgeSet)
-
-  module FidSet = Set.Make(Function_id)
-  module FidMap = Map.Make(Function_id)
-
-  module HedgeFid = struct
-    type t = T.hedge * function_id
-    let hash (h,f) =
-      Hashtbl.hash (T.Hedge.hash h, Function_id.hash f)
-    let compare (h1,f1) (h2,f2) =
-      let c = T.Hedge.compare h1 h2 in
-      if c <> 0 then c
-      else Function_id.compare f1 f2
-    let equal (h1,f1) (h2,f2) =
-      T.Hedge.equal h1 h2 && Function_id.equal f1 f2
-  end
-  module HedgeFidSet = Set.Make(HedgeFid)
-  module HedgeFidTbl = Hashtbl.Make(HedgeFid)
-
-  type call_info = {
-    input : (T.vertex * HISet.t) array;
-    output : (T.vertex * HISet.t) array;
-  }
-
-  type 'a hedge_info = {
-    orig_attrib : 'a;
-    call_stack : call_info FidMap.t;
-  }
-
-  let initialise g =
-    let import_vertex _ = () in
-    let import_hedge v = hedge_attrib g v in
-    let all_vertex = list_vertex g in
-    let all_hedge = list_hedge g in
-    let g' = create ~size:(List.length all_hedge) () in
-    import_subgraph g g' all_vertex all_hedge import_vertex import_hedge;
-    g'
-
-  let return_graph g vertex_table =
-    let import_vertex v =
-      try VTbl.find vertex_table v with
-      | Not_found -> M.bottom v in
-    let import_hedge _ = () in
-    let all_vertex = list_vertex g in
-    let all_hedge = list_hedge g in
-    let g' = create ~size:(List.length all_hedge) () in
-    import_subgraph g g' all_vertex all_hedge import_vertex import_hedge;
-    g'
-
-
-  (* (\* copy the [copied_hedge], taking predecessors from [copy_pred] and *)
-  (*    successors from [copy_succ] *\) *)
-  (* let copy_input_hedge g copied_hedge ~copy_pred ~copy_succ = *)
-  (*   let new_hedge = clone_hedge copied_hedge in *)
-  (*   let pred = hedge_pred' g copy_pred in *)
-  (*   let succ = hedge_succ' g copy_succ in *)
-  (*   add_hedge g new_hedge ~pred ~succ *)
-
-  let copy_relink_function g call_hedge previous_call_info =
-    let input_vert = hedge_pred' g call_hedge in
-    let output_vert = hedge_succ' g call_hedge in
-    let new_hedges = HedgeTbl.create 3 in
-    let get_hedge h =
-      try HedgeTbl.find new_hedges h with
-      | Not_found ->
-        let new_hedge = clone_hedge h in
-        let v = hedge_pred' g h, hedge_succ' g h, new_hedge in
-        HedgeTbl.add new_hedges h v;
-        v
-    in
-    let copy_pred pos (_,hi_pred) =
-      let vert = input_vert.(pos) in
-      let replace_pred (i,h) =
-        let pred, _, _ = get_hedge h in
-        pred.(i) <- vert
-      in
-      HISet.iter replace_pred hi_pred
-    in
-    let copy_succ pos (_,hi_succ) =
-      let vert = output_vert.(pos) in
-      let replace_succ (i,h) =
-        let _, succ, _ = get_hedge h in
-        succ.(i) <- vert
-      in
-      HISet.iter replace_succ hi_succ
-    in
-    Array.iteri copy_pred previous_call_info.input;
-    Array.iteri copy_succ previous_call_info.output;
-
-    let final_import hedge (pred, succ, new_hedge) : unit =
-      let attrib = hedge_attrib g hedge in
-      add_hedge g new_hedge attrib ~pred ~succ
-    in
-    HedgeTbl.iter final_import new_hedges;
-
-    let hedge_mapping = HedgeTbl.fold (fun old_hedge (_,_,new_hedge) acc ->
-        HedgeMap.add new_hedge old_hedge acc)
-        new_hedges HedgeMap.empty in
-
-    let add_copied_hedge (i,h) set =
-      try let (_,_,r) = HedgeTbl.find new_hedges h in
-        HISet.add (i,r) set
-      with Not_found -> assert false in
-    let corresponding a i (_,hi) =
-      a.(i), HISet.fold add_copied_hedge HISet.empty hi
-    in
-    hedge_mapping,
-    { input = Array.mapi (corresponding input_vert) previous_call_info.input;
-      output = Array.mapi (corresponding output_vert) previous_call_info.output }
-
-  let kleene_fixpoint (* ?err_graph *) orig_g sinit =
-    let g = initialise orig_g in
-
-    (* (match err_graph with *)
-    (*  | None -> () *)
-    (*  | Some r -> r := Some g); *)
-
-    let h_info : 'a hedge_info HTbl.t = HTbl.create 10 in
-    List.iter (fun h -> HTbl.add h_info h
-                  { call_stack = FidMap.empty;
-                    orig_attrib = (hedge_attrib orig_g h) })
-      (list_hedge g);
-
-    (* vertex working queue *)
-    let vwq = Vwq.create () in
-
-    (* hyper edge working queue *)
-    let hwq = Hwq.create () in
-
-    Vwq.push_set vwq sinit;
-
-    let hedge_result : abstract array HTbl.t = HTbl.create 10 in
-    let vertex_result = VTbl.create 10 in
-
-    let imported_functions : call_info HedgeFidTbl.t = HedgeFidTbl.create 10 in
-
-    let hedge_abstract (i,h) =
-      try
-        Some (HTbl.find hedge_result h).(i)
-      with
-      | Not_found -> None
-    in
-
-    let vertex_abstract v =
-      try VTbl.find vertex_result v with
-      | Not_found -> M.bottom v
-    in
-
-    let update_vertex v =
-      let pred = HedgeIntSet.elements (vertex_pred' g v) in
-      let abstract = match pred with
-        | [] -> M.abstract_init v
-        | _ ->
-          match map_filter hedge_abstract pred with
-          | [] -> M.bottom v
-          | [a] -> a
-          | l -> M.join_list v l
-      in
-      if not (M.is_leq v abstract (vertex_abstract v))
-      then begin
-        (* Printf.printf "increasing\n%!"; *)
-        Hwq.push_set hwq (vertex_succ g v)
-      end
-      (* else Printf.printf "not increasing\n%!" *)
-      ;
-      VTbl.replace vertex_result v abstract
-    in
-
-    let recursive_call h f call_info =
-      let hedge_mapping, new_call_info = copy_relink_function g h call_info in
-      let add_info new_hedge old_hedge =
-        HTbl.add h_info new_hedge (HTbl.find h_info old_hedge) in
-      HedgeMap.iter add_info hedge_mapping;
-      new_call_info
-    in
-
-    let import_function h f call_stack =
-      let (in_graph,subgraph) = Manager.find_function f in
-      let input = hedge_pred' g h in
-      let output = hedge_succ' g h in
-      let imported_hedge = ref [] in
-      let import_hedge hedge =
-        let new_hedge = Manager.clone_hedge hedge in
-        imported_hedge := (new_hedge,hedge) :: !imported_hedge;
-        new_hedge
-      in
-      let subgraph, input_hedges, output_hedges = clone_subgraph
-          ~in_graph
-          ~out_graph:g
-          ~import_vattr:(fun ~new_vertex ~old_attr -> ())
-          ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
-          ~clone_vertex:Manager.clone_vertex
-          ~clone_hedge:import_hedge
-          ~input
-          ~output
-          subgraph
-      in
-      let input = Array.mapi (fun i hi -> (input.(i),hi)) input_hedges in
-      let output = Array.mapi (fun i hi -> (output.(i),hi)) output_hedges in
-      let call_stack = FidMap.add f {input; output} call_stack in
-      let add_info (new_hedge,hedge) =
-        HTbl.add h_info new_hedge
-          { call_stack;
-            orig_attrib = hedge_attrib in_graph hedge }
-      in
-      List.iter add_info !imported_hedge;
-      { input; output }
-    in
-    (* import a function in the graph and returns the set of hedges to
-       update after that *)
-    let import_function h f =
-      try
-        ignore(HedgeFidTbl.find imported_functions (h,f));
-        HedgeSet.empty
-      with
-      | Not_found ->
-        let call_stack = (HTbl.find h_info h).call_stack in
-        let call_info =
-          try
-            let call_info = FidMap.find f call_stack in
-            (* recursive call *)
-            (* Printf.eprintf "rec call\n%!"; *)
-            recursive_call h f call_info
-          with Not_found ->
-            (* Printf.eprintf "normal call\n%!"; *)
-            (* not recursive call *)
-            import_function h f call_stack in
-        HedgeFidTbl.add imported_functions (h,f) call_info;
-
-        Array.fold_left (fun hset (_,hiset) ->
-            HedgeIntSet.fold (fun (_,v) set -> HedgeSet.add v set) hiset hset)
-          HedgeSet.empty call_info.input
-    in
-
-    let update_hedge h =
-      let pred = hedge_pred' g h in
-      let f v =
-        let abstract = vertex_abstract v in
-        if M.is_bottom v abstract
-        then None
-        else Some abstract
-      in
-      let pred' = Array.map f pred in
-      match lift_option_array pred' with
-      | None -> ()
-      | Some abstract ->
-        let attrib =
-          try (HTbl.find h_info h).orig_attrib
-          with Not_found ->
-            Format.eprintf "%a@." T.Hedge.print h;
-            raise Not_found
-        in
-        let results,functions = M.apply h attrib abstract in
-        Vwq.push_set vwq (hedge_succ g h);
-        List.iter (fun fid -> Hwq.push_set hwq (import_function h fid)) functions;
-        HTbl.replace hedge_result h results
-    in
-
-    let rec loop () =
-      match Vwq.pop vwq with
-      | None ->
-        begin match Hwq.pop hwq with
-          | None -> ()
-          | Some h ->
-            update_hedge h;
-            loop ()
-        end
-      | Some v ->
-        update_vertex v;
-        loop ()
-    in
-    loop ();
-    return_graph g vertex_result
-
-end

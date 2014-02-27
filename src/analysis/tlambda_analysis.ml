@@ -169,7 +169,7 @@ end
 
 module M : functor ( E : Entry ) ->
 sig
-  include Hgraph.Manager
+  include Fixpoint_types.Manager
     with module T := T
      and module H = G 
      and type hedge_attribute = hattr
@@ -210,6 +210,8 @@ end
         sg_vertex = f.f_vertex;
         sg_hedge = f.f_hedge;
       }
+
+    module Stack = Abstract_stack.TwoLevels ( Function_id )
 
     let clone_vertex _ = E.mk_vertex ()
     let clone_hedge _ = E.mk_hedge ()

@@ -30,8 +30,13 @@ begin library "data"
 end
 
 begin library "hgraph"
+ comp += [ "-w" "+A-4-9-42" "-warn-error" "+1..45-42" "-w"
+           "-32" "-warn-error" "-32" ]
  dirname = "src/hgraph"
- files = [ "hgraph.ml" "export.ml" ]
+ files = [ "hgraph_types.mli" "hgraph.mli" "hgraph.ml"
+           "stack_types.mli" "abstract_stack.mli" "abstract_stack.ml"
+           "fixpoint_types.mli" "fixpoint.mli" "fixpoint.ml"
+           "export.ml" ]
 end
 
 begin library "lambda-analysis"

@@ -10,6 +10,9 @@ module Vertex = struct
   let equal (i:string) j = i = j
 
   let print ppf s = Format.pp_print_string ppf ("\""^s^"\"")
+
+  let c = ref 0
+  let clone v = Printf.sprintf "%s_%i" v (incr c; !c)
 end
 
 type hedge_attr =
@@ -39,6 +42,8 @@ module Hedge = struct
   let equal (i:t) j = i = j
 
   let print ppf s = Format.pp_print_string ppf ("\""^s^"\"")
+  let c = ref 0
+  let clone v = Printf.sprintf "%s_%i" v (incr c; !c)
 end
 
 module T = struct
@@ -269,6 +274,8 @@ module Manager = struct
   let join_list _ l =
     List.fold_left Env.join Env.bottom l
 
+  let widening _ a1 a2 = Env.join a1 a2
+
   let is_leq _ = Env.is_leq
 
   type function_id = F.t
@@ -278,11 +285,7 @@ module Manager = struct
     assert(F.equal id func);
     g_func, func_subgraph
 
-  (* baaad: but we don't have attributes on vertex and hedge... *)
-  let clone_vertex v = v
-  let clone_hedge =
-    let r = ref 0 in
-    fun h -> incr r; Printf.sprintf "%s:%i" h !r
+  module Stack = Abstract_stack.TwoLevels ( Function_id )
 
 end
 
@@ -305,9 +308,9 @@ let ouput_dot g =
     (* ~print_attrhedge *)
     Format.std_formatter g
 
-module FP = Hgraph.Fixpoint(T)(Manager)
+module FP = Fixpoint.Fixpoint(T)(Manager)
 (* let err_graph = ref None *)
-let r =
+let r, map =
   try FP.kleene_fixpoint (* ~err_graph *) g (Manager.H.VertexSet.singleton v0)
   with e ->
     (* (match !err_graph with *)
