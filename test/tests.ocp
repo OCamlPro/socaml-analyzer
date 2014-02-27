@@ -99,6 +99,7 @@ begin test "tmain"
   "good" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "good.ml" ] )
   "bad" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "bad.ml" ] test_exit = 1 )
   "conditionnal" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "conditionnal.ml" ] )
+  "cycle" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "cycle.ml" ] )
  ]
 
 end
