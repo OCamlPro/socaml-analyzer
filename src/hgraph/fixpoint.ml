@@ -397,7 +397,8 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
           orig_vertex
           (M.H.VertexSet.add new_vertex set)
           !vertex_map;
-      M.H.VertexMap.find new_vertex state.vertex_values
+      try M.H.VertexMap.find new_vertex state.vertex_values
+      with Not_found -> M.bottom new_vertex
     in
     M.H.copy state.graph.SG.graph map_vertex (fun _ _ -> ()) (fun _ -> ()),
     !vertex_map
