@@ -13,8 +13,5 @@ end
 module type LeveledFunction = sig
   include Hgraph_types.OrderedHashedType
   val is_important : t -> bool
-end
-
-module type N = sig
   val n : int
 end

@@ -104,10 +104,10 @@ struct
 
 end
 
-module Leveled (N:N) (T:LeveledFunction) =
+module Leveled (T:LeveledFunction) =
 struct
 
-  assert(N.n>=1);;
+  assert(T.n>=1);;
 
   type elt = T.t
 
@@ -134,10 +134,10 @@ struct
     let important = T.is_important elt in
     if important
     then
-      if depth = N.n
+      if depth = T.n
       then
-        { depth = N.n;
-          stack = keep_n N.n ((Important, elt) :: stack) }
+        { depth = T.n;
+          stack = keep_n T.n ((Important, elt) :: stack) }
       else
         { depth = depth + 1;
           stack = (Important, elt) :: stack }
