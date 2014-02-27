@@ -103,3 +103,80 @@ struct
   let print ppf { top } = Top.print ppf top
 
 end
+
+module Leveled (N:N) (T:LeveledFunction) =
+struct
+
+  assert(N.n>=1);;
+
+  type elt = T.t
+
+  type level =
+    | Important
+    | Not_important
+
+  type t =
+    { depth : int;
+      stack : (level * elt) list }
+
+  let empty = { depth = 0; stack = [] }
+
+  let rec keep_n n = function
+    | [] -> []
+    | (Not_important, _) as h :: q ->
+      h :: (keep_n n q)
+    | (Important, _) as h :: q ->
+      if n = 0
+      then []
+      else h :: (keep_n (n-1) q)
+
+  let push { depth; stack } elt =
+    let important = T.is_important elt in
+    if important
+    then
+      if depth = N.n
+      then
+        { depth = N.n;
+          stack = keep_n N.n ((Important, elt) :: stack) }
+      else
+        { depth = depth + 1;
+          stack = (Important, elt) :: stack }
+    else
+      { depth = depth;
+        stack = (Not_important, elt) :: stack }
+
+  let equal st1 st2 =
+    st1.depth = st2.depth &&
+    List.for_all2 (fun (_, e1) (_, e2) -> T.equal e1 e2) st1.stack st2.stack
+
+  let rec compare_list l1 l2 = match l1, l2 with
+    | [], [] -> 0
+    | [], _ -> -1
+    | _, [] -> 1
+    | (_,e1)::t1, (_,e2)::t2 ->
+      let c = T.compare e1 e2 in
+      if c <> 0
+      then c
+      else compare_list t1 t2
+
+  let compare st1 st2 =
+    compare_list st1.stack st2.stack
+
+  let hash { depth; stack } =
+    match stack with
+    | [] -> 0
+    | (_,h)::_ -> Hashtbl.hash (depth, T.hash h)
+
+  let print ppf { depth; stack } =
+    let rec aux depth = function
+      | [] -> ()
+      | (Not_important, _) :: t -> aux depth t
+      | (Important, v) :: t ->
+        T.print ppf v;
+        if depth > 1
+        then Format.fprintf ppf "@ ::@ ";
+        aux (depth-1) t
+    in
+    aux depth stack
+
+end
