@@ -91,10 +91,10 @@ begin test "tmain"
  test_serialized = true
  tests =
  [
-  "simple" ( test_args = [ "myper.ml" ] )
-  "chain" ( test_args = [ "myper.ml" "-open" "Myper" "a.ml" ] )
-  "pervasives" ( test_args = [ "pervasives.ml" ] )
-  "simplest" ( test_args = [ "simpler.ml" ] )
+  "simple" ( test_args = [ "-counter" "myper.ml" ] )
+  "chain" ( test_args = [ "-counter" "myper.ml" "-open" "Myper" "a.ml" ] )
+  "pervasives" ( test_args = [ "-counter" "pervasives.ml" ] )
+  "simplest" ( test_args = [ "-counter" "simpler.ml" ] )
  ]
 
 end
