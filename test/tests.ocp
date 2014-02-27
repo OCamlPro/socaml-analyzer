@@ -95,6 +95,10 @@ begin test "tmain"
   "chain" ( test_args = [ "-counter" "myper.ml" "-open" "Myper" "a.ml" ] )
   "pervasives" ( test_args = [ "-counter" "pervasives.ml" ] )
   "simplest" ( test_args = [ "-counter" "simpler.ml" ] )
+  "pervasives2" ( test_args = [ "-counter" "pervasives2.ml" ] )
+  "good" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "good.ml" ] )
+  "bad" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "bad.ml" ] test_exit = 1 )
+  "conditionnal" ( test_args = [ "-counter" "pervasives.ml" "-open" "Pervasives" "conditionnal.ml" ] )
  ]
 
 end
