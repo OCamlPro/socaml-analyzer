@@ -165,7 +165,8 @@ module Vertex = struct
   let equal (i:string) j = i = j
 
   let print ppf s = Format.pp_print_string ppf s
-  let clone v = v (* BAAAAD, but there are no function *)
+  let counter = ref 0
+  let clone v = incr counter; v ^ "_" ^ (string_of_int !counter)
 end
 
 module Hedge = struct
@@ -176,9 +177,9 @@ module Hedge = struct
 
   let print ppf i = Format.pp_print_int ppf i
 
-  let counter = ref (-1)
+  let counter = ref (99)
   let new_hedge () = incr counter; !counter
-  let clone i = i (* BAAAAD, but there are no function *)
+  let clone i = new_hedge ()
 end
 
 module T = struct
@@ -199,13 +200,13 @@ module Manager = struct
   type abstract = A2.t
 
   type vertex_attribute = unit
-  type hedge_attribute = unit
+  type hedge_attribute = int
   type graph_attribute = unit
 
-  let apply hedge () tabs =
+  let apply hedge attr tabs =
     let abs = tabs.(0) in
     let nabs =
-      match hedge with
+      match attr with
       | 01 -> A2.setcst () abs 0 0
       | 12 -> A2.setcst () abs 1 0
       | 23 -> A2.leqcst () abs 0 99
@@ -267,13 +268,13 @@ let vert = [v0;v1;v2;v3;v4;v5;v6;]
 
 let () =
   List.iter (fun v -> H.add_vertex g v ()) vert;
-  H.add_hedge g 01 () ~pred:[|v0|] ~succ:[|v1|];
-  H.add_hedge g 12 () ~pred:[|v1|] ~succ:[|v2|];
-  H.add_hedge g 23 () ~pred:[|v2|] ~succ:[|v3|];
-  H.add_hedge g 26 () ~pred:[|v2|] ~succ:[|v6|];
-  H.add_hedge g 34 () ~pred:[|v3|] ~succ:[|v4|];
-  H.add_hedge g 45 () ~pred:[|v4|] ~succ:[|v5|];
-  H.add_hedge g 52 () ~pred:[|v5|] ~succ:[|v2|]
+  H.add_hedge g 01 01 ~pred:[|v0|] ~succ:[|v1|];
+  H.add_hedge g 12 12 ~pred:[|v1|] ~succ:[|v2|];
+  H.add_hedge g 23 23 ~pred:[|v2|] ~succ:[|v3|];
+  H.add_hedge g 26 26 ~pred:[|v2|] ~succ:[|v6|];
+  H.add_hedge g 34 34 ~pred:[|v3|] ~succ:[|v4|];
+  H.add_hedge g 45 45 ~pred:[|v4|] ~succ:[|v5|];
+  H.add_hedge g 52 52 ~pred:[|v5|] ~succ:[|v2|]
 
 let r, map = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
 
@@ -282,6 +283,12 @@ let print_attrvertex ppf vertex attr =
 
 let print_attrhedge ppf hedge attr =
   Format.pp_print_int ppf hedge
+
+let () =
+  H.print_dot
+    ~print_attrvertex:(fun ppf v attr -> Format.fprintf ppf "%s" v)
+    ~print_attrhedge:(fun ppf h attr -> Format.fprintf ppf "%i_%i" h attr)
+    Format.std_formatter g
 
 let () =
   H.print_dot

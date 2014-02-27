@@ -72,6 +72,11 @@ module StackGraph (T:T) (H : Hgraph with module T := T) (Stack:Stack_types.Stack
     vertices= VaS_Map.empty;
   }
 
+  let original_vertex g vertex =
+    assert(H.contains_vertex g.graph vertex);
+    let attrib = H.vertex_attrib g.graph vertex in
+    attrib.orig_vertex
+
   let find_hedge g stack orig_hedge =
     try Some (HaS_Map.find (orig_hedge, stack) g.hedges) with
     | Not_found -> None
@@ -322,7 +327,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
 
     (* Union of the the values that can reach the state *)
     let abstract = match pred with
-      | [] -> M.abstract_init vertex
+      | [] -> M.abstract_init (SG.original_vertex state.graph vertex)
       | _ ->
         match map_filter (hedge_opt state) pred with
         | [] -> M.bottom vertex
