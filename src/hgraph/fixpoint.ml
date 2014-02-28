@@ -317,7 +317,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
       to_update, state
 
 
-  let update_vertex state vertex =
+  let update_vertex narrowing_phase state vertex =
     let pred = M.H.HedgeIntSet.elements (SG.vertex_pred' state.graph vertex) in
 
     let hedge_opt state (i,h) =
@@ -343,9 +343,19 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
       match previous_value with
       | None -> true, abstract
       | Some previous_value ->
-        (* if this is not the first value for this state, widen *)
-        let abstract = M.widening vertex previous_value abstract in
-        let propagate = not (M.is_leq vertex abstract previous_value) in
+        (* if this is not the first value for this state, accelerate *)
+        let abstract, propagate =
+          (* if we are not in the narrowing phase: widen *)
+          match narrowing_phase with
+          | None ->
+            let abstract = M.widening vertex previous_value abstract in
+            let propagate = not (M.is_leq vertex abstract previous_value) in
+            abstract, propagate
+          | Some narrow ->
+            let abstract = narrow vertex previous_value abstract in
+            let propagate = not (M.is_leq vertex previous_value abstract) in
+            abstract, propagate
+        in
         propagate, abstract
     in
 
@@ -357,7 +367,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
 
     to_update, { state with vertex_values = M.H.VertexMap.add vertex abstract state.vertex_values }
 
-  let loop state start_vertices =
+  let loop narrowing_phase state start_vertices =
     let vwq = Vwq.create () in
     let hwq = Hwq.create () in
     Vwq.push_set vwq start_vertices;
@@ -373,7 +383,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
             aux state
         end
       | Some v ->
-        let to_update, state = update_vertex state v in
+        let to_update, state = update_vertex narrowing_phase state v in
         Hwq.push_set hwq to_update;
         aux state
     in
@@ -387,7 +397,16 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
             (SG.make_vertex state.graph M.Stack.empty v)
             set) start_vertices
         M.H.VertexSet.empty in
-    loop state start_vertices
+    let state = loop None state start_vertices in
+    match M.narrowing with
+    | None -> state
+    | Some _ ->
+      let vertices_set =
+        List.fold_left
+          (fun set vertex -> M.H.VertexSet.add vertex set)
+          M.H.VertexSet.empty
+          (M.H.list_vertex state.graph.SG.graph) in
+      loop M.narrowing state vertices_set
 
   let kleene_fixpoint (graph:input_graph) start_vertices =
     assert(M.H.correct graph);
