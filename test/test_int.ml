@@ -60,7 +60,14 @@ module A1 = struct
     | Some(a,b) ->
       if is_top man x then pp_print_string fmt "top"
       else
-        fprintf fmt "[%i,%i]" a b
+        let s i =
+          if i = min_int
+          then "-∞"
+          else if i = max_int
+          then "∞"
+          else string_of_int i
+        in
+        fprintf fmt "[%s,%s]" (s a) (s b)
     | None -> pp_print_string fmt "bot"
 
   let meet man (x:t) y =
@@ -85,6 +92,22 @@ module A1 = struct
           (if a=min_int then a else a+cst),
           (if b=max_int then b else b+cst)))
 
+  let mulcst man (x:t) (cst:int) =
+    match x with
+    | None -> x
+    | Some(a,b) ->
+      if cst = 0
+      then Some (0,0)
+      else if cst > 0
+      then
+        canonical (Some(
+            (if a=min_int then a else a * cst),
+            (if b=max_int then b else b * cst)))
+      else
+        canonical (Some(
+            (if b=max_int then min_int else b * cst),
+            (if a=min_int then max_int else a * cst)))
+
   let leqcst man (x:t) (cst:int) =
     match x with
     | None -> x
@@ -98,6 +121,21 @@ module A1 = struct
     | Some(a,b) ->
       let i = canonical (Some(cst,max_int)) in
       meet man x i
+
+  let leq man (x:t) (y:t) =
+    match x, y with
+    | None, _ | _, None -> None, None
+    | Some(x1,x2), Some(y1,y2)->
+      canonical (Some(x1,min x2 y2)),
+      canonical (Some (max x1 y1, y2))
+
+  let less man (x:t) (y:t) =
+    match x, y with
+    | None, _ | _, None -> None, None
+    | Some(x1,x2), Some(y1,y2)->
+      let add i n = if i = max_int || i = min_int then i else i + n in
+      canonical (Some(x1,min x2 (add y2 (-1)))),
+      canonical (Some (max (add x1 1) y1, y2))
 
 end
 
@@ -122,7 +160,9 @@ module A2 = struct
     (A1.widening man x1 x2, A1.widening man y1 y2)
   let narrow man (x1,y1) (x2,y2) =
     (A1.narrow man x1 x2, A1.narrow man y1 y2)
-  let narrowing = Some narrow
+  let narrowing =
+    (* None *)
+    Some narrow
   let print man fmt ((x,y) as v) =
     if is_bottom man v then pp_print_string fmt "bot"
     else fprintf fmt "(%a,%a)" (A1.print man) x (A1.print man) y
@@ -148,6 +188,14 @@ module A2 = struct
     else if dim=0 then (A1.addcst man x cst, y)
     else if dim=1 then (x, A1.addcst man y cst)
     else failwith ""
+
+  let mulcst man ((x,y) as v) (dim:int) (cst:int) =
+    if is_bottom man v
+    then v
+    else if dim=0 then (A1.mulcst man x cst, y)
+    else if dim=1 then (x, A1.mulcst man y cst)
+    else failwith ""
+
   let leqcst man ((x,y) as v) (dim:int) (cst:int) =
     if is_bottom man v
     then v
@@ -160,6 +208,18 @@ module A2 = struct
     else if dim=0 then (A1.geqcst man x cst, y)
     else if dim=1 then (x, A1.geqcst man y cst)
     else failwith ""
+
+  let x_leq_y man ((x,y):t) =
+    A1.leq man x y
+
+  let y_leq_x man ((x,y):t) =
+    A1.leq man y x
+
+  let x_less_y man ((x,y):t) =
+    A1.less man x y
+
+  let y_less_x man ((x,y):t) =
+    A1.less man y x
 
 end
 
@@ -199,39 +259,14 @@ module T = struct
 
 end
 
-module Manager = struct
+module Manager_base = struct
   module H = Hgraph.Make(T)
   include A2
   type abstract = A2.t
 
   type vertex_attribute = unit
-  type hedge_attribute = int
+  type hedge_attribute = string
   type graph_attribute = unit
-
-  let apply hedge attr tabs =
-    let abs = tabs.(0) in
-    let nabs =
-      match attr with
-      | 01 -> A2.setcst () abs 0 0
-      | 12 -> A2.setcst () abs 1 0
-      | 23 -> A2.leqcst () abs 0 99
-      | 26 -> A2.geqcst () abs 0 100
-      | 34 -> A2.addcst () abs 0 1
-      | 45 -> A2.assignvar () abs 1 0
-      | 52 -> abs
-      | _ -> failwith ""
-    in
-    [|nabs|], []
-
-  (* Creation of the following equation graph:
-     X0: x=0;
-     X1: y=0;
-     X2: while (x<=99) do
-     X3:   incr x;
-     X4:   y = x;
-     X5: done
-  *)
-
 
   let abstract_init i =
     if i = "v0"
@@ -252,51 +287,136 @@ module Manager = struct
 
 end
 
-module FP = Fixpoint.Fixpoint(T)(Manager)
-module H = Manager.H
-
-let g = H.create ()
-
-let v0 = "v0"
-let v1 = "v1"
-let v2 = "v2"
-let v3 = "v3"
-let v4 = "v4"
-let v5 = "v5"
-let v6 = "v6"
-let v7 = "v7"
-let v8 = "v8"
-let v9 = "v9"
-let v10 = "v10"
-
-let vert = [v0;v1;v2;v3;v4;v5;v6;]
-
-let () =
-  List.iter (fun v -> H.add_vertex g v ()) vert;
-  H.add_hedge g 01 01 ~pred:[|v0|] ~succ:[|v1|];
-  H.add_hedge g 12 12 ~pred:[|v1|] ~succ:[|v2|];
-  H.add_hedge g 23 23 ~pred:[|v2|] ~succ:[|v3|];
-  H.add_hedge g 26 26 ~pred:[|v2|] ~succ:[|v6|];
-  H.add_hedge g 34 34 ~pred:[|v3|] ~succ:[|v4|];
-  H.add_hedge g 45 45 ~pred:[|v4|] ~succ:[|v5|];
-  H.add_hedge g 52 52 ~pred:[|v5|] ~succ:[|v2|]
-
-let r, map = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
-
 let print_attrvertex ppf vertex attr =
   A2.print () ppf attr
 
 let print_attrhedge ppf hedge attr =
-  Format.pp_print_int ppf hedge
+  Format.pp_print_string ppf attr
 
-let () =
-  H.print_dot
-    ~print_attrvertex:(fun ppf v attr -> Format.fprintf ppf "%s" v)
-    ~print_attrhedge:(fun ppf h attr -> Format.fprintf ppf "%i_%i" h attr)
-    Format.std_formatter g
+module Test1 = struct
+  module Manager = struct
+    include Manager_base
+    let apply hedge attr tabs =
+      let abs = tabs.(0) in
+      let nabs =
+        match attr with
+        | "01" -> A2.setcst () abs 0 0
+        | "12" -> A2.setcst () abs 1 0
+        | "23" -> A2.leqcst () abs 0 99
+        | "26" -> A2.geqcst () abs 0 100
+        | "34" -> A2.addcst () abs 0 1
+        | "45" -> A2.assignvar () abs 1 0
+        | "52" -> abs
+        | _ -> failwith ""
+      in
+      [|nabs|], []
 
-let () =
-  H.print_dot
-    ~print_attrvertex
-    ~print_attrhedge
-    Format.std_formatter r
+    (* Creation of the following equation graph:
+       X0: x=0;
+       X1: y=0;
+       X2: while (x<=99) do
+       X3:   incr x;
+       X4:   y = x;
+       X5: done
+    *)
+  end
+
+  module FP = Fixpoint.Fixpoint(T)(Manager)
+  module H = Manager.H
+
+  let g = H.create ()
+
+  let v0 = "v0"
+  let v1 = "v1"
+  let v2 = "v2"
+  let v3 = "v3"
+  let v4 = "v4"
+  let v5 = "v5"
+  let v6 = "v6"
+  let v7 = "v7"
+  let v8 = "v8"
+  let v9 = "v9"
+  let v10 = "v10"
+
+  let vert = [v0;v1;v2;v3;v4;v5;v6;]
+
+  let () =
+    List.iter (fun v -> H.add_vertex g v ()) vert;
+    H.add_hedge g 01 "01" ~pred:[|v0|] ~succ:[|v1|];
+    H.add_hedge g 12 "12" ~pred:[|v1|] ~succ:[|v2|];
+    H.add_hedge g 23 "23" ~pred:[|v2|] ~succ:[|v3|];
+    H.add_hedge g 26 "26" ~pred:[|v2|] ~succ:[|v6|];
+    H.add_hedge g 34 "34" ~pred:[|v3|] ~succ:[|v4|];
+    H.add_hedge g 45 "45" ~pred:[|v4|] ~succ:[|v5|];
+    H.add_hedge g 52 "52" ~pred:[|v5|] ~succ:[|v2|]
+
+  let r, map = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
+
+  (* let () = *)
+  (*   H.print_dot *)
+  (*     ~print_attrvertex *)
+  (*     ~print_attrhedge *)
+  (*     Format.std_formatter r *)
+
+end
+
+module Test2 = struct
+  module Manager = struct
+    include Manager_base
+    let apply hedge attr tabs =
+      let abs = tabs.(0) in
+      let nabs =
+        match attr with
+        | "x := 1" -> A2.setcst () abs 0 1
+        | "y <= 10" -> A2.leqcst () abs 1 10
+        | "y > 10" -> A2.geqcst () abs 1 11
+        | "x < y" -> A2.x_less_y () abs
+        | "x >= y"-> A2.y_leq_x () abs
+        | "y := 10"-> A2.setcst () abs 1 10
+        | "x := y"->A2.assignvar () abs 0 1
+        | "x := x + 1"->A2.addcst () abs 0 1
+        | "x := x * 2" -> A2.mulcst () abs 0 2
+        | "y := y - 1" -> A2.addcst () abs 1 (-1)
+        | _ -> failwith ""
+      in
+      [|nabs|], []
+  end
+
+  module FP = Fixpoint.Fixpoint(T)(Manager)
+  module H = Manager.H
+
+  let g = H.create ()
+
+  let v0 = "v0"
+  let v2 = "v2"
+  let v3 = "v3"
+  let v6 = "v6"
+  let v7 = "v7"
+  let v8 = "v8"
+  let v11 = "v11"
+  let v12 = "v12"
+  let v13 = "v13"
+
+  let vert = [v0;v2;v3;v6;v7;v8;v11;v12;v13]
+
+  let () =
+    List.iter (fun v -> H.add_vertex g v ()) vert;
+    H.add_hedge g 0_2 "x := 1" ~pred:[|v0|] ~succ:[|v2|];
+    H.add_hedge g 2_3 "y <= 10" ~pred:[|v2|] ~succ:[|v3|];
+    H.add_hedge g 2_6 "y > 10" ~pred:[|v2|] ~succ:[|v6|];
+    H.add_hedge g 6_7 "x < y" ~pred:[|v6|] ~succ:[|v7|];
+    H.add_hedge g 6_11 "x >= y" ~pred:[|v6|] ~succ:[|v11|];
+    H.add_hedge g 3_11 "y := 10" ~pred:[|v3|] ~succ:[|v11|];
+    H.add_hedge g 11_12 "x := y" ~pred:[|v11|] ~succ:[|v12|];
+    H.add_hedge g 12_13 "x := x + 1" ~pred:[|v12|] ~succ:[|v13|];
+    H.add_hedge g 7_8 "x := x * 2" ~pred:[|v7|] ~succ:[|v8|];
+    H.add_hedge g 8_6 "y := y - 1" ~pred:[|v8|] ~succ:[|v6|]
+
+  let r, map = FP.kleene_fixpoint g (Manager.H.VertexSet.singleton v0)
+
+  let () =
+    H.print_dot
+      ~print_attrvertex
+      ~print_attrhedge
+      Format.std_formatter r
+end
