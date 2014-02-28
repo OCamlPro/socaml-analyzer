@@ -431,7 +431,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
       with Not_found -> M.bottom new_vertex
     in
     assert(M.H.correct state.graph.SG.graph);
-    let graph = M.H.copy state.graph.SG.graph map_vertex (fun _ _ -> ()) (fun _ -> ()) in
+    let graph = M.H.copy state.graph.SG.graph map_vertex (fun _ a -> a.SG.orig_attrib) (fun _ -> ()) in
     assert(M.H.correct graph);
     graph, !vertex_map
 

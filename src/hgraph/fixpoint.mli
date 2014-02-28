@@ -11,7 +11,7 @@ module Fixpoint (T:T) (Manager:Manager with module T := T) : sig
   val kleene_fixpoint :
     (* ?err_graph:(unit, Manager.hedge_attribute, unit) Manager.H.graph option ref -> *)
     input_graph -> Manager.H.VertexSet.t ->
-    (Manager.abstract, unit, unit) Manager.H.graph *
+    (Manager.abstract, Manager.hedge_attribute, unit) Manager.H.graph *
     Manager.H.VertexSet.t Manager.H.VertexMap.t
 
   (* returns the unfolded graph and a map associating original vertex
