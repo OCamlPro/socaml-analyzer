@@ -31,8 +31,8 @@ let join_list = List.fold_left join bottom
 
 let widening x y =
   match x, y with
-  | None, _ -> y
-  | _, None -> assert false
+  | None, a
+  | a, None -> a
   | Some ( a1, b1), Some ( a2, b2) ->
     Some (
       ( if a2 < a1 then min_int else a2),

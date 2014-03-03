@@ -6,6 +6,9 @@ module Vertex = struct
   let equal (i:string) j = i = j
 
   let print ppf s = Format.pp_print_string ppf s
+
+  let c = ref 0
+  let clone v = Printf.sprintf "%s_%i" v (incr c; !c)
 end
 
 module Hedge = struct
@@ -18,6 +21,7 @@ module Hedge = struct
 
   let counter = ref (-1)
   let new_hedge () = incr counter; !counter
+  let clone _ = new_hedge ()
 end
 
 module T = struct
@@ -86,8 +90,8 @@ let subgraph =
 let subgraph = H.clone_subgraph
     ~in_graph:g2
     ~out_graph:g
-    ~import_vattr:(fun ~new_vertex ~old_attr -> old_attr)
-    ~import_hattr:(fun ~new_hedge ~old_attr -> old_attr)
+    ~import_vattr:(fun ~old_vertex:_ ~new_vertex ~old_attr -> old_attr)
+    ~import_hattr:(fun ~old_hedge:_ ~new_hedge ~old_attr -> old_attr)
     ~clone_vertex:(fun i -> i)
     ~clone_hedge:(fun i -> i)
     ~input:[|v1|]

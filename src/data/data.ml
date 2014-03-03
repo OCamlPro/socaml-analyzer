@@ -119,6 +119,8 @@ let mem_env id = function
   | Bottom -> false
   | Env m -> Idm.mem id m
 
+let cp_env id env =
+  reg_env (get_env id env ) env
 
 
 (* simple functions and values *)
@@ -132,62 +134,58 @@ let set_a i v a =
 
 (* Union *)
 
+let map_merge_helper f _ a b =
+  match a, b with
+  | x, None | None, x -> x
+  | Some x, Some y -> Some ( f x y )
+
+let array_merge_with ~unioner s1 s2 =
+  Array.mapi (fun i i1 -> unioner i1 s2.(i)) s1
+
+let block_merge_with ~unioner b1 b2 =
+  Tagm.merge
+    (map_merge_helper
+       ( Intm.merge
+           ( map_merge_helper (array_merge_with ~unioner) )
+       )
+    ) b1 b2
+
+let array_descr_merge_with ~unioner ~integers a1 a2 =
+  {
+    a_elems = unioner a1.a_elems a2.a_elems;
+    a_size = integers a1.a_size a2.a_size;
+    a_float = a1.a_float || a2.a_float;
+    a_gen = a1.a_gen || a2.a_gen;
+    a_addr = a1.a_addr || a2.a_addr;
+    a_int = a1.a_int || a2.a_int;
+  }
+
 let union_simple a b = match a, b with
   | Top, _ | _, Top -> Top
   | Constants s, Constants s' -> Constants ( Constants.union s s')
 
+let merge_template ~unioner ~integers a b =
+  if a.top || b.top
+  then top
+  else
+    let blocks = block_merge_with ~unioner a.blocks b.blocks in
+    let arrays = array_descr_merge_with ~unioner ~integers a.arrays b.arrays in
+    let f = Fm.merge (map_merge_helper (array_merge_with ~unioner)) a.f b.f in
+    {
+      top = false;
+      int = integers a.int b.int;
+      float = union_simple a.float b.float;
+      string = union_simple a.string b.string;
+      i32 = union_simple a.i32 b.i32;
+      i64 = union_simple a.i64 b.i64;
+      inat = union_simple a.inat b.inat;
+      cp = Ints.union a.cp b.cp;
+      blocks; arrays; f;
+      expr = Hinfos.union a.expr b.expr;
+    }
 
-let rec union (* env *) a b =
-  let blocks =
-    Tagm.merge
-      begin
-        fun _ a b ->
-          match a, b with
-          | a, None | None, a -> a
-          | Some is1, Some is2 ->
-            Some (
-              Intm.merge
-                (fun _ a b ->
-                   match a, b with
-                   | a, None | None, a -> a
-                   | Some s1, Some s2 -> Some ( Array.mapi (fun i i1 -> Ids.union i1 s2.(i)) s1)
-                )
-                is1 is2
-            )
-      end
-      a.blocks b.blocks in
-  let f = Fm.merge
-      begin
-        fun _ a b ->
-          match a, b with
-          | a, None | None, a -> a
-          | Some i1, Some i2 -> Some ( Array.mapi (fun i i1i -> Ids.union i1i i2.(i)) i1 )
-      end
-      a.f b.f;
-  in
-  (* env, *)
-  {
-    top = a.top || b.top;
-    int = Int_interv.join a.int b.int;
-    float = union_simple a.float b.float;
-    string = union_simple a.string b.string;
-    i32 = union_simple a.i32 b.i32;
-    i64 = union_simple a.i64 b.i64;
-    inat = union_simple a.inat b.inat;
-    cp = Ints.union a.cp b.cp;
-    blocks;
-    arrays =
-      {
-        a_elems = Ids.union a.arrays.a_elems b.arrays.a_elems;
-        a_size = Int_interv.join a.arrays.a_size b.arrays.a_size;
-        a_float = a.arrays.a_float || b.arrays.a_float;
-        a_gen = a.arrays.a_gen || b.arrays.a_gen;
-        a_addr = a.arrays.a_addr || b.arrays.a_addr;
-        a_int = a.arrays.a_int || b.arrays.a_int;
-     };
-    f;
-    expr = Hinfos.union a.expr b.expr;
-  }
+
+let rec union a b = merge_template ~unioner:Ids.union ~integers:Int_interv.join a b
 
 and union_id env i1 i2 =
   let ( (* env, *) u) = union (* env *) (get_env i1 env) (get_env i2 env) in
@@ -197,6 +195,21 @@ let union_ids env ids = Ids.fold (fun a ( (* env, *) b) -> union (* env *) (get_
 
 let fun_ids i env =
   Fm.fold (fun i _ l -> i::l ) (get_env i env).f []
+
+let rec widening enva envb renvres a b =
+  let unioner = widening_ids enva envb renvres in
+  merge_template ~unioner ~integers:Int_interv.widening a b
+
+and widening_ids enva envb renvres idsa idsb =
+  if Ids.subset idsa idsb
+  then idsb
+  else
+    let da = union_ids enva idsa in
+    let db = union_ids envb idsb in
+    let d = widening enva envb renvres da db in
+    let envres, id = reg_env d !renvres in
+    renvres := envres;
+    Ids.singleton id
 
 (* Inclusion test *)
 

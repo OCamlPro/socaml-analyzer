@@ -8,6 +8,7 @@ sig
   val hash : t -> int
   val mk : unit -> t
   val print : Format.formatter -> t -> unit
+  val clone : t -> t
 end
 
 module Vertex =
@@ -27,6 +28,8 @@ struct
   let mk ?(modulename="") () = 
     incr c;
     modulename, !c
+
+  let clone _ = mk ()
 end
 
 module Hedge : E =
@@ -40,6 +43,8 @@ struct
 
   let print = Format.pp_print_int
   let mk () = incr c; !c
+
+  let clone _ = mk ()
 end
 
 module T =

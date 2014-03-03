@@ -16,7 +16,7 @@ sig
 end
 
 (* exporting and importing of Hgraph as bigraphs *)
-module Store (T : Hgraph.T) ( H : Hgraph.Hgraph with module T := T ) ( I : Ginfo with type h = T.hedge ) =
+module Store (T : Hgraph_types.T) ( H : Hgraph_types.Hgraph with module T := T ) ( I : Ginfo with type h = T.hedge ) =
 struct
   type g = ( I.vattr, I.hattr, unit ) H.graph
 

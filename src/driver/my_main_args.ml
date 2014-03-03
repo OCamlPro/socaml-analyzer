@@ -11,22 +11,27 @@ let get_targets () = List.rev !targets
 let only_compile = ref false
 let target_string : string option ref = ref None
 
+let count_apply = ref false
+
 let arg_parser =
   let open Arg in
   align
     [
       ( "-open",
         String Mk_lambda.open_module,
-        "Add an implicitly opened module" );
+        " Add an implicitly opened module" );
       ( "-close",
         String Mk_lambda.close_module,
-        "Remove an implicitly opened module" );
+        " Remove an implicitly opened module" );
       ( "-c",
         Set only_compile,
-        "Only build the .cmb intermediate representations");
+        " Only build the .cmb intermediate representations");
       ( "-o",
         String (fun s -> target_string := Some s ),
-        "Specify the name of the target to build");
+        " Specify the name of the target to build");
+      ( "-counter",
+        Set count_apply,
+        " Output the pass count");
     ]
 
 let handle_file ppf sourcefile =

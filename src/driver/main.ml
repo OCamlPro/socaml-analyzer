@@ -22,17 +22,24 @@ let () =
       end
       in
       let module Manager = Tlambda_analysis.M ( E ) in
-      let module F = Hgraph.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
+      let module F = Fixpoint.Fixpoint ( Tlambda_to_hgraph.T ) ( Manager ) in
       print_endline "starting the analysis";
-      let result = F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
-      let exn_env = Tlambda_to_hgraph.G.vertex_attrib result exnv in
+      let result, assotiation_map =
+        F.kleene_fixpoint g ( Manager.H.VertexSet.singleton inv ) in
+      let exnv_output = Manager.H.VertexSet.elements
+          (Manager.H.VertexMap.find exnv assotiation_map) in
+      let exn_env =
+        Manager.join_list exnv
+          (List.map (Tlambda_to_hgraph.G.vertex_attrib result) exnv_output) in
+      if !count_apply
+      then Format.fprintf ppf "Pass count: %d@." (Tlambda_analysis.get_counter ());
       if Envs.is_bottom exn_env
       then ()
       else
         begin
-          print_endline "I found something:";
+          Format.pp_print_string ppf "I found something:\n";
           Data.print
-            Format.std_formatter
+            ppf
             Manager.exn_tid
             exn_env;
           exit 1

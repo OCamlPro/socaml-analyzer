@@ -16,7 +16,7 @@ end
 
 module M : functor ( E : Entry ) ->
   sig
-    include Hgraph.Manager
+    include Fixpoint_types.Manager
       with
         module T := T
        and module H = G
@@ -26,3 +26,5 @@ module M : functor ( E : Entry ) ->
        and type abstract = Data.environment
     val exn_tid : tid
   end
+
+val get_counter : unit -> int
