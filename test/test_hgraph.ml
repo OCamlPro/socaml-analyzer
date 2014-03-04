@@ -9,7 +9,7 @@ module Vertex = struct
   let hash (i:string) = Hashtbl.hash i
   let equal (i:string) j = i = j
 
-  let print ppf s = Format.pp_print_string ppf ("\""^s^"\"")
+  let print ppf s = Format.pp_print_string ppf s
 
   let c = ref 0
   let clone v = Printf.sprintf "%s_%i" v (incr c; !c)
@@ -43,7 +43,7 @@ module Hedge = struct
   let hash (i:t) = Hashtbl.hash i
   let equal (i:t) j = i = j
 
-  let print ppf s = Format.pp_print_string ppf ("\""^s^"\"")
+  let print ppf s = Format.pp_print_string ppf s
 
   let c = ref 0
   let clone v = Printf.sprintf "%s_%i" v (incr c; !c)

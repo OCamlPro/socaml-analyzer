@@ -22,10 +22,10 @@ struct
 
   let print ppf (s,i) =
     Format.pp_print_string ppf s;
-    Format.pp_print_string ppf "/";
+    Format.pp_print_string ppf "_";
     Format.pp_print_int ppf i
 
-  let mk ?(modulename="") () = 
+  let mk ?(modulename="no_module") () = 
     incr c;
     modulename, !c
 
@@ -41,7 +41,7 @@ struct
 
   let c = ref (-1)
 
-  let print = Format.pp_print_int
+  let print ppf i = Format.fprintf ppf "v%i" i
   let mk () = incr c; !c
 
   let clone _ = mk ()
@@ -54,8 +54,8 @@ struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  let print_vertex _ _ = ()             (* TODO *)
-  let print_hedge _ _ = ()
+  let print_vertex = Vertex.print
+  let print_hedge = Hedge.print
 end
 
 module G = Hgraph.Make (T)

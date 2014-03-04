@@ -384,13 +384,13 @@ module Make(T:T) : Hgraph
       (begin fun hedge hedge_n ->
          Array.iter
            (begin fun pred ->
-              fprintf ppf "%a -> %a;@ "
+              fprintf ppf "\"%a\" -> \"%a\";@ "
                 print_vertex pred print_hedge hedge
             end)
            hedge_n.h_pred;
          Array.iter
            (begin fun succ ->
-              fprintf ppf "%a -> %a;@ "
+              fprintf ppf "\"%a\" -> \"%a\";@ "
                 print_hedge hedge print_vertex succ
             end)
            hedge_n.h_succ
