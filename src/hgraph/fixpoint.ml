@@ -60,6 +60,7 @@ module StackGraph (T:T) (H : Hgraph with module T := T) (Stack:Stack_types.Stack
 
   type ('v,'h,'e) g = {
     mutable orig_graph : ('v, 'h, 'e) H.graph StackMap.t;
+    mutable call_sites : H.HedgeSet.t StackMap.t;
     graph : ('v vertex_attrib, 'h hedge_attrib, unit) H.graph;
     mutable hedges: T.hedge HaS_Map.t;
     mutable vertices: T.vertex VaS_Map.t;
@@ -67,10 +68,22 @@ module StackGraph (T:T) (H : Hgraph with module T := T) (Stack:Stack_types.Stack
 
   let init_graph graph = {
     orig_graph = StackMap.singleton Stack.empty graph;
+    call_sites = StackMap.empty;
     graph = H.create ();
     hedges= HaS_Map.empty;
     vertices= VaS_Map.empty;
   }
+
+  let exists_call_site g stack hedge =
+    try H.HedgeSet.mem hedge (StackMap.find stack g.call_sites)
+    with Not_found -> false
+
+  let add_call_site g stack hedge =
+    let set =
+      try StackMap.find stack g.call_sites
+      with Not_found -> H.HedgeSet.empty in
+    let set = H.HedgeSet.add hedge set in
+    StackMap.add stack set g.call_sites
 
   let original_vertex g vertex =
     assert(H.contains_vertex g.graph vertex);
@@ -224,10 +237,15 @@ module StackGraph (T:T) (H : Hgraph with module T := T) (Stack:Stack_types.Stack
       g.orig_graph <- StackMap.add stack function_info.f_graph g.orig_graph
     in
 
-    let new_function = not (StackMap.mem stack g.orig_graph) in
-    if new_function
-    then link_function g hedge stack function_info;
-    new_function
+    (* TODO: potentially make configurable to be able to not
+       distinguish different hedges (less precise => probably faster) *)
+    let new_call_site = not (exists_call_site g stack hedge) in
+    if new_call_site
+    then begin
+      g.call_sites <- add_call_site g stack hedge;
+      link_function g hedge stack function_info;
+    end;
+    new_call_site
 
 end
 
@@ -431,7 +449,7 @@ module Fixpoint (T:T) (M:Manager with module T := T) = struct
       with Not_found -> M.bottom new_vertex
     in
     assert(M.H.correct state.graph.SG.graph);
-    let graph = M.H.copy state.graph.SG.graph map_vertex (fun _ _ -> ()) (fun _ -> ()) in
+    let graph = M.H.copy state.graph.SG.graph map_vertex (fun _ a -> a.SG.orig_attrib) (fun _ -> ()) in
     assert(M.H.correct graph);
     graph, !vertex_map
 

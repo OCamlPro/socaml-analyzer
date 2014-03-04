@@ -37,16 +37,24 @@ let export g funtbl vin vout vexn outputprefix =
 let ext_fun funtbl fid f_graph vin vout vexn =
   let open Tlambda_to_hgraph in
   let open G in
+  let f_in = [| vin |] in
+  let f_out = [| vout; vexn |] in
+  let f_vertex =
+    List.fold_left
+      (fun s v -> VertexSet.add v s)
+      VertexSet.empty
+      (list_vertex f_graph) in
+  let f_vertex =
+    VertexSet.remove f_in.(0) (
+      VertexSet.remove f_out.(0) (
+        VertexSet.remove f_out.(1) (f_vertex))) in
+  Array.iter (fun v -> assert(not (VertexSet.mem v f_vertex))) f_in;
   Hashtbl.add funtbl fid
     {
       f_graph;
-      f_in = [| vin |];
-      f_out = [| vout; vexn |];
-      f_vertex =
-        List.fold_left
-          (fun s v -> VertexSet.add v s)
-          VertexSet.empty
-          (list_vertex f_graph);
+      f_in;
+      f_out;
+      f_vertex;
       f_hedge =
         List.fold_left
           (fun s v -> HedgeSet.add v s)

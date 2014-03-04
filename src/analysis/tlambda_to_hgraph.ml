@@ -22,10 +22,10 @@ struct
 
   let print ppf (s,i) =
     Format.pp_print_string ppf s;
-    Format.pp_print_string ppf "/";
+    Format.pp_print_string ppf "_";
     Format.pp_print_int ppf i
 
-  let mk ?(modulename="") () = 
+  let mk ?(modulename="no_module") () = 
     incr c;
     modulename, !c
 
@@ -41,7 +41,7 @@ struct
 
   let c = ref (-1)
 
-  let print = Format.pp_print_int
+  let print ppf i = Format.fprintf ppf "v%i" i
   let mk () = incr c; !c
 
   let clone _ = mk ()
@@ -54,8 +54,8 @@ struct
   module Vertex = Vertex
   module Hedge = Hedge
 
-  let print_vertex _ _ = ()             (* TODO *)
-  let print_hedge _ _ = ()
+  let print_vertex = Vertex.print
+  let print_hedge = Hedge.print
 end
 
 module G = Hgraph.Make (T)
@@ -261,10 +261,7 @@ let init ~modulename funs =
           ~exnv:f_out.(1)
           ~ret_id:f_return ~exn_id:f_exn
           flam;
-        Hashtbl.add fun_descs i
-          {
-            f_graph; f_in; f_out;
-            f_vertex =
+        let f_vertex =
               VertexSet.remove f_in.(0) (
                 VertexSet.remove f_out.(0) (
                   VertexSet.remove f_out.(1) (
@@ -272,7 +269,12 @@ let init ~modulename funs =
                         (fun vs v -> VertexSet.add v vs )
                         VertexSet.empty
                         ( list_vertex f_graph )
-                    ))));
+                    )))) in
+        Array.iter (fun v -> assert(not (VertexSet.mem v f_vertex))) f_in;
+        Hashtbl.add fun_descs i
+          {
+            f_graph; f_in; f_out;
+            f_vertex;
             f_hedge = List.fold_left
                 (fun hs h -> HedgeSet.add h hs )
                 HedgeSet.empty

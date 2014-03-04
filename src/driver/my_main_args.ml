@@ -13,6 +13,8 @@ let target_string : string option ref = ref None
 
 let count_apply = ref false
 
+let dot_file = ref None
+
 let arg_parser =
   let open Arg in
   align
@@ -32,6 +34,9 @@ let arg_parser =
       ( "-counter",
         Set count_apply,
         " Output the pass count");
+      ( "-dot",
+        String (fun s -> dot_file := Some s ),
+        " Dumps the result to a dot file");
     ]
 
 let handle_file ppf sourcefile =
