@@ -261,10 +261,7 @@ let init ~modulename funs =
           ~exnv:f_out.(1)
           ~ret_id:f_return ~exn_id:f_exn
           flam;
-        Hashtbl.add fun_descs i
-          {
-            f_graph; f_in; f_out;
-            f_vertex =
+        let f_vertex =
               VertexSet.remove f_in.(0) (
                 VertexSet.remove f_out.(0) (
                   VertexSet.remove f_out.(1) (
@@ -272,7 +269,12 @@ let init ~modulename funs =
                         (fun vs v -> VertexSet.add v vs )
                         VertexSet.empty
                         ( list_vertex f_graph )
-                    ))));
+                    )))) in
+        Array.iter (fun v -> assert(not (VertexSet.mem v f_vertex))) f_in;
+        Hashtbl.add fun_descs i
+          {
+            f_graph; f_in; f_out;
+            f_vertex;
             f_hedge = List.fold_left
                 (fun hs h -> HedgeSet.add h hs )
                 HedgeSet.empty

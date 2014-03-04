@@ -205,6 +205,7 @@ end
     module Function_id = F
     let find_function fid =
       let f = Hashtbl.find E.funs fid in
+      Array.iter (fun v -> assert(not (H.VertexSet.mem v f.f_vertex))) f.f_in;
       f.f_graph, {
         sg_input = f.f_in;
         sg_output = f.f_out;
